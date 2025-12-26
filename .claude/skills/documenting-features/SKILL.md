@@ -26,10 +26,11 @@ Adapt sections based on feature type:
 ## Quick Start
 
 1. Identify the feature scope and purpose
-2. Define the user story and priority
-3. Document command syntax/API interface (if applicable)
-4. List functional and non-functional requirements
-5. Specify output format, edge cases, and testing requirements
+2. **Ask for GitHub issue URL** if not provided (optional but recommended for traceability)
+3. Define the user story and priority
+4. Document command syntax/API interface (if applicable)
+5. List functional and non-functional requirements
+6. Specify output format, edge cases, and testing requirements
 
 ## File Locations
 
@@ -45,7 +46,7 @@ See [templates/feature-requirements.md](templates/feature-requirements.md) for t
 
 ```
 # Feature Requirements: [Feature Name]
-- Overview, Feature ID, Priority
+- Overview, Feature ID, GitHub Issue (optional), Priority
 - User Story
 - Command Syntax (for CLI) or API Integration (for APIs)
 - Functional Requirements (FR-1, FR-2, ...)

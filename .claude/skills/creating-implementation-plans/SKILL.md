@@ -25,10 +25,11 @@ Adapt based on project type:
 
 ## Quick Start
 
-1. Gather all feature requirements (read requirement files or ask user)
-2. Identify dependencies between features
-3. Determine optimal build sequence
-4. Create the implementation plan using the template
+1. **Locate feature requirements documents** - check `requirements/features/` or ask user for paths
+2. **Ask for GitHub issue URL(s)** if not provided in context
+3. Identify dependencies between features
+4. Determine optimal build sequence
+5. Create the implementation plan using the template
 
 ## File Locations
 

@@ -5,14 +5,14 @@
 
 ## Features Summary
 
-| Feature ID | Feature Name | Priority | Complexity | Status |
-|------------|--------------|----------|------------|--------|
-| FEAT-001   | [Name]       | High     | Low        | Pending |
+| Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
+|------------|--------------|------------------|----------|------------|--------|
+| FEAT-001   | [#123](link) | [feature-name.md](path) | High | Low | Pending |
 
 ## Recommended Build Sequence
 
 ### Phase 1: [Phase Name]
-**Feature:** [Feature Name]
+**Feature:** [FEAT-001](requirements/features/feature-name.md) | [#123](github-issue-link)
 **Status:** Pending
 
 #### Rationale
@@ -32,7 +32,7 @@
 ---
 
 ### Phase 2: [Phase Name]
-**Feature:** [Feature Name]
+**Feature:** [FEAT-002](requirements/features/feature-name.md) | [#124](github-issue-link)
 **Status:** Pending
 
 #### Rationale

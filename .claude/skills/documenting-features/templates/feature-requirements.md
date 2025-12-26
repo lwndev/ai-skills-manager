@@ -6,6 +6,9 @@
 ## Feature ID
 `FEAT-XXX`
 
+## GitHub Issue
+[#N](https://github.com/org/repo/issues/N) *(optional - link when issue exists)*
+
 ## Priority
 [High/Medium/Low] - [Brief justification]
 

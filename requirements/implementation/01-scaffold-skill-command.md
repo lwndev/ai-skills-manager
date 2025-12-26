@@ -8,14 +8,14 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 
 ## Features Summary
 
-| Feature ID | Feature Name | Priority | Complexity | Status |
-|------------|--------------|----------|------------|--------|
-| FEAT-001   | Scaffold Skill Command | High | Medium | Pending |
+| Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
+|------------|--------------|------------------|----------|------------|--------|
+| FEAT-001   | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) | [scaffold-skill-command.md](../features/scaffold-skill-command.md) | High | Medium | Pending |
 
 ## Recommended Build Sequence
 
 ### Phase 1: CLI Infrastructure & Entry Point
-**Feature:** FEAT-001 (Foundation)
+**Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (Foundation)
 **Status:** Pending
 
 #### Rationale
@@ -42,7 +42,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 ---
 
 ### Phase 2: Validation Logic
-**Feature:** FEAT-001 (Core Validation)
+**Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (Core Validation)
 **Status:** Pending
 
 #### Rationale
@@ -78,7 +78,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 ---
 
 ### Phase 3: Template & File Generation
-**Feature:** FEAT-001 (File Operations)
+**Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (File Operations)
 **Status:** Pending
 
 #### Rationale
@@ -114,7 +114,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 ---
 
 ### Phase 4: Command Integration & Output
-**Feature:** FEAT-001 (User Interface)
+**Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (User Interface)
 **Status:** Pending
 
 #### Rationale
@@ -156,7 +156,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 ---
 
 ### Phase 5: Testing & Documentation
-**Feature:** FEAT-001 (Quality Assurance)
+**Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (Quality Assurance)
 **Status:** Pending
 
 #### Rationale
