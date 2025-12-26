@@ -16,7 +16,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 
 ### Phase 1: CLI Infrastructure & Entry Point
 **Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (Foundation)
-**Status:** Pending
+**Status:** Complete
 
 #### Rationale
 - Establishes the CLI framework that all commands will use
@@ -34,10 +34,10 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 7. Configure TypeScript to output executable with proper shebang
 
 #### Deliverables
-- [ ] `src/cli.ts` - Main CLI entry point
-- [ ] `src/commands/scaffold.ts` - Scaffold command skeleton
-- [ ] Updated `package.json` with `bin` field and commander dependency
-- [ ] Working `asm --help` command
+- [x] `src/cli.ts` - Main CLI entry point
+- [x] `src/commands/scaffold.ts` - Scaffold command skeleton
+- [x] Updated `package.json` with `bin` field and commander dependency
+- [x] Working `asm --help` command
 
 ---
 
