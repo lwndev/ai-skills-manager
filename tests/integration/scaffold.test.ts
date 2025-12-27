@@ -27,7 +27,9 @@ describe('scaffold command integration', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(tempDir, { recursive: true, force: true });
+    if (tempDir) {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   describe('happy path workflows', () => {

@@ -34,6 +34,9 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Build project
+        run: npm run build
+
       - name: Run tests with coverage
         run: npm run test:coverage
 
@@ -50,9 +53,6 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Build project
-        run: npm run build
 
       - name: Archive production artifacts
         if: matrix.node-version == '20.x'
