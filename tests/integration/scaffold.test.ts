@@ -265,9 +265,11 @@ describe('scaffold command integration', () => {
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       expect(frontmatterMatch).toBeTruthy();
 
-      const frontmatter = frontmatterMatch![1];
-      expect(frontmatter).toContain('name: yaml-test');
-      expect(frontmatter).toContain('description: Test description');
+      if (frontmatterMatch) {
+        const frontmatter = frontmatterMatch[1];
+        expect(frontmatter).toContain('name: yaml-test');
+        expect(frontmatter).toContain('description: Test description');
+      }
     });
 
     it('includes TODO placeholders in body', async () => {
