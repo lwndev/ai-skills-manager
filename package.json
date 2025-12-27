@@ -10,15 +10,29 @@
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "quality": "npm run lint && npm run test:coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "commander": "^14.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.17.10",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.4",
     "ts-jest": "^29.4.6",
     "typescript": "^5.5.3"
   },

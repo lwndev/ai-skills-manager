@@ -54,14 +54,14 @@ async function handleScaffold(name: string, options: ScaffoldOptions): Promise<v
   // Validate skill name
   const nameValidation = validateName(name);
   if (!nameValidation.valid) {
-    throw new ValidationError(nameValidation.error!);
+    throw new ValidationError(nameValidation.error || 'Invalid skill name');
   }
 
   // Validate description if provided
   if (options.description) {
     const descValidation = validateDescription(options.description);
     if (!descValidation.valid) {
-      throw new ValidationError(descValidation.error!);
+      throw new ValidationError(descValidation.error || 'Invalid description');
     }
   }
 

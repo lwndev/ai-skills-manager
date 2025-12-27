@@ -54,7 +54,7 @@ export function displayCreatedFiles(skillPath: string, filesCreated: string[]): 
 /**
  * Display next steps after successful scaffold
  */
-export function displayNextSteps(skillPath: string, skillName: string): void {
+export function displayNextSteps(skillPath: string, _skillName: string): void {
   console.log('\nNext steps:');
   console.log('  1. Edit the SKILL.md file to add your skill instructions');
   console.log('  2. Add any scripts to the scripts/ directory');

@@ -1,0 +1,11 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run lint-staged for linting and formatting
+npx lint-staged
+
+# Run tests with coverage
+npm run test:coverage -- --silent
+
+# Check coverage meets 80% threshold
+node scripts/check-coverage.js
