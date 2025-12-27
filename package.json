@@ -15,7 +15,9 @@
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "quality": "npm run lint && npm run test:coverage",
+    "audit": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix",
+    "quality": "npm run lint && npm run test:coverage && npm run audit",
     "prepare": "husky"
   },
   "dependencies": {

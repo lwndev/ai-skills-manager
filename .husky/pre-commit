@@ -1,6 +1,11 @@
 # Run lint-staged for linting and formatting
 npx lint-staged
 
+# Check for security vulnerabilities (skip with SKIP_AUDIT=1)
+if [ -z "$SKIP_AUDIT" ]; then
+  node scripts/check-vulnerabilities.js
+fi
+
 # Run tests with coverage
 npm run test:coverage -- --silent
 
