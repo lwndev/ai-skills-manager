@@ -1,11 +1,20 @@
 ---
-name: implementing-plan-phase
+name: implementing-plans
 description: Execute phases from implementation plans systematically, following defined steps and tracking deliverables. Use when the user wants to implement, execute, build, or work on a phase from an implementation plan in requirements/implementation/. Apply this skill for requests like "implement phase 3", "do the next phase", "continue implementation", "build the validation phase", or any reference to working on numbered phases from a plan.
 ---
 
-# Implementing Plan Phases
+# Implementing Plans
 
 Execute implementation plan phases systematically, following the defined steps and tracking deliverables.
+
+## When to Use This Skill
+
+Activate this skill when the user:
+- Says "implement phase N" or "execute phase N" (any variation)
+- References an implementation plan file with a phase request (e.g., `@requirements/implementation/...`)
+- Asks for "the next phase" or "continue implementation"
+- Names a phase (e.g., "implement the CLI infrastructure phase")
+- Wants to work on, build, or start any phase from a plan
 
 ## Example
 
