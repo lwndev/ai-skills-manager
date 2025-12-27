@@ -34,14 +34,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check for security vulnerabilities
+        run: node scripts/check-vulnerabilities.js
+
       - name: Run linter
         run: npm run lint
+
+      - name: Build project
+        run: npm run build
 
       - name: Run tests
         run: npm run test:coverage
 
-      - name: Build project
-        run: npm run build
+      - name: Check coverage threshold
+        run: node scripts/check-coverage.js
 
       - name: Verify package contents
         run: npm pack --dry-run
