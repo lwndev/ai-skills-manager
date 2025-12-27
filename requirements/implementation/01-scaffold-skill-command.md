@@ -43,7 +43,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 
 ### Phase 2: Validation Logic
 **Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (Core Validation)
-**Status:** Pending
+**Status:** Complete
 
 #### Rationale
 - Validation is a discrete, testable unit that other phases depend on
@@ -67,13 +67,13 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 6. Write unit tests for all validators
 
 #### Deliverables
-- [ ] `src/validators/name.ts` - Skill name validation
-- [ ] `src/validators/description.ts` - Description validation
-- [ ] `src/validators/frontmatter.ts` - Frontmatter key validation
-- [ ] `src/validators/index.ts` - Barrel export
-- [ ] `tests/validators/name.test.ts` - Name validation tests
-- [ ] `tests/validators/description.test.ts` - Description validation tests
-- [ ] `tests/validators/frontmatter.test.ts` - Frontmatter validation tests
+- [x] `src/validators/name.ts` - Skill name validation
+- [x] `src/validators/description.ts` - Description validation
+- [x] `src/validators/frontmatter.ts` - Frontmatter key validation
+- [x] `src/validators/index.ts` - Barrel export
+- [x] `tests/validators/name.test.ts` - Name validation tests
+- [x] `tests/validators/description.test.ts` - Description validation tests
+- [x] `tests/validators/frontmatter.test.ts` - Frontmatter validation tests
 
 ---
 
