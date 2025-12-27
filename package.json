@@ -1,10 +1,37 @@
 {
-  "name": "skills-manager",
+  "name": "ai-skills-manager",
   "version": "1.0.0",
   "description": "AI Skills Manager - CLI tool for managing Claude Code Agent Skills",
+  "author": "lwndev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lwndev/ai-skills-manager.git"
+  },
+  "homepage": "https://github.com/lwndev/ai-skills-manager#readme",
+  "bugs": {
+    "url": "https://github.com/lwndev/ai-skills-manager/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "skills",
+    "cli",
+    "anthropic"
+  ],
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "asm": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsc",
@@ -18,7 +45,14 @@
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix",
     "quality": "npm run lint && npm run test:coverage && npm run audit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "npm run quality && npm run build",
+    "preversion": "npm run build && npm test && npm run lint",
+    "version": "git add package.json package-lock.json",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "dependencies": {
     "commander": "^14.0.2"
@@ -37,6 +71,5 @@
     "prettier": "^3.7.4",
     "ts-jest": "^29.4.6",
     "typescript": "^5.5.3"
-  },
-  "private": true
+  }
 }

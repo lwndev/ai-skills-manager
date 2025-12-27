@@ -1,0 +1,35 @@
+# Source files (we ship compiled dist/)
+src/
+tests/
+
+# Config files
+.eslintrc*
+eslint.config.*
+.prettierrc*
+tsconfig.json
+jest.config.*
+.husky/
+
+# Development
+.git/
+.github/
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+
+# Documentation and requirements (not needed in package)
+docs/
+requirements/
+.claude/
+CLAUDE.md
+
+# Scripts
+scripts/
+
+# Coverage and test artifacts
+coverage/
+*.tsbuildinfo
+
+# Environment files
+.env*
