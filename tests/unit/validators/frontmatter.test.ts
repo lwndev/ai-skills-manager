@@ -1,4 +1,4 @@
-import { validateFrontmatterKeys } from '../../src/validators/frontmatter';
+import { validateFrontmatterKeys } from '../../../src/validators/frontmatter';
 
 describe('validateFrontmatterKeys', () => {
   describe('valid frontmatter', () => {

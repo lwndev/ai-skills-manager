@@ -1,4 +1,4 @@
-import { generateSkillMd, SkillTemplateParams } from '../../src/templates/skill-md';
+import { generateSkillMd, SkillTemplateParams } from '../../../src/templates/skill-md';
 
 describe('generateSkillMd', () => {
   describe('frontmatter generation', () => {

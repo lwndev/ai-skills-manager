@@ -1,4 +1,4 @@
-import { validateDescription } from '../../src/validators/description';
+import { validateDescription } from '../../../src/validators/description';
 
 describe('validateDescription', () => {
   describe('valid descriptions', () => {
@@ -9,9 +9,9 @@ describe('validateDescription', () => {
     });
 
     it('accepts description with special characters', () => {
-      expect(
-        validateDescription('Handles files, processes data, and more!')
-      ).toEqual({ valid: true });
+      expect(validateDescription('Handles files, processes data, and more!')).toEqual({
+        valid: true,
+      });
     });
 
     it('accepts description at max length (1024 chars)', () => {

@@ -6,7 +6,7 @@ import {
   directoryExists,
   createScaffold,
   ScaffoldOptions,
-} from '../../src/generators/scaffold';
+} from '../../../src/generators/scaffold';
 
 describe('resolveOutputPath', () => {
   const originalCwd = process.cwd();
@@ -163,7 +163,10 @@ describe('createScaffold', () => {
     const scriptsDirExists = await directoryExists(scriptsPath);
     expect(scriptsDirExists).toBe(true);
 
-    const gitkeepExists = await fs.stat(gitkeepPath).then(() => true).catch(() => false);
+    const gitkeepExists = await fs
+      .stat(gitkeepPath)
+      .then(() => true)
+      .catch(() => false);
     expect(gitkeepExists).toBe(true);
   });
 
@@ -208,12 +211,8 @@ describe('createScaffold', () => {
 
     const result = await createScaffold(options);
 
-    expect(result.filesCreated).toContain(
-      path.join(result.skillPath, 'scripts', '.gitkeep')
-    );
-    expect(result.filesCreated).toContain(
-      path.join(result.skillPath, 'SKILL.md')
-    );
+    expect(result.filesCreated).toContain(path.join(result.skillPath, 'scripts', '.gitkeep'));
+    expect(result.filesCreated).toContain(path.join(result.skillPath, 'SKILL.md'));
   });
 
   it('overwrites existing directory with --force', async () => {
@@ -230,7 +229,8 @@ describe('createScaffold', () => {
     const result = await createScaffold(options);
 
     expect(result.success).toBe(true);
-    const skillMdExists = await fs.stat(path.join(skillPath, 'SKILL.md'))
+    const skillMdExists = await fs
+      .stat(path.join(skillPath, 'SKILL.md'))
       .then(() => true)
       .catch(() => false);
     expect(skillMdExists).toBe(true);
