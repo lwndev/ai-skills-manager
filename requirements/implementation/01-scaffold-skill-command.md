@@ -79,7 +79,7 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 
 ### Phase 3: Template & File Generation
 **Feature:** [FEAT-001](../features/scaffold-skill-command.md) | [#1](https://github.com/lwndev/ai-skills-manager/issues/1) (File Operations)
-**Status:** Pending
+**Status:** Complete
 
 #### Rationale
 - Builds on validation from Phase 2
@@ -106,10 +106,10 @@ The project is currently a fresh TypeScript setup with no existing CLI infrastru
 7. Write unit tests for template generation
 
 #### Deliverables
-- [ ] `src/templates/skill-md.ts` - SKILL.md template generator
-- [ ] `src/generators/scaffold.ts` - Directory and file creation logic
-- [ ] `tests/templates/skill-md.test.ts` - Template generation tests
-- [ ] `tests/generators/scaffold.test.ts` - Generator tests
+- [x] `src/templates/skill-md.ts` - SKILL.md template generator
+- [x] `src/generators/scaffold.ts` - Directory and file creation logic
+- [x] `tests/templates/skill-md.test.ts` - Template generation tests
+- [x] `tests/generators/scaffold.test.ts` - Generator tests
 
 ---
 
