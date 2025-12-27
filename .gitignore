@@ -1,6 +1,7 @@
 /tmp
 /out-tsc
 /dist
+/coverage
 
 /node_modules
 npm-debug.log*
@@ -10,3 +11,4 @@ yarn-error.log*
 .pnp.js
 
 .vscode/*
+.DS_Store

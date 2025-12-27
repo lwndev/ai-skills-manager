@@ -158,5 +158,5 @@ For more information, see: https://docs.anthropic.com/en/docs/claude-code
 export function generateSkillMd(params: SkillTemplateParams): string {
   const frontmatter = generateFrontmatter(params);
   const body = generateBody(params);
-  return frontmatter + body;
+  return frontmatter + '\n' + body;
 }
