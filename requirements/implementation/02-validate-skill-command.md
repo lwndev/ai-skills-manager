@@ -16,7 +16,7 @@ The existing codebase already includes validators for name, description, and fro
 
 ### Phase 1: YAML Parsing Infrastructure
 **Feature:** [FEAT-002](../features/02-validate-skill-command.md) | [#2](https://github.com/lwndev/ai-skills-manager/issues/2)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Foundation first**: YAML frontmatter parsing is required by all other validation steps
@@ -39,16 +39,16 @@ The existing codebase already includes validators for name, description, and fro
 4. Write comprehensive unit tests for frontmatter parser
 
 #### Deliverables
-- [ ] `package.json` - Updated with js-yaml dependency
-- [ ] `src/utils/frontmatter-parser.ts` - Frontmatter extraction and parsing
-- [ ] `src/types/validation.ts` - Validation result type definitions
-- [ ] `tests/unit/utils/frontmatter-parser.test.ts` - Parser unit tests
+- [x] `package.json` - Updated with js-yaml dependency
+- [x] `src/utils/frontmatter-parser.ts` - Frontmatter extraction and parsing
+- [x] `src/types/validation.ts` - Validation result type definitions
+- [x] `tests/unit/utils/frontmatter-parser.test.ts` - Parser unit tests
 
 ---
 
 ### Phase 2: Validation Engine
 **Feature:** [FEAT-002](../features/02-validate-skill-command.md) | [#2](https://github.com/lwndev/ai-skills-manager/issues/2)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Core functionality**: Orchestrates all validation checks in correct order
@@ -82,12 +82,12 @@ The existing codebase already includes validators for name, description, and fro
 5. Write unit tests for validation orchestrator
 
 #### Deliverables
-- [ ] `src/validators/file-exists.ts` - File/directory existence validation
-- [ ] `src/validators/required-fields.ts` - Required fields validation
-- [ ] `src/generators/validate.ts` - Validation orchestration
-- [ ] `tests/unit/validators/file-exists.test.ts` - File existence tests
-- [ ] `tests/unit/validators/required-fields.test.ts` - Required fields tests
-- [ ] `tests/unit/generators/validate.test.ts` - Orchestrator tests
+- [x] `src/validators/file-exists.ts` - File/directory existence validation
+- [x] `src/validators/required-fields.ts` - Required fields validation
+- [x] `src/generators/validate.ts` - Validation orchestration
+- [x] `tests/unit/validators/file-exists.test.ts` - File existence tests
+- [x] `tests/unit/validators/required-fields.test.ts` - Required fields tests
+- [x] `tests/unit/generators/validate.test.ts` - Orchestrator tests
 
 ---
 
