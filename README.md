@@ -6,7 +6,7 @@ AI Skills Manager (ASM) enables team members to create, test, distribute, instal
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18 or later
+- [Node.js](https://nodejs.org/) 20.19.6 or later (LTS recommended)
 - [npm](https://www.npmjs.com/) (comes with Node.js)
 
 ### From Source
