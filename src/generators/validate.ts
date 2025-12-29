@@ -39,8 +39,11 @@ function buildResult(
     .filter((check) => !check.passed && check.error)
     .map((check) => check.error!);
 
+  // Check if all checks passed
+  const allChecksPassed = Object.values(checks).every((check) => check.passed);
+
   return {
-    valid: errors.length === 0,
+    valid: allChecksPassed,
     skillPath,
     skillName,
     checks,
@@ -73,7 +76,8 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   };
 
   // Cannot continue without file
-  if (!fileResult.valid || !fileResult.content) {
+  // Note: Allow empty content to pass through so frontmatter parser can provide specific error
+  if (!fileResult.valid || fileResult.content === undefined) {
     return buildResult(skillPath, checks);
   }
 

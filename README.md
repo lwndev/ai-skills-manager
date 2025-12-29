@@ -80,6 +80,90 @@ my-skill/
     .gitkeep
 ```
 
+### Validate a Skill
+
+Use the `validate` command to check that a skill conforms to the Claude Code specification:
+
+```bash
+# Validate a skill directory
+asm validate ./my-skill
+
+# Validate a project skill
+asm validate .claude/skills/my-skill
+
+# Validate using direct path to SKILL.md
+asm validate ./my-skill/SKILL.md
+
+# Quiet mode - show only pass/fail (for CI/CD)
+asm validate ./my-skill --quiet
+
+# JSON output (for programmatic use)
+asm validate ./my-skill --json
+```
+
+#### Validate Options
+
+| Option | Description |
+|--------|-------------|
+| `-q, --quiet` | Minimal output - show only pass/fail result |
+| `-j, --json` | Output validation result as JSON |
+
+#### Validation Checks
+
+The validate command performs these checks in order:
+
+1. **File existence** - Verifies SKILL.md exists at the specified path
+2. **Frontmatter validity** - Checks YAML frontmatter structure and syntax
+3. **Required fields** - Validates `name` and `description` are present and non-empty
+4. **Allowed properties** - Ensures only permitted frontmatter keys are used
+5. **Name format** - Validates hyphen-case format, max 64 characters
+6. **Description format** - Validates no angle brackets, max 1024 characters
+
+#### Exit Codes
+
+- `0` - Skill is valid
+- `1` - Skill is invalid or an error occurred
+
+#### Output Examples
+
+**Normal output (valid skill):**
+```
+Validating skill at: ./my-skill/SKILL.md
+Skill name: my-skill
+
+✓ File existence
+✓ Frontmatter validity
+✓ Required fields
+✓ Allowed properties
+✓ Name format
+✓ Description format
+
+✓ Skill is valid!
+```
+
+**Quiet output:**
+```
+PASS
+```
+
+**JSON output:**
+```json
+{
+  "valid": true,
+  "skillPath": "./my-skill/SKILL.md",
+  "skillName": "my-skill",
+  "checks": {
+    "fileExists": { "passed": true },
+    "frontmatterValid": { "passed": true },
+    "requiredFields": { "passed": true },
+    "allowedProperties": { "passed": true },
+    "nameFormat": { "passed": true },
+    "descriptionFormat": { "passed": true }
+  },
+  "errors": []
+}
+```
+
 ### Install a Skill
 
 *Coming soon*
@@ -162,6 +246,15 @@ Ensure your skill name uses only lowercase letters, numbers, and hyphens. It can
 
 **Error: Directory already exists**
 Use the `--force` flag to overwrite, or choose a different name.
+
+**Error: SKILL.md not found**
+Make sure the path points to a skill directory containing a SKILL.md file, or directly to the SKILL.md file itself.
+
+**Error: Missing YAML frontmatter**
+Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
+
+**Error: Unknown frontmatter property**
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `allowed-tools`, `metadata`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.

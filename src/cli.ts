@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { registerScaffoldCommand } from './commands/scaffold';
+import { registerValidateCommand } from './commands/validate';
 
 const program = new Command();
 
@@ -11,5 +12,6 @@ program
   .version('1.0.0');
 
 registerScaffoldCommand(program);
+registerValidateCommand(program);
 
 program.parse();
