@@ -1,5 +1,11 @@
 # Implementation Patterns
 
+Quick navigation:
+- [Creating New Files](#creating-new-files)
+- [Installing Dependencies](#installing-dependencies)
+- [Creating Test Files](#creating-test-files)
+- [Error Recovery](#error-recovery)
+
 Guidance for common implementation scenarios during phase execution.
 
 ## Creating New Files
