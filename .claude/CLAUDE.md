@@ -32,3 +32,18 @@ npm run build
 - Node.js and NPM
 - TypeScript 5.5+
 - Claude Code CLI
+
+## Skills Reference Material
+
+- Agent Skills Overview: 
+  - Description: "Agent Skills are modular capabilities that extend Claude's functionality. Each Skill packages instructions, metadata, and optional resources (scripts, templates) that Claude uses automatically when relevant."
+  - Local copy: `docs/anthropic/skills/documentation/agent-skills-overview-20251229.md` 
+  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
+- Agent Quickstart: 
+  - Description: "Learn how to use Agent Skills to create documents with the Claude API in under 10 minutes."
+  - Local copy: `docs/anthropic/skills/documentation/agent-skills-quickstart-20251229.md` 
+  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart) 
+- Agent Best Practices:
+  - "Learn how to write effective Skills that Claude can discover and use successfully."
+  - Local copy: `docs/anthropic/skills/documentation/agent-skills-best-practices-20251229.md`
+  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 

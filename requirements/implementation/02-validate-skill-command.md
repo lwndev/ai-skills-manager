@@ -10,7 +10,7 @@ The existing codebase already includes validators for name, description, and fro
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-002   | [#2](https://github.com/lwndev/ai-skills-manager/issues/2) | [02-validate-skill-command.md](../features/02-validate-skill-command.md) | High | Medium | Pending |
+| FEAT-002   | [#2](https://github.com/lwndev/ai-skills-manager/issues/2) | [02-validate-skill-command.md](../features/02-validate-skill-command.md) | High | Medium | Complete |
 
 ## Recommended Build Sequence
 
@@ -93,7 +93,7 @@ The existing codebase already includes validators for name, description, and fro
 
 ### Phase 3: Command Integration & Output Formatting
 **Feature:** [FEAT-002](../features/02-validate-skill-command.md) | [#2](https://github.com/lwndev/ai-skills-manager/issues/2)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **User-facing feature**: This phase creates the actual CLI command users interact with
@@ -122,17 +122,17 @@ The existing codebase already includes validators for name, description, and fro
 4. Write integration tests for full command workflow
 
 #### Deliverables
-- [ ] `src/formatters/validate-formatter.ts` - Output formatting for all modes
-- [ ] `src/commands/validate.ts` - CLI command implementation
-- [ ] `src/cli.ts` - Updated to register validate command
-- [ ] `tests/unit/formatters/validate-formatter.test.ts` - Formatter unit tests
-- [ ] `tests/integration/validate.test.ts` - Full CLI integration tests
+- [x] `src/formatters/validate-formatter.ts` - Output formatting for all modes
+- [x] `src/commands/validate.ts` - CLI command implementation
+- [x] `src/cli.ts` - Updated to register validate command
+- [x] `tests/unit/formatters/validate-formatter.test.ts` - Formatter unit tests
+- [x] `tests/integration/validate.test.ts` - Full CLI integration tests
 
 ---
 
 ### Phase 4: Edge Cases & Documentation
 **Feature:** [FEAT-002](../features/02-validate-skill-command.md) | [#2](https://github.com/lwndev/ai-skills-manager/issues/2)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Robustness**: Handle all edge cases specified in requirements
@@ -163,10 +163,10 @@ The existing codebase already includes validators for name, description, and fro
 5. Verify all acceptance criteria from requirements
 
 #### Deliverables
-- [ ] Enhanced error handling in validation chain
-- [ ] `tests/unit/edge-cases/validate.test.ts` - Edge case tests
-- [ ] `README.md` - Updated with validate command documentation
-- [ ] All acceptance criteria verified and passing
+- [x] Enhanced error handling in validation chain
+- [x] `tests/unit/edge-cases/validate.test.ts` - Edge case tests
+- [x] `README.md` - Updated with validate command documentation
+- [x] All acceptance criteria verified and passing
 
 ---
 
@@ -271,46 +271,46 @@ These are already implemented and will be reused:
 ### Per-Phase Criteria
 
 **Phase 1:**
-- [ ] js-yaml installed and working
-- [ ] Frontmatter parser handles all valid/invalid cases
-- [ ] Type definitions complete and exported
-- [ ] Unit tests pass with >80% coverage
+- [x] js-yaml installed and working
+- [x] Frontmatter parser handles all valid/invalid cases
+- [x] Type definitions complete and exported
+- [x] Unit tests pass with >80% coverage
 
 **Phase 2:**
-- [ ] All six validation checks implemented
-- [ ] Validation collects all errors (not just first)
-- [ ] Existing validators integrated correctly
-- [ ] Unit tests pass with >80% coverage
+- [x] All six validation checks implemented
+- [x] Validation collects all errors (not just first)
+- [x] Existing validators integrated correctly
+- [x] Unit tests pass with >80% coverage
 
 **Phase 3:**
-- [ ] Command registered and accessible via `asm validate`
-- [ ] All three output formats working correctly
-- [ ] Exit codes correct (0 valid, 1 invalid)
-- [ ] Integration tests pass
+- [x] Command registered and accessible via `asm validate`
+- [x] All three output formats working correctly
+- [x] Exit codes correct (0 valid, 1 invalid)
+- [x] Integration tests pass
 
 **Phase 4:**
-- [ ] All edge cases from requirements handled
-- [ ] Error messages are actionable with examples
-- [ ] Documentation updated
-- [ ] All acceptance criteria verified
+- [x] All edge cases from requirements handled
+- [x] Error messages are actionable with examples
+- [x] Documentation updated
+- [x] All acceptance criteria verified
 
 ### Overall Success Criteria
 From requirements document:
-- [ ] Command accepts skill path argument
-- [ ] SKILL.md existence is validated
-- [ ] YAML frontmatter structure is validated
-- [ ] Required fields (name, description) are validated
-- [ ] Unknown top-level properties are rejected
-- [ ] Name format validation matches spec (hyphen-case, max 64 chars)
-- [ ] Description validation matches spec (no angle brackets, max 1024 chars)
-- [ ] Exit code 0 for valid skills
-- [ ] Exit code 1 for invalid skills
-- [ ] `--quiet` flag produces minimal output
-- [ ] `--json` flag produces valid JSON output
-- [ ] Error messages are clear and actionable
-- [ ] All edge cases are handled
-- [ ] Tests pass with >80% coverage
-- [ ] Documentation updated
+- [x] Command accepts skill path argument
+- [x] SKILL.md existence is validated
+- [x] YAML frontmatter structure is validated
+- [x] Required fields (name, description) are validated
+- [x] Unknown top-level properties are rejected
+- [x] Name format validation matches spec (hyphen-case, max 64 chars)
+- [x] Description validation matches spec (no angle brackets, max 1024 chars)
+- [x] Exit code 0 for valid skills
+- [x] Exit code 1 for invalid skills
+- [x] `--quiet` flag produces minimal output
+- [x] `--json` flag produces valid JSON output
+- [x] Error messages are clear and actionable
+- [x] All edge cases are handled
+- [x] Tests pass with >80% coverage (93.64% achieved)
+- [x] Documentation updated
 
 ---
 

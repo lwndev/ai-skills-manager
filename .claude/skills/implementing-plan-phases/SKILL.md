@@ -1,97 +1,95 @@
 ---
 name: implementing-plan-phases
 description: Executes implementation plan phases systematically, tracking progress with todos, managing feature branches, and verifying deliverables. Use when the user requests "implement phase N", "build the next phase", "continue implementation", "execute validation phase", or references implementation plans in requirements/implementation/. Handles branch creation, step-by-step execution, deliverable verification, and status updates.
-allowed-tools:
-  - Read
-  - Edit
-  - Bash
-  - TodoWrite
-  - Glob
 ---
 
 # Implementing Plan Phases
 
-Executes feature implementation plans phase by phase with systematic tracking and verification.
+Execute implementation plan phases with systematic tracking and verification.
 
 ## When to Use
 
-Activate when user says:
-- "implement phase 2" / "execute phase 3" / "build phase 1"
-- "do the next phase" / "continue implementation" / "keep going"
-- "work on the validation phase" / "start the CLI infrastructure"
-- References `@requirements/implementation/*.md` with phase request
-- "what's the next step" (during active implementation)
+- User requests "implement phase N" or "build the next phase"
+- References files in `requirements/implementation/`
+- Continuing multi-phase implementation work
 
-## Phase Execution Workflow
+## Quick Start
 
-Copy and track this checklist:
+1. Locate implementation plan in `requirements/implementation/`
+2. Identify target phase (user-specified or next pending)
+3. Update plan status to "🔄 In Progress"
+4. Update GitHub issue with phase start (see [github-templates.md](reference/github-templates.md))
+5. Create feature branch: `feat/phase-{N}-{description}`
+6. Load implementation steps into todos
+7. Execute each step, marking complete as you go
+8. Verify deliverables (tests pass, build succeeds)
+9. Update plan status to "✅ Complete"
+10. Update GitHub issue with completion comment
+
+## Workflow
+
+Copy this checklist and track progress:
 
 ```
 Phase Implementation:
-- [ ] Read implementation plan (requirements/implementation/{feature-id}.md)
-- [ ] Checkout feature branch (git checkout -b {feature-id} or git checkout {feature-id})
-- [ ] Identify target phase (number, name, or next pending)
-- [ ] Review phase: rationale, steps, deliverables
-- [ ] Execute steps sequentially with TodoWrite tracking
-- [ ] Verify deliverables: existence → functionality → tests
-- [ ] Update plan: mark phase complete, check deliverables
-- [ ] Report completion with summary
+- [ ] Update plan status to "🔄 In Progress"
+- [ ] Post GitHub issue start comment
+- [ ] Create/switch to feature branch
+- [ ] Load steps into todos
+- [ ] Execute implementation steps
+- [ ] Verify deliverables
+- [ ] Update plan status to "✅ Complete"
+- [ ] Post GitHub issue completion comment
 ```
 
-## Critical Rules
+See [step-details.md](reference/step-details.md) for detailed guidance on each step.
 
-**Never proceed if:**
-- Any deliverable verification fails
-- A step is blocked or unclear
-- Build/test/lint fails after implementation
+## Phase Structure
 
-**Always do:**
-- Complete each step before starting next
-- Use TodoWrite for step-level tracking
-- Report blockers immediately
-- Ask user before modifying plan structure
+Implementation plans follow this format:
 
-## Verification Loop
+```markdown
+### Phase N: [Phase Name]
+**Feature:** [FEAT-XXX](../features/...) | [#IssueNum](https://github.com/...)
+**Status:** Pending | 🔄 In Progress | ✅ Complete
 
-For each deliverable:
+#### Rationale
+Why this phase comes at this point in the sequence.
 
-1. **Existence** - File exists at specified path
-2. **Functionality** - Expected code/content present
-3. **Validation** - Build/lint/test passes (if applicable)
-4. **Fix & Retry** - If fails, fix and re-verify
-5. **Confirm** - Only mark complete when all pass
+#### Implementation Steps
+1. Specific action to take
+2. Another specific action
+3. Write tests for new functionality
 
-## Examples
+#### Deliverables
+- [ ] `path/to/file.ts` - Description
+- [ ] `tests/path/to/file.test.ts` - Tests
+```
 
-### Example 1: Specific Phase
-**User:** "Implement phase 2 of the scaffold-skill plan"
+The GitHub issue number `[#N]` is used for status updates.
 
-**Actions:**
-- Reads requirements/implementation/scaffold-skill-command.md
-- Checks out `scaffold-skill-command` branch
-- Updates Phase 2 to "In Progress"
-- Executes implementation steps with TodoWrite
-- Verifies all deliverables
-- Marks complete and reports
+## Branch Naming
 
-### Example 2: Next Phase
-**User:** "Continue with the next phase"
+Format: `feat/phase-{N}-{2-3-word-summary}`
 
-**Actions:**
-- Finds first pending phase in current plan
-- Confirms selection with user
-- Proceeds with execution workflow
+Examples:
+- `feat/phase-1-yaml-parsing`
+- `feat/phase-2-validation-engine`
+- `feat/phase-3-enhanced-rules`
 
-### Example 3: Named Phase
-**User:** "Let's work on the validation phase"
+## Verification
 
-**Actions:**
-- Searches for phase with "validation" in title
-- Confirms correct phase found
-- Executes phase workflow
+Before marking a phase complete, verify:
 
-## Related Resources
+- All deliverables created/modified
+- Tests pass: `npm test`
+- Build succeeds: `npm run build`
+- Coverage meets threshold (if specified)
+- Plan status updated with checkmarks
+- GitHub issue updated
 
-- Implementation patterns → [reference.md](reference.md)
-- Feature requirements → `requirements/features/`
-- Implementation plans → `requirements/implementation/`
+## References
+
+- **Complete workflow example**: [workflow-example.md](reference/workflow-example.md) - Full Phase 2 implementation walkthrough
+- **GitHub issue templates**: [github-templates.md](reference/github-templates.md) - Comment templates for issue updates
+- **Detailed step guidance**: [step-details.md](reference/step-details.md) - In-depth explanation of each workflow step
