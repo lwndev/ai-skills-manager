@@ -56,8 +56,9 @@ describe('validate command integration', () => {
             stdio: 'pipe',
           });
           return 0;
-        } catch (error: any) {
-          return error.status || 1;
+        } catch (error) {
+          const execError = error as { status?: number };
+          return execError.status || 1;
         }
       })();
 
@@ -75,11 +76,12 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: Required fields');
         expect(output).toContain('Missing required field: name');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -92,11 +94,12 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: Required fields');
         expect(output).toContain('Missing required field: description');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -109,10 +112,11 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: Frontmatter validity');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -125,11 +129,12 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: Name format');
         expect(output).toContain('lowercase');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -142,11 +147,12 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: Allowed properties');
         expect(output).toContain('unknown-field');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -159,8 +165,9 @@ describe('validate command integration', () => {
             stdio: 'pipe',
           });
           return 0;
-        } catch (error: any) {
-          return error.status || 1;
+        } catch (error) {
+          const execError = error as { status?: number };
+          return execError.status || 1;
         }
       })();
 
@@ -187,10 +194,11 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; status?: number };
+        const output = execError.stdout || '';
         expect(output.trim()).toMatch(/FAIL: \d+ error\(s\)/);
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -221,15 +229,16 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; status?: number };
+        const output = execError.stdout || '';
         const parsed = JSON.parse(output);
 
         expect(parsed.valid).toBe(false);
         expect(parsed.checks.requiredFields.passed).toBe(false);
         expect(parsed.checks.requiredFields.error).toContain('name');
         expect(parsed.errors.length).toBeGreaterThan(0);
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -263,10 +272,11 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: File existence');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       }
     });
 
@@ -279,10 +289,11 @@ describe('validate command integration', () => {
           stdio: 'pipe',
         });
         throw new Error('Should have thrown an error');
-      } catch (error: any) {
-        const output = error.stdout || error.stderr || '';
+      } catch (error) {
+        const execError = error as { stdout?: string; stderr?: string; status?: number };
+        const output = execError.stdout || execError.stderr || '';
         expect(output).toContain('✗ Error: File existence');
-        expect(error.status).toBe(1);
+        expect(execError.status).toBe(1);
       } finally {
         await fs.rm(tempDir, { recursive: true, force: true });
       }
@@ -302,8 +313,9 @@ describe('validate command integration', () => {
               stdio: 'pipe',
             });
             return 0;
-          } catch (error: any) {
-            return error.status || 1;
+          } catch (error) {
+            const execError = error as { status?: number };
+            return execError.status || 1;
           }
         })();
 

@@ -2,9 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [main, develop,FEAT-*]
+    branches:
+      - main
+      - develop
+      - 'FEAT-**'
   pull_request:
-    branches: [main, develop,FEAT-*]
+    branches:
+      - main
+      - develop
+      - 'FEAT-**'
 
 jobs:
   quality:

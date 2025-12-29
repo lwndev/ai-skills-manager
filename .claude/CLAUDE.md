@@ -33,7 +33,7 @@ npm run build
 - TypeScript 5.5+
 - Claude Code CLI
 
-## Skills Referfence Material
+## Skills Reference Material
 
 - Agent Skills Overview: 
   - Description: "Agent Skills are modular capabilities that extend Claude's functionality. Each Skill packages instructions, metadata, and optional resources (scripts, templates) that Claude uses automatically when relevant."

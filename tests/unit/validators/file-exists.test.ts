@@ -112,7 +112,8 @@ Content.
 
       const result = await validateFileExists(relativePath);
       expect(result.valid).toBe(true);
-      expect(path.isAbsolute(result.resolvedPath!)).toBe(true);
+      expect(result.resolvedPath).toBeDefined();
+      expect(path.isAbsolute(result.resolvedPath as string)).toBe(true);
     });
   });
 

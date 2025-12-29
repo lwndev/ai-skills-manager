@@ -36,8 +36,11 @@ function buildResult(
   skillName?: string
 ): ValidationResult {
   const errors = Object.values(checks)
-    .filter((check) => !check.passed && check.error)
-    .map((check) => check.error!);
+    .filter(
+      (check): check is { passed: boolean; error: string } =>
+        !check.passed && typeof check.error === 'string'
+    )
+    .map((check) => check.error);
 
   // Check if all checks passed
   const allChecksPassed = Object.values(checks).every((check) => check.passed);
