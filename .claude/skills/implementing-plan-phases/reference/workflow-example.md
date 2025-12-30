@@ -100,7 +100,7 @@ gh issue comment 2 --body "🔄 Starting Phase 2: Validation Engine
 ### 5. Create Feature Branch
 
 ```bash
-git checkout -b feat/phase-2-validation-engine
+git checkout -b feat/FEAT-002-validate-skill-command
 ```
 
 ### 6. Load Todos
