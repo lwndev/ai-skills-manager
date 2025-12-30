@@ -56,7 +56,7 @@ The two skills are:
 
 ### Phase 2: executing-chores Skill
 **Feature:** [FEAT-007](../features/FEAT-007-chore-task-skills.md) | [#9](https://github.com/lwndev/ai-skills-manager/issues/9)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Builds on Phase 1**: Consumes chore documents created by `documenting-chores`
@@ -89,10 +89,10 @@ The two skills are:
    - PR template as specified in FR-6 with Chore ID reference, Summary, Changes, Testing, Related sections
 
 #### Deliverables
-- [ ] `.claude/skills/executing-chores/SKILL.md` - Main skill file with workflow checklist
-- [ ] `.claude/skills/executing-chores/reference/workflow-details.md` - Detailed step guidance
-- [ ] `.claude/skills/executing-chores/reference/github-templates.md` - PR and issue comment templates
-- [ ] `.claude/skills/executing-chores/templates/pr-template.md` - Pull request template
+- [x] `.claude/skills/executing-chores/SKILL.md` - Main skill file with workflow checklist
+- [x] `.claude/skills/executing-chores/reference/workflow-details.md` - Detailed step guidance
+- [x] `.claude/skills/executing-chores/reference/github-templates.md` - PR and issue comment templates
+- [x] `.claude/skills/executing-chores/templates/pr-template.md` - Pull request template
 
 ---
 
