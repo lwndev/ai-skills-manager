@@ -19,7 +19,7 @@ Execute implementation plan phases with systematic tracking and verification.
 2. Identify target phase (user-specified or next pending)
 3. Update plan status to "🔄 In Progress"
 4. Update GitHub issue with phase start (see [github-templates.md](reference/github-templates.md))
-5. Create feature branch: `feat/phase-{N}-{description}`
+5. Create feature branch (if not already exists): `feat/{Feature ID}-{2-3-word-summary}` 
 6. Load implementation steps into todos
 7. Execute each step, marking complete as you go
 8. Verify deliverables (tests pass, build succeeds)
@@ -70,12 +70,12 @@ The GitHub issue number `[#N]` is used for status updates.
 
 ## Branch Naming
 
-Format: `feat/phase-{N}-{2-3-word-summary}`
+Format: `feat/{Feature ID}-{2-3-word-summary}`
 
 Examples:
-- `feat/phase-1-yaml-parsing`
-- `feat/phase-2-validation-engine`
-- `feat/phase-3-enhanced-rules`
+- `feat/FEAT-001-scaffold-skill-command`
+- `feat/FEAT-002-validate-skill-command`
+- `feat/FEAT-007-chore-task-skill`
 
 ## Verification
 

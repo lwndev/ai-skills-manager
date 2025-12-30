@@ -64,18 +64,17 @@ Include:
 Create a feature branch following the naming convention:
 
 ```bash
-git checkout -b feat/phase-{N}-{description}
+git checkout -b feat/{Feature ID}-{2-3-word-summary}`
 ```
 
 **Naming guidelines:**
 - Use `feat/` prefix for feature work
-- Include phase number for traceability
 - Add 2-3 word description (kebab-case)
 
 **Examples:**
-- `feat/phase-1-yaml-parsing`
-- `feat/phase-2-validation-engine`
-- `feat/phase-3-enhanced-rules`
+- `feat/FEAT-001-scaffold-skill-command`
+- `feat/FEAT-002-validate-skill-command`
+- `feat/FEAT-007-chore-task-skill`
 
 **If already on a feature branch:** Stay on current branch if it's the correct one for this phase sequence.
 
