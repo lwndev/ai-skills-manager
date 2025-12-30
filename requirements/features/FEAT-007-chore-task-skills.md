@@ -359,24 +359,24 @@ executing-chores/
 ## Acceptance Criteria
 
 ### Functional
-- [ ] `documenting-chores` skill creates valid chore documents
-- [ ] `executing-chores` skill completes full workflow (branch -> commit -> PR)
-- [ ] GitHub issues are properly linked and updated
-- [ ] Branch naming follows specified convention
-- [ ] Pull requests are created with proper format
-- [ ] Skills work independently (can use one without the other)
+- [x] `documenting-chores` skill creates valid chore documents
+- [x] `executing-chores` skill completes full workflow (branch -> commit -> PR)
+- [x] GitHub issues are properly linked and updated
+- [x] Branch naming follows specified convention
+- [x] Pull requests are created with proper format
+- [x] Skills work independently (can use one without the other)
 
 ### Agent Skills Compliance (per Anthropic documentation)
-- [ ] SKILL.md frontmatter contains valid `name` and `description`
-- [ ] Skill names use lowercase letters, numbers, and hyphens only
-- [ ] Descriptions are third person and under 1024 characters
-- [ ] Descriptions include both "what it does" and "when to use it"
-- [ ] SKILL.md body is under 500 lines
-- [ ] Reference files are one level deep (no nested references)
-- [ ] Workflow checklists are copyable
-- [ ] Progressive disclosure pattern implemented correctly
+- [x] SKILL.md frontmatter contains valid `name` and `description`
+- [x] Skill names use lowercase letters, numbers, and hyphens only
+- [x] Descriptions are third person and under 1024 characters
+- [x] Descriptions include both "what it does" and "when to use it"
+- [x] SKILL.md body is under 500 lines
+- [x] Reference files are one level deep (no nested references)
+- [x] Workflow checklists are copyable
+- [x] Progressive disclosure pattern implemented correctly
 
 ### Documentation
-- [ ] Skills include usage examples
-- [ ] Skills follow existing patterns in `.claude/skills/`
-- [ ] Reference files include table of contents where appropriate
+- [x] Skills include usage examples
+- [x] Skills follow existing patterns in `.claude/skills/`
+- [x] Reference files include table of contents where appropriate
