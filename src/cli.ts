@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { registerScaffoldCommand } from './commands/scaffold';
 import { registerValidateCommand } from './commands/validate';
+import { registerPackageCommand } from './commands/package';
 
 const program = new Command();
 
@@ -18,5 +19,6 @@ program
 
 registerScaffoldCommand(program);
 registerValidateCommand(program);
+registerPackageCommand(program);
 
 program.parse();
