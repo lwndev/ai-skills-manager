@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - develop
-      - 'FEAT-**'
+      - 'feat/**'
+      - 'chore/**'
   pull_request:
     branches:
       - main
       - develop
-      - 'FEAT-**'
+      - 'feat/**'
+      - 'chore/**'
 
 jobs:
   quality:
