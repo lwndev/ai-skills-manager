@@ -47,3 +47,4 @@ npm run build
   - "Learn how to write effective Skills that Claude can discover and use successfully."
   - Local copy: `docs/anthropic/skills/documentation/agent-skills-best-practices-20251229.md`
   - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 
+- Add to memory. Run `npm run quality` to run linter and tests
