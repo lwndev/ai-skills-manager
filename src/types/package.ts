@@ -30,6 +30,8 @@ export interface PackageResult {
   size: number;
   /** Error messages if packaging failed */
   errors: string[];
+  /** Whether the operation requires user confirmation to overwrite */
+  requiresOverwrite?: boolean;
 }
 
 /**

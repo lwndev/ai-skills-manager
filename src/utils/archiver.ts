@@ -8,15 +8,25 @@ import * as path from 'path';
 import { isExcluded } from '../types/package';
 
 /**
+ * Extended archiver type that includes reference to output stream
+ */
+export interface ZipArchive extends Archiver {
+  _outputStream?: fs.WriteStream;
+}
+
+/**
  * Creates a new ZIP archive stream that writes to the specified output path
  * @param outputPath - Path where the ZIP file will be created
  * @returns The archiver instance configured for ZIP compression
  */
-export function createZipArchive(outputPath: string): Archiver {
+export function createZipArchive(outputPath: string): ZipArchive {
   const output = fs.createWriteStream(outputPath);
   const archive = archiver('zip', {
     zlib: { level: 9 }, // Maximum compression
-  });
+  }) as ZipArchive;
+
+  // Store reference to output stream for proper close handling
+  archive._outputStream = output;
 
   archive.pipe(output);
 
@@ -75,14 +85,23 @@ export async function addDirectoryToArchive(
 /**
  * Finalizes and closes the archive
  * @param archive - The archiver instance to finalize
- * @returns Promise that resolves when the archive is completely written
+ * @returns Promise that resolves when the archive is completely written to disk
  */
-export function finalizeArchive(archive: Archiver): Promise<void> {
+export function finalizeArchive(archive: ZipArchive): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Listen for the close event on the underlying stream
-    archive.on('end', () => {
-      resolve();
-    });
+    const outputStream = archive._outputStream;
+
+    if (outputStream) {
+      // Wait for the output stream to close (file fully written to disk)
+      outputStream.on('close', () => {
+        resolve();
+      });
+    } else {
+      // Fallback if no output stream reference
+      archive.on('end', () => {
+        resolve();
+      });
+    }
 
     archive.on('error', (err: Error) => {
       reject(err);
