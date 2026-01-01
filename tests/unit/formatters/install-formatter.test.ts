@@ -200,6 +200,7 @@ describe('Install Formatter', () => {
 
     it('handles unknown stage with default message', () => {
       // Cast to avoid TypeScript error for unknown stage
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const output = formatInstallProgress('unknown' as any);
       expect(output).toContain('Processing');
     });
