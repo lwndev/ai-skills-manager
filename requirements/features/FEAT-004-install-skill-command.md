@@ -68,6 +68,9 @@ asm install reviewing-code.skill --quiet
 - Extract package to temporary directory first
 - Verify SKILL.md exists in the package
 - Run `asm validate` on the extracted skill
+- Validation checks must include:
+  - `name`: max 64 chars, lowercase letters/numbers/hyphens only, no XML tags, no reserved words ("anthropic", "claude")
+  - `description`: max 1024 chars, non-empty, no XML tags
 - Abort installation if validation fails
 - Clean up temporary files
 - Show clear error messages for validation failures
@@ -81,17 +84,30 @@ asm install reviewing-code.skill --quiet
 - Handle tilde expansion for home directory paths
 
 ### FR-4: Skill Name Extraction
-- Extract skill name from package structure (root directory name in ZIP)
+- Package structure: ZIP must contain a single root directory (the skill name)
+- The root directory must contain SKILL.md
+- Example valid structure:
+  ```
+  my-skill.skill (ZIP)
+  └── my-skill/
+      ├── SKILL.md
+      └── scripts/
+          └── utility.py
+  ```
+- Skill name extracted from: the root directory name in the ZIP
 - Use skill name to determine installation directory
 - Validate skill name format
-- Handle edge cases (multiple root directories, no root directory)
+- Validate that root directory name matches `name` field in SKILL.md frontmatter
+- Return clear error if:
+  - No root directory found (files at ZIP root)
+  - Multiple root directories
+  - Root directory name doesn't match SKILL.md `name` field
 
 ### FR-5: Existing Skill Detection
 - Check if skill already exists in target directory
 - Prompt for confirmation before overwriting
-- Show what will be overwritten
+- Show what will be overwritten (list files with modified/unchanged status)
 - Use `--force` flag to skip confirmation
-- Preserve user's choice for batch operations
 
 ### FR-6: Package Extraction
 - Extract all files from .skill package to target directory
@@ -127,6 +143,12 @@ asm install reviewing-code.skill --quiet
 - `3` - Package extraction error
 - `4` - User cancelled installation
 
+### FR-11: Security Warnings
+- Display security warning when installing skills from external/untrusted sources
+- Recommend auditing SKILL.md, scripts, and bundled resources before installation
+- Warn about skills that reference external URLs (potential data exfiltration risk)
+- Security note should appear in installation output
+
 ## Output Format
 
 ### Success Output
@@ -161,9 +183,14 @@ Checks:
    Files installed: 4
    Total size: 12.5 KB
 
+⚠️  Security Note: Only install skills from trusted sources.
+    Audit SKILL.md and any bundled scripts before use.
+
 Next steps:
   Your skill is now available to Claude Code
-  Restart Claude Code to load the new skill
+  Claude uses the description field for skill discovery
+  Restart Claude Code or start a new session to load the skill
+  Test by asking Claude something that matches your skill's description
 ```
 
 ### Validation Failure Output
@@ -224,7 +251,8 @@ No changes made (dry run mode)
 ### NFR-1: Performance
 - Package extraction should complete within 10 seconds for typical skills (<10MB)
 - Validation should run efficiently without re-reading files multiple times
-- Use streaming extraction for large packages
+- Show progress indicators for large packages (>5MB)
+- Warn users for very large packages (>50MB) due to memory usage during extraction
 
 ### NFR-2: Error Handling
 - Package not found: "Error: Package file '<path>' does not exist"
@@ -261,8 +289,8 @@ No changes made (dry run mode)
 - Node.js fs/promises module for async file operations
 - Node.js path module for path handling
 - Node.js os module for home directory resolution
-- JSZip or adm-zip for ZIP extraction
-- tmp or temp module for temporary directory creation
+- adm-zip (^0.5.16) for ZIP extraction (already in project as devDependency)
+- Node.js os.tmpdir() for temporary directory creation
 
 ## Edge Cases
 
@@ -273,9 +301,11 @@ No changes made (dry run mode)
 5. **Installation interrupted**: Clean up partial extraction and temporary files
 6. **Scope directory doesn't exist**: Create with proper permissions
 7. **Scope is a file not directory**: Clear error message
-8. **Skill name mismatch**: Warn if package name doesn't match skill metadata name
+8. **Skill name mismatch**: Error if root directory name doesn't match SKILL.md `name` field (per FR-4)
 9. **Nested .skill files**: Warn if installing a skill that contains .skill files
 10. **Permission issues mid-extraction**: Rollback and show clear error
+11. **Skills referencing external URLs**: Warn user about potential security risk (external content could contain malicious instructions)
+12. **Windows-style paths in skill content**: Warn if SKILL.md references files using backslashes (cross-platform compatibility issue)
 
 ## Testing Requirements
 
@@ -283,10 +313,13 @@ No changes made (dry run mode)
 - Package file validation logic
 - ZIP archive validation
 - Skill name extraction from package
+- Package structure validation (single root directory, SKILL.md present)
+- Root directory name matches SKILL.md name field
 - Scope path resolution
 - Overwrite detection
 - Exit code logic
 - Error message formatting
+- Security warning display logic
 
 ### Integration Tests
 - Full installation workflow with valid package
@@ -311,7 +344,9 @@ No changes made (dry run mode)
 - [ ] Command accepts skill package path argument
 - [ ] Command accepts all specified options (--scope, --force, --dry-run, --quiet)
 - [ ] Package file validation works correctly
+- [ ] Package structure validation (single root directory containing SKILL.md)
 - [ ] Package content validation runs before installation
+- [ ] Root directory name matches SKILL.md `name` field (error on mismatch)
 - [ ] Installation scope handling works for project, personal, and custom paths
 - [ ] Tilde expansion works for home directory paths
 - [ ] Skill name extraction works correctly
@@ -322,6 +357,7 @@ No changes made (dry run mode)
 - [ ] Rollback works on validation failure
 - [ ] --dry-run mode shows preview without installing
 - [ ] Progress output shows validation, extraction, and summary
+- [ ] Security warning displayed in installation output
 - [ ] --quiet flag produces minimal output
 - [ ] Exit codes match specification
 - [ ] Error messages are clear and actionable
