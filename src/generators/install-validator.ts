@@ -18,6 +18,7 @@ import {
   getZipRootDirectory,
   readEntryAsText,
   extractToDirectory,
+  getTotalUncompressedSize,
 } from '../utils/extractor';
 import { parseFrontmatter } from '../utils/frontmatter-parser';
 import { validateForPackaging } from './package-validator';
@@ -357,4 +358,144 @@ export async function validatePackage(packagePath: string): Promise<PackageValid
       await cleanupTempDirectory(tempDir);
     }
   }
+}
+
+/**
+ * Package warnings detected during validation
+ */
+export interface PackageWarnings {
+  /** List of nested .skill files found in the package */
+  nestedSkillFiles: string[];
+  /** List of external URLs found in SKILL.md */
+  externalUrls: string[];
+  /** List of Windows-style paths found in SKILL.md */
+  windowsPaths: string[];
+  /** Whether package is large (>5MB) */
+  isLargePackage: boolean;
+  /** Whether package is very large (>50MB) */
+  isVeryLargePackage: boolean;
+  /** Total uncompressed size in bytes */
+  totalSize: number;
+}
+
+/** Size thresholds for package warnings (in bytes) */
+export const PACKAGE_SIZE_THRESHOLDS = {
+  /** Threshold for showing progress during extraction (5MB) */
+  LARGE: 5 * 1024 * 1024,
+  /** Threshold for warning before installation (50MB) */
+  VERY_LARGE: 50 * 1024 * 1024,
+};
+
+/**
+ * Detect nested .skill files in the package
+ *
+ * @param archive - The AdmZip instance
+ * @returns Array of paths to nested .skill files
+ */
+export function detectNestedSkillFiles(archive: AdmZip): string[] {
+  const entries = getZipEntries(archive);
+  const nestedSkillFiles: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory && entry.entryName.endsWith('.skill')) {
+      nestedSkillFiles.push(entry.entryName);
+    }
+  }
+
+  return nestedSkillFiles;
+}
+
+/**
+ * Detect external URLs in content
+ *
+ * Looks for http:// and https:// URLs in the given content.
+ *
+ * @param content - Text content to scan
+ * @returns Array of detected URLs
+ */
+export function detectExternalUrls(content: string): string[] {
+  // Match URLs starting with http:// or https://
+  const urlPattern = /https?:\/\/[^\s<>[\]()'"]+/gi;
+  const matches = content.match(urlPattern);
+
+  if (!matches) {
+    return [];
+  }
+
+  // Remove duplicates and clean up trailing punctuation
+  const uniqueUrls = new Set<string>();
+  for (const url of matches) {
+    // Remove common trailing punctuation that might be captured
+    const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+    uniqueUrls.add(cleanUrl);
+  }
+
+  return Array.from(uniqueUrls);
+}
+
+/**
+ * Detect Windows-style paths in content
+ *
+ * Looks for paths with backslashes (e.g., C:\path\to\file or scripts\run.bat)
+ *
+ * @param content - Text content to scan
+ * @returns Array of detected Windows-style paths
+ */
+export function detectWindowsPaths(content: string): string[] {
+  // Match patterns that look like Windows paths:
+  // - Drive letters (C:\, D:\, etc.)
+  // - Relative paths with backslashes (scripts\file.py)
+  // - UNC paths (\\server\share)
+  const windowsPathPattern = /(?:[A-Za-z]:\\|\\\\[\w.-]+\\|[\w.-]+\\[\w.-]+)[^\s<>[\]()'""]*/g;
+  const matches = content.match(windowsPathPattern);
+
+  if (!matches) {
+    return [];
+  }
+
+  // Remove duplicates
+  return Array.from(new Set(matches));
+}
+
+/**
+ * Analyze a package for warnings
+ *
+ * Detects potential issues that should be shown to the user but don't
+ * prevent installation.
+ *
+ * @param archive - The AdmZip instance
+ * @returns Package warnings
+ */
+export function analyzePackageWarnings(archive: AdmZip): PackageWarnings {
+  // Check package size
+  const totalSize = getTotalUncompressedSize(archive);
+  const isLargePackage = totalSize > PACKAGE_SIZE_THRESHOLDS.LARGE;
+  const isVeryLargePackage = totalSize > PACKAGE_SIZE_THRESHOLDS.VERY_LARGE;
+
+  // Detect nested .skill files
+  const nestedSkillFiles = detectNestedSkillFiles(archive);
+
+  // Get SKILL.md content for content analysis
+  const rootDir = getZipRootDirectory(archive);
+  let externalUrls: string[] = [];
+  let windowsPaths: string[] = [];
+
+  if (rootDir) {
+    const skillMdPath = `${rootDir}/SKILL.md`;
+    const content = readEntryAsText(archive, skillMdPath);
+
+    if (content) {
+      externalUrls = detectExternalUrls(content);
+      windowsPaths = detectWindowsPaths(content);
+    }
+  }
+
+  return {
+    nestedSkillFiles,
+    externalUrls,
+    windowsPaths,
+    isLargePackage,
+    isVeryLargePackage,
+    totalSize,
+  };
 }

@@ -164,9 +164,112 @@ PASS
 }
 ```
 
+### Package a Skill
+
+Use the `package` command to create a distributable `.skill` package from a skill directory:
+
+```bash
+# Package a skill from the current project
+asm package .claude/skills/my-skill
+
+# Specify output directory
+asm package ./my-skill --output ./dist
+
+# Force overwrite existing package
+asm package ./my-skill --force
+
+# Skip validation (use with caution)
+asm package ./my-skill --skip-validation
+
+# Quiet mode for CI/CD
+asm package ./my-skill --quiet
+```
+
+#### Package Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output <path>` | Output directory for the package file |
+| `-f, --force` | Overwrite existing package without prompting |
+| `-s, --skip-validation` | Skip pre-package validation |
+| `-q, --quiet` | Quiet mode - minimal output |
+
+#### Packaging Process
+
+1. Validates the skill (unless `--skip-validation` is used)
+2. Creates a ZIP archive with `.skill` extension
+3. Includes all skill files (SKILL.md, scripts/, etc.)
+4. Excludes common development artifacts (.git, node_modules, .DS_Store, etc.)
+
+#### Exit Codes
+
+- `0` - Package created successfully
+- `1` - Skill validation failed
+- `2` - File system error (path not found, permission denied)
+- `3` - Package creation error
+
 ### Install a Skill
 
-*Coming soon*
+Use the `install` command to install a Claude Code skill from a `.skill` package file:
+
+```bash
+# Install to project scope (default: .claude/skills/)
+asm install my-skill.skill
+
+# Install to personal scope (~/.claude/skills/)
+asm install my-skill.skill --scope personal
+
+# Install to a custom directory
+asm install my-skill.skill --scope ~/.claude/skills
+
+# Force overwrite existing skill
+asm install my-skill.skill --force
+
+# Preview what would be installed (dry run)
+asm install my-skill.skill --dry-run
+
+# Quiet mode for CI/CD
+asm install my-skill.skill --quiet
+```
+
+#### Install Options
+
+| Option | Description |
+|--------|-------------|
+| `-s, --scope <scope>` | Installation scope: "project", "personal", or custom path |
+| `-f, --force` | Overwrite existing skill without prompting |
+| `-n, --dry-run` | Show what would be installed without making changes |
+| `-q, --quiet` | Quiet mode - minimal output |
+
+#### Installation Scopes
+
+| Scope | Directory | Description |
+|-------|-----------|-------------|
+| `project` (default) | `.claude/skills/` | Skills for current project only |
+| `personal` | `~/.claude/skills/` | Skills available across all projects |
+| Custom path | Any valid path | Install to a specific directory |
+
+#### Installation Process
+
+1. Validates the package file (exists, valid ZIP, correct structure)
+2. Validates package contents (SKILL.md, metadata)
+3. Checks for existing skill at target location
+4. Prompts for confirmation if overwriting (unless `--force`)
+5. Extracts files to target directory
+6. Validates installed skill
+7. Rolls back on validation failure
+
+#### Security Note
+
+Skills can execute code and access files. Only install packages from trusted sources. The SKILL.md file describes what the skill does - review it before using the skill.
+
+#### Exit Codes
+
+- `0` - Skill installed successfully
+- `1` - Validation failed (package or post-installation)
+- `2` - File system error (path not found, permission denied)
+- `3` - Package extraction error
+- `4` - User cancelled installation
 
 ### Update a Skill
 

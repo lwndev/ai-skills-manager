@@ -14,6 +14,11 @@ import {
   validateNameMatch,
   cleanupTempDirectory,
   validatePackage,
+  detectNestedSkillFiles,
+  detectExternalUrls,
+  detectWindowsPaths,
+  analyzePackageWarnings,
+  PACKAGE_SIZE_THRESHOLDS,
 } from '../../../src/generators/install-validator';
 import { openZipArchive } from '../../../src/utils/extractor';
 
@@ -333,6 +338,212 @@ describe('Install Validator', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('detectNestedSkillFiles', () => {
+    it('detects nested .skill files in package', async () => {
+      const nestedPath = path.join(tempDir, 'nested-skill.skill');
+      const nestedZip = new AdmZip();
+      nestedZip.addFile(
+        'my-skill/SKILL.md',
+        Buffer.from('---\nname: my-skill\ndescription: Test\n---\n')
+      );
+      nestedZip.addFile('my-skill/nested.skill', Buffer.from('nested package content'));
+      nestedZip.addFile('my-skill/deps/other.skill', Buffer.from('another nested'));
+      nestedZip.writeZip(nestedPath);
+
+      const archive = openZipArchive(nestedPath);
+      const nested = detectNestedSkillFiles(archive);
+
+      expect(nested).toHaveLength(2);
+      expect(nested).toContain('my-skill/nested.skill');
+      expect(nested).toContain('my-skill/deps/other.skill');
+    });
+
+    it('returns empty array when no nested .skill files', () => {
+      const archive = openZipArchive(validSkillPath);
+      const nested = detectNestedSkillFiles(archive);
+
+      expect(nested).toHaveLength(0);
+    });
+  });
+
+  describe('detectExternalUrls', () => {
+    it('detects HTTP and HTTPS URLs', () => {
+      const content = `
+        Check out https://example.com/page
+        Also see http://api.example.org/endpoint
+        And https://docs.claude.com/en/docs/skills
+      `;
+      const urls = detectExternalUrls(content);
+
+      expect(urls).toHaveLength(3);
+      expect(urls).toContain('https://example.com/page');
+      expect(urls).toContain('http://api.example.org/endpoint');
+      expect(urls).toContain('https://docs.claude.com/en/docs/skills');
+    });
+
+    it('removes duplicate URLs', () => {
+      const content = `
+        Visit https://example.com for info
+        See https://example.com for more
+      `;
+      const urls = detectExternalUrls(content);
+
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toBe('https://example.com');
+    });
+
+    it('cleans trailing punctuation from URLs', () => {
+      const content = `
+        Check https://example.com/page,
+        Also https://example.com/docs.
+        And (https://example.com/test)
+      `;
+      const urls = detectExternalUrls(content);
+
+      expect(urls).toContain('https://example.com/page');
+      expect(urls).toContain('https://example.com/docs');
+      expect(urls).toContain('https://example.com/test');
+    });
+
+    it('returns empty array when no URLs found', () => {
+      const content = 'No URLs in this content at all.';
+      const urls = detectExternalUrls(content);
+
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  describe('detectWindowsPaths', () => {
+    it('detects Windows drive letter paths', () => {
+      const content = `
+        Use the file at C:\\Users\\Admin\\Documents\\script.py
+        Or D:\\Projects\\skills\\helper.bat
+      `;
+      const paths = detectWindowsPaths(content);
+
+      expect(paths.length).toBeGreaterThan(0);
+      expect(paths.some((p) => p.includes('C:\\'))).toBe(true);
+      expect(paths.some((p) => p.includes('D:\\'))).toBe(true);
+    });
+
+    it('detects relative Windows paths', () => {
+      const content = `
+        Run scripts\\helper.py to get started
+      `;
+      const paths = detectWindowsPaths(content);
+
+      expect(paths.length).toBeGreaterThan(0);
+      expect(paths.some((p) => p.includes('scripts\\helper.py'))).toBe(true);
+    });
+
+    it('detects UNC paths', () => {
+      const content = `
+        Access the share at \\\\server\\share\\file.txt
+      `;
+      const paths = detectWindowsPaths(content);
+
+      expect(paths.length).toBeGreaterThan(0);
+      expect(paths.some((p) => p.includes('\\\\server'))).toBe(true);
+    });
+
+    it('returns empty array when no Windows paths found', () => {
+      const content = 'Use ./scripts/helper.py on Unix systems.';
+      const paths = detectWindowsPaths(content);
+
+      expect(paths).toHaveLength(0);
+    });
+  });
+
+  describe('analyzePackageWarnings', () => {
+    it('detects nested .skill files', async () => {
+      const nestedPath = path.join(tempDir, 'analyze-nested.skill');
+      const nestedZip = new AdmZip();
+      nestedZip.addFile(
+        'my-skill/SKILL.md',
+        Buffer.from('---\nname: my-skill\ndescription: Test\n---\n\n# Test')
+      );
+      nestedZip.addFile('my-skill/embedded.skill', Buffer.from('nested'));
+      nestedZip.writeZip(nestedPath);
+
+      const archive = openZipArchive(nestedPath);
+      const warnings = analyzePackageWarnings(archive);
+
+      expect(warnings.nestedSkillFiles).toHaveLength(1);
+      expect(warnings.nestedSkillFiles[0]).toBe('my-skill/embedded.skill');
+    });
+
+    it('detects external URLs in SKILL.md', async () => {
+      const urlPath = path.join(tempDir, 'url-skill.skill');
+      const urlZip = new AdmZip();
+      urlZip.addFile(
+        'url-skill/SKILL.md',
+        Buffer.from(
+          '---\nname: url-skill\ndescription: Test\n---\n\n# Test\n\nSee https://external.com/docs'
+        )
+      );
+      urlZip.writeZip(urlPath);
+
+      const archive = openZipArchive(urlPath);
+      const warnings = analyzePackageWarnings(archive);
+
+      expect(warnings.externalUrls.length).toBeGreaterThan(0);
+      expect(warnings.externalUrls).toContain('https://external.com/docs');
+    });
+
+    it('detects Windows paths in SKILL.md', async () => {
+      const winPath = path.join(tempDir, 'win-skill.skill');
+      const winZip = new AdmZip();
+      winZip.addFile(
+        'win-skill/SKILL.md',
+        Buffer.from(
+          '---\nname: win-skill\ndescription: Test\n---\n\n# Test\n\nRun scripts\\helper.bat'
+        )
+      );
+      winZip.writeZip(winPath);
+
+      const archive = openZipArchive(winPath);
+      const warnings = analyzePackageWarnings(archive);
+
+      expect(warnings.windowsPaths.length).toBeGreaterThan(0);
+    });
+
+    it('calculates package size correctly', () => {
+      const archive = openZipArchive(validSkillPath);
+      const warnings = analyzePackageWarnings(archive);
+
+      expect(warnings.totalSize).toBeGreaterThan(0);
+      expect(warnings.isLargePackage).toBe(false);
+      expect(warnings.isVeryLargePackage).toBe(false);
+    });
+
+    it('identifies large packages correctly', async () => {
+      // Create a large package (just above 5MB threshold)
+      const largePath = path.join(tempDir, 'large-skill.skill');
+      const largeZip = new AdmZip();
+      largeZip.addFile(
+        'large-skill/SKILL.md',
+        Buffer.from('---\nname: large-skill\ndescription: Test\n---\n')
+      );
+      // Add a buffer that's just over 5MB
+      const largeBuffer = Buffer.alloc(PACKAGE_SIZE_THRESHOLDS.LARGE + 1024, 'x');
+      largeZip.addFile('large-skill/data.bin', largeBuffer);
+      largeZip.writeZip(largePath);
+
+      const archive = openZipArchive(largePath);
+      const warnings = analyzePackageWarnings(archive);
+
+      expect(warnings.isLargePackage).toBe(true);
+      expect(warnings.isVeryLargePackage).toBe(false);
+    });
+  });
+
+  describe('PACKAGE_SIZE_THRESHOLDS', () => {
+    it('defines correct threshold values', () => {
+      expect(PACKAGE_SIZE_THRESHOLDS.LARGE).toBe(5 * 1024 * 1024);
+      expect(PACKAGE_SIZE_THRESHOLDS.VERY_LARGE).toBe(50 * 1024 * 1024);
     });
   });
 });

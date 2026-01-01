@@ -15,6 +15,7 @@ import { InstallResult, DryRunPreview, FileComparison } from '../types/install';
 import { success, error, info, warning } from '../utils/output';
 import { formatFileSize } from '../utils/archiver';
 import { PackageValidationError, InvalidPackageError } from '../utils/errors';
+import { PackageWarnings } from '../generators/install-validator';
 
 /**
  * Installation stages for progress messages
@@ -307,4 +308,81 @@ export function formatInstallOutput(result: InstallResult, options: { quiet?: bo
     return formatQuietOutput(result);
   }
   return formatInstallSuccess(result);
+}
+
+/**
+ * Format package warnings for display
+ *
+ * @param warnings - Package warnings detected during validation
+ * @returns Formatted warning output, or empty string if no warnings
+ */
+export function formatPackageWarnings(warnings: PackageWarnings): string {
+  const lines: string[] = [];
+  let hasWarnings = false;
+
+  // Very large package warning (>50MB)
+  if (warnings.isVeryLargePackage) {
+    hasWarnings = true;
+    lines.push('');
+    lines.push(warning(`Large package: ${formatFileSize(warnings.totalSize)}`));
+    lines.push('  This package is larger than 50MB. Installation may take a while.');
+  }
+
+  // Nested .skill files warning
+  if (warnings.nestedSkillFiles.length > 0) {
+    hasWarnings = true;
+    lines.push('');
+    lines.push(warning('Nested .skill files detected:'));
+    for (const file of warnings.nestedSkillFiles.slice(0, 5)) {
+      lines.push(`  - ${file}`);
+    }
+    if (warnings.nestedSkillFiles.length > 5) {
+      lines.push(`  ... and ${warnings.nestedSkillFiles.length - 5} more`);
+    }
+    lines.push('  Skills containing other .skill packages may cause confusion.');
+  }
+
+  // External URLs warning
+  if (warnings.externalUrls.length > 0) {
+    hasWarnings = true;
+    lines.push('');
+    lines.push(warning('External URLs detected in SKILL.md:'));
+    for (const url of warnings.externalUrls.slice(0, 5)) {
+      lines.push(`  - ${url}`);
+    }
+    if (warnings.externalUrls.length > 5) {
+      lines.push(`  ... and ${warnings.externalUrls.length - 5} more`);
+    }
+    lines.push('  Review these URLs to ensure they are trusted.');
+  }
+
+  // Windows-style paths warning
+  if (warnings.windowsPaths.length > 0) {
+    hasWarnings = true;
+    lines.push('');
+    lines.push(warning('Windows-style paths detected in SKILL.md:'));
+    for (const path of warnings.windowsPaths.slice(0, 5)) {
+      lines.push(`  - ${path}`);
+    }
+    if (warnings.windowsPaths.length > 5) {
+      lines.push(`  ... and ${warnings.windowsPaths.length - 5} more`);
+    }
+    lines.push('  This skill may not work correctly on macOS or Linux.');
+  }
+
+  if (hasWarnings) {
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format large package progress message
+ *
+ * @param size - Total size in bytes
+ * @returns Formatted progress message
+ */
+export function formatLargePackageProgress(size: number): string {
+  return info(`Extracting large package (${formatFileSize(size)})...`);
 }

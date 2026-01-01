@@ -12,6 +12,8 @@ import {
   isInstallResult,
 } from '../generators/installer';
 import { validatePackageFile } from '../validators/package-file';
+import { analyzePackageWarnings } from '../generators/install-validator';
+import { openZipArchive } from '../utils/extractor';
 import { InstallOptions, InstallResult, DryRunPreview } from '../types/install';
 import {
   formatInstallProgress,
@@ -20,6 +22,8 @@ import {
   formatQuietOutput,
   formatDryRunOutput,
   formatOverwritePrompt,
+  formatPackageWarnings,
+  formatLargePackageProgress,
 } from '../formatters/install-formatter';
 import { confirmInstallOverwrite } from '../utils/prompts';
 import {
@@ -151,6 +155,27 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
     // Show validation progress
     if (!quiet) {
       console.log(formatInstallProgress('validating'));
+    }
+
+    // Analyze package for warnings
+    if (!quiet) {
+      try {
+        const archive = openZipArchive(resolvedPath);
+        const warnings = analyzePackageWarnings(archive);
+
+        // Display warnings
+        const warningsOutput = formatPackageWarnings(warnings);
+        if (warningsOutput) {
+          console.log(warningsOutput);
+        }
+
+        // Show large package progress if applicable
+        if (warnings.isLargePackage) {
+          console.log(formatLargePackageProgress(warnings.totalSize));
+        }
+      } catch {
+        // Ignore warning analysis errors - they shouldn't block installation
+      }
     }
 
     // Prepare installation options

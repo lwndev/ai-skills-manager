@@ -10,7 +10,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-004   | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) | [FEAT-004-install-skill-command.md](../features/FEAT-004-install-skill-command.md) | High | Medium | Pending |
+| FEAT-004   | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) | [FEAT-004-install-skill-command.md](../features/FEAT-004-install-skill-command.md) | High | Medium | ✅ Complete |
 
 ## Recommended Build Sequence
 
@@ -279,7 +279,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 ### Phase 6: Documentation and Edge Case Enhancements
 **Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (Polish)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Gap analysis revealed documentation and edge case handling gaps
@@ -309,13 +309,13 @@ This implementation builds on the existing CLI infrastructure, validation system
 7. Update success criteria checklist with all items marked complete
 
 #### Deliverables
-- [ ] Updated `README.md` with install and package command documentation
-- [ ] Large package progress/warning handling (>5MB, >50MB)
-- [ ] Nested `.skill` file warning
-- [ ] External URL detection and warning
-- [ ] Windows-style path detection and warning
-- [ ] Tests for edge case handling
-- [ ] All success criteria verified and checked
+- [x] Updated `README.md` with install and package command documentation
+- [x] Large package progress/warning handling (>5MB, >50MB)
+- [x] Nested `.skill` file warning
+- [x] External URL detection and warning
+- [x] Windows-style path detection and warning
+- [x] Tests for edge case handling
+- [x] All success criteria verified and checked
 
 ---
 
@@ -422,40 +422,40 @@ This implementation builds on the existing CLI infrastructure, validation system
 ## Success Criteria
 
 ### Per-Feature Success Metrics
-- [ ] `asm install` command available and documented
-- [ ] All command options work correctly (--scope, --force, --dry-run, --quiet)
-- [ ] Package file validation works (exists, extension, valid ZIP)
-- [ ] Package structure validation works (single root directory, SKILL.md present)
-- [ ] Root directory name matches SKILL.md `name` field
-- [ ] Pre-installation content validation runs
-- [ ] Installation scope handling works for project, personal, and custom paths
-- [ ] Tilde expansion works for home directory paths
-- [ ] Existing skill detection and overwrite protection works
-- [ ] --force flag bypasses overwrite prompt
-- [ ] Package extraction preserves structure and permissions (where possible)
-- [ ] Post-installation validation runs
-- [ ] Rollback works on validation failure
-- [ ] --dry-run mode shows accurate preview without installing
-- [ ] Progress output shows validation, extraction, and summary
-- [ ] Security warning displayed in installation output
-- [ ] --quiet flag produces minimal output
-- [ ] Exit codes match specification (0, 1, 2, 3, 4)
-- [ ] Error messages are clear and actionable
-- [ ] All edge cases are handled
+- [x] `asm install` command available and documented
+- [x] All command options work correctly (--scope, --force, --dry-run, --quiet)
+- [x] Package file validation works (exists, extension, valid ZIP)
+- [x] Package structure validation works (single root directory, SKILL.md present)
+- [x] Root directory name matches SKILL.md `name` field
+- [x] Pre-installation content validation runs
+- [x] Installation scope handling works for project, personal, and custom paths
+- [x] Tilde expansion works for home directory paths
+- [x] Existing skill detection and overwrite protection works
+- [x] --force flag bypasses overwrite prompt
+- [x] Package extraction preserves structure and permissions (where possible)
+- [x] Post-installation validation runs
+- [x] Rollback works on validation failure
+- [x] --dry-run mode shows accurate preview without installing
+- [x] Progress output shows validation, extraction, and summary
+- [x] Security warning displayed in installation output
+- [x] --quiet flag produces minimal output
+- [x] Exit codes match specification (0, 1, 2, 3, 4)
+- [x] Error messages are clear and actionable
+- [x] All edge cases are handled
 
 ### Quality Metrics
-- [ ] Unit test coverage ≥80%
-- [ ] Integration tests cover all main workflows
-- [ ] All acceptance criteria from feature spec met
-- [ ] Manual testing completed on multiple platforms
-- [ ] Help text includes clear examples
-- [ ] Error messages provide actionable guidance
+- [x] Unit test coverage ≥80%
+- [x] Integration tests cover all main workflows
+- [x] All acceptance criteria from feature spec met
+- [x] Manual testing completed on multiple platforms
+- [x] Help text includes clear examples
+- [x] Error messages provide actionable guidance
 
 ### Integration Metrics
-- [ ] Skills packaged with `asm package` install correctly
-- [ ] Installed skills work with Claude Code
-- [ ] Workflow: scaffold → validate → package → install produces working skills
-- [ ] Performance acceptable for typical skills (<5 seconds for <10MB)
+- [x] Skills packaged with `asm package` install correctly
+- [x] Installed skills work with Claude Code
+- [x] Workflow: scaffold → validate → package → install produces working skills
+- [x] Performance acceptable for typical skills (<5 seconds for <10MB)
 
 ## Code Organization
 
