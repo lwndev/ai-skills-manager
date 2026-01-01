@@ -224,7 +224,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 ### Phase 5: Command Integration and Output
 **Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (CLI Integration)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Final integration layer that ties all components together
@@ -266,14 +266,56 @@ This implementation builds on the existing CLI infrastructure, validation system
 6. Update documentation
 
 #### Deliverables
-- [ ] `src/formatters/install-formatter.ts` - Output formatting
-- [ ] `src/commands/install.ts` - Install command implementation
-- [ ] Extended `src/utils/prompts.ts` with install confirmation
-- [ ] Updated `src/cli.ts` with install command registration
-- [ ] `tests/commands/install.test.ts` - Command integration tests
-- [ ] Help text with examples
-- [ ] Exit code handling for all scenarios
-- [ ] Security warning display
+- [x] `src/formatters/install-formatter.ts` - Output formatting
+- [x] `src/commands/install.ts` - Install command implementation
+- [x] Extended `src/utils/prompts.ts` with install confirmation
+- [x] Updated `src/cli.ts` with install command registration
+- [x] `tests/commands/install.test.ts` - Command integration tests
+- [x] Help text with examples
+- [x] Exit code handling for all scenarios
+- [x] Security warning display
+
+---
+
+### Phase 6: Documentation and Edge Case Enhancements
+**Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (Polish)
+**Status:** Pending
+
+#### Rationale
+- Gap analysis revealed documentation and edge case handling gaps
+- README.md needs updating with install and package command documentation
+- Several edge cases from the feature spec require implementation
+- Ensures all acceptance criteria are met before release
+
+#### Implementation Steps
+1. Update `README.md` with install command documentation:
+   - Replace "Coming soon" text with full install command docs
+   - Add package command documentation (also missing)
+   - Include all options, examples, exit codes, and troubleshooting
+2. Implement large package handling in `src/generators/installer.ts`:
+   - Add package size check using `getTotalUncompressedSize()`
+   - Show progress callback for packages >5MB during extraction
+   - Display warning for packages >50MB before installation
+3. Add nested `.skill` file detection in `src/generators/install-validator.ts`:
+   - Scan package entries for `.skill` extension files
+   - Add warning to installation output if found
+4. Add external URL detection in `src/generators/install-validator.ts`:
+   - Scan SKILL.md content for `http://` and `https://` patterns
+   - Add security warning about external content if URLs found
+5. Add Windows-style path detection in `src/generators/install-validator.ts`:
+   - Scan SKILL.md for backslash path patterns
+   - Add cross-platform compatibility warning if found
+6. Write tests for new edge case handling
+7. Update success criteria checklist with all items marked complete
+
+#### Deliverables
+- [ ] Updated `README.md` with install and package command documentation
+- [ ] Large package progress/warning handling (>5MB, >50MB)
+- [ ] Nested `.skill` file warning
+- [ ] External URL detection and warning
+- [ ] Windows-style path detection and warning
+- [ ] Tests for edge case handling
+- [ ] All success criteria verified and checked
 
 ---
 

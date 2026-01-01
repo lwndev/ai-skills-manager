@@ -45,3 +45,21 @@ export async function confirm(question: string): Promise<boolean> {
 export async function confirmOverwrite(packagePath: string): Promise<boolean> {
   return confirm(`Package already exists at ${packagePath}. Overwrite?`);
 }
+
+/**
+ * Prompt user for install overwrite confirmation
+ *
+ * Shows the skill name and a summary of file changes before asking
+ * for confirmation.
+ *
+ * @param skillName - Name of the existing skill
+ * @param promptMessage - Pre-formatted prompt message to display
+ * @returns Promise resolving to true if user confirms install
+ */
+export async function confirmInstallOverwrite(
+  skillName: string,
+  promptMessage: string
+): Promise<boolean> {
+  console.log(promptMessage);
+  return confirm(`Overwrite skill "${skillName}"?`);
+}
