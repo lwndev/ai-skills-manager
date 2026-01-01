@@ -148,7 +148,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 ### Phase 4: Skill Installation and Rollback
 **Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (Core Installation)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Builds on extraction from Phase 1, validation from Phase 2, and paths from Phase 3
@@ -213,12 +213,12 @@ This implementation builds on the existing CLI infrastructure, validation system
 5. Write unit and integration tests
 
 #### Deliverables
-- [ ] `src/generators/installer.ts` - Core installation generator
-- [ ] Overwrite detection and handling
-- [ ] Dry-run mode implementation
-- [ ] Rollback on validation failure
-- [ ] `tests/unit/generators/installer.test.ts` - Installer unit tests
-- [ ] `tests/integration/install.test.ts` - End-to-end installation tests
+- [x] `src/generators/installer.ts` - Core installation generator
+- [x] Overwrite detection and handling
+- [x] Dry-run mode implementation
+- [x] Rollback on validation failure
+- [x] `tests/unit/generators/installer.test.ts` - Installer unit tests
+- [x] `tests/integration/install.test.ts` - End-to-end installation tests
 
 ---
 
