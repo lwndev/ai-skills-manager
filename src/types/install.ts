@@ -22,12 +22,23 @@ export interface InstallOptions {
   dryRun?: boolean;
   /** Suppress non-essential output */
   quiet?: boolean;
+  /** Use content hashing for thorough file comparison (slower but more accurate) */
+  thorough?: boolean;
 }
+
+/**
+ * Result type discriminants for reliable type narrowing
+ */
+export type InstallResultType = 'install-result';
+export type DryRunPreviewType = 'dry-run-preview';
+export type OverwriteRequiredType = 'overwrite-required';
 
 /**
  * Result of a skill installation operation
  */
 export interface InstallResult {
+  /** Type discriminant for reliable type narrowing */
+  type: InstallResultType;
   /** Whether the installation succeeded */
   success: boolean;
   /** Path where the skill was installed */
@@ -60,6 +71,8 @@ export interface ExtractedFileInfo {
  * Preview result for dry-run mode
  */
 export interface DryRunPreview {
+  /** Type discriminant for reliable type narrowing */
+  type: DryRunPreviewType;
   /** Name of the skill to be installed */
   skillName: string;
   /** Target installation path */
@@ -100,4 +113,29 @@ export interface FileComparison {
   targetSize?: number;
   /** Whether the file would be modified */
   wouldModify: boolean;
+  /** Content hash of the package file (when thorough mode enabled) */
+  packageHash?: string;
+  /** Content hash of the target file (when thorough mode enabled) */
+  targetHash?: string;
 }
+
+/**
+ * Result when installation requires user confirmation for overwrite
+ */
+export interface OverwriteRequired {
+  /** Type discriminant for reliable type narrowing */
+  type: OverwriteRequiredType;
+  /** Indicates overwrite confirmation is needed */
+  requiresOverwrite: true;
+  /** Name of the existing skill */
+  skillName: string;
+  /** Path to the existing skill */
+  existingPath: string;
+  /** File comparison details */
+  files: FileComparison[];
+}
+
+/**
+ * Union type of all possible install operation results
+ */
+export type InstallResultUnion = InstallResult | DryRunPreview | OverwriteRequired;

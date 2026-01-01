@@ -34,6 +34,9 @@ import {
   UserCancelledError,
 } from '../utils/errors';
 import * as output from '../utils/output';
+import { createDebugLogger } from '../utils/debug';
+
+const debug = createDebugLogger('install-command');
 
 /**
  * Exit codes for the install command
@@ -64,6 +67,8 @@ export interface InstallCommandOptions {
   dryRun?: boolean;
   /** Suppress output (quiet mode) */
   quiet?: boolean;
+  /** Use content hashing for thorough file comparison */
+  thorough?: boolean;
 }
 
 /**
@@ -80,6 +85,7 @@ export function registerInstallCommand(program: Command): void {
     .option('-f, --force', 'Overwrite existing skill without prompting')
     .option('-n, --dry-run', 'Show what would be installed without making changes')
     .option('-q, --quiet', 'Quiet mode - minimal output')
+    .option('-t, --thorough', 'Use content hashing for accurate file comparison (slower)')
     .addHelpText(
       'after',
       `
@@ -90,6 +96,7 @@ Examples:
   $ asm install my-skill.skill --force
   $ asm install my-skill.skill --dry-run
   $ asm install my-skill.skill --quiet
+  $ asm install my-skill.skill --thorough
 
 Installation Scopes:
   project     Install to .claude/skills/ in current directory (default)
@@ -119,7 +126,14 @@ Exit Codes:
 Output Formats:
   Normal (default): Progress messages and installation details
   --dry-run: Preview of files that would be installed
-  --quiet: Only outputs the skill path on success`
+  --quiet: Only outputs the skill path on success
+
+File Comparison:
+  Default: Compares file sizes (fast)
+  --thorough: Compares content hashes (slower but detects all changes)
+
+Debugging:
+  Set ASM_DEBUG=1 to enable debug logging for troubleshooting`
     )
     .action(async (skillPackage: string, options: InstallCommandOptions) => {
       const exitCode = await handleInstall(skillPackage, options);
@@ -137,7 +151,7 @@ Output Formats:
  * @returns Exit code
  */
 async function handleInstall(packagePath: string, options: InstallCommandOptions): Promise<number> {
-  const { scope, force, dryRun, quiet } = options;
+  const { scope, force, dryRun, quiet, thorough } = options;
 
   try {
     // Validate package file first
@@ -173,8 +187,9 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
         if (warnings.isLargePackage) {
           console.log(formatLargePackageProgress(warnings.totalSize));
         }
-      } catch {
+      } catch (error) {
         // Ignore warning analysis errors - they shouldn't block installation
+        debug('Warning analysis failed', error);
       }
     }
 
@@ -184,6 +199,7 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
       force,
       dryRun,
       quiet,
+      thorough,
     };
 
     // Attempt installation

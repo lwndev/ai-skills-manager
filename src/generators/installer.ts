@@ -34,22 +34,17 @@ import {
   ExistingSkillInfo,
   FileComparison,
   ExtractedFileInfo,
+  OverwriteRequired,
+  InstallResultUnion,
 } from '../types/install';
 import { InvalidPackageError, PackageValidationError, FileSystemError } from '../utils/errors';
+import { createDebugLogger } from '../utils/debug';
+import { hashBuffer, hashFile } from '../utils/hash';
 
-/**
- * Result when installation requires user confirmation for overwrite
- */
-export interface OverwriteRequired {
-  /** Indicates overwrite confirmation is needed */
-  requiresOverwrite: true;
-  /** Name of the existing skill */
-  skillName: string;
-  /** Path to the existing skill */
-  existingPath: string;
-  /** File comparison details */
-  files: FileComparison[];
-}
+const debug = createDebugLogger('installer');
+
+// Re-export OverwriteRequired for backwards compatibility
+export type { OverwriteRequired } from '../types/install';
 
 /**
  * Extract result with statistics
@@ -73,8 +68,8 @@ interface ExtractResult {
 export async function installSkill(
   packagePath: string,
   options: InstallOptions = {}
-): Promise<InstallResult | DryRunPreview | OverwriteRequired> {
-  const { scope, force = false, dryRun = false } = options;
+): Promise<InstallResultUnion> {
+  const { scope, force = false, dryRun = false, thorough = false } = options;
 
   // Open the package archive
   let archive: AdmZip;
@@ -123,8 +118,9 @@ export async function installSkill(
 
   // Handle existing skill without force flag
   if (existingSkill.exists && !force) {
-    const fileComparisons = await compareFiles(archive, skillName, targetPath);
+    const fileComparisons = await compareFiles(archive, skillName, targetPath, thorough);
     return {
+      type: 'overwrite-required',
       requiresOverwrite: true,
       skillName,
       existingPath: targetPath,
@@ -162,6 +158,7 @@ export async function installSkill(
     }
 
     return {
+      type: 'install-result',
       success: true,
       skillPath: targetPath,
       skillName,
@@ -236,15 +233,58 @@ export async function backupExistingSkill(targetPath: string): Promise<string> {
 }
 
 /**
+ * Check if a path is safely within a target directory (prevents path traversal attacks)
+ *
+ * @param targetPath - The target directory that should contain all files
+ * @param resolvedPath - The resolved absolute path to check
+ * @returns true if the path is within the target directory
+ */
+export function isPathWithinTarget(targetPath: string, resolvedPath: string): boolean {
+  const normalizedTarget = path.resolve(targetPath) + path.sep;
+  const normalizedResolved = path.resolve(resolvedPath);
+  return (
+    normalizedResolved.startsWith(normalizedTarget) ||
+    normalizedResolved === path.resolve(targetPath)
+  );
+}
+
+/**
+ * Extract Unix file mode from ZIP entry external attributes
+ *
+ * ZIP files store Unix permissions in the upper 16 bits of the external attributes.
+ * Windows systems will safely ignore these permissions.
+ *
+ * @param entry - The ZIP entry
+ * @param isDirectory - Whether the entry is a directory
+ * @returns The file mode to use (with fallback defaults)
+ */
+function getEntryMode(entry: { attr: number }, isDirectory: boolean): number {
+  // External attributes: upper 16 bits contain Unix mode
+  const unixMode = (entry.attr >>> 16) & 0o777;
+
+  // If valid Unix permissions exist, use them; otherwise use defaults
+  if (unixMode > 0) {
+    return unixMode;
+  }
+
+  // Fallback defaults: 755 for directories, 644 for files
+  return isDirectory ? 0o755 : 0o644;
+}
+
+/**
  * Extract skill files from archive to target directory
  *
  * Extracts files while stripping the root directory from paths,
  * so files end up directly in the target directory.
  *
+ * Security: Validates all paths to prevent path traversal attacks.
+ * Permissions: Preserves original Unix permissions where available.
+ *
  * @param archive - The AdmZip instance
  * @param skillName - Name of the skill (root directory in archive)
  * @param targetPath - Target directory path
  * @returns Extraction statistics
+ * @throws InvalidPackageError if path traversal is detected
  */
 export async function extractSkillToTarget(
   archive: AdmZip,
@@ -256,6 +296,7 @@ export async function extractSkillToTarget(
   const extractedFiles: string[] = [];
   let totalSize = 0;
   let fileCount = 0;
+  const resolvedTargetPath = path.resolve(targetPath);
 
   for (const entry of entries) {
     // Skip entries not in the skill directory
@@ -272,17 +313,30 @@ export async function extractSkillToTarget(
     }
 
     const destPath = path.join(targetPath, relativePath);
+    const resolvedDestPath = path.resolve(destPath);
+
+    // SECURITY: Validate path traversal
+    // Reject any paths that would escape the target directory
+    if (!isPathWithinTarget(resolvedTargetPath, resolvedDestPath)) {
+      throw new InvalidPackageError(
+        skillName,
+        `Path traversal detected: "${relativePath}" would write outside target directory`
+      );
+    }
+
+    // Get file mode from archive (preserves original permissions)
+    const mode = getEntryMode(entry, entry.isDirectory);
 
     if (entry.isDirectory) {
-      // Create directory
-      await fs.mkdir(destPath, { recursive: true, mode: 0o755 });
+      // Create directory with preserved or default permissions
+      await fs.mkdir(destPath, { recursive: true, mode });
     } else {
       // Ensure parent directory exists
       await fs.mkdir(path.dirname(destPath), { recursive: true, mode: 0o755 });
 
-      // Extract file content
+      // Extract file content with preserved or default permissions
       const content = entry.getData();
-      await fs.writeFile(destPath, content, { mode: 0o644 });
+      await fs.writeFile(destPath, content, { mode });
 
       extractedFiles.push(relativePath);
       totalSize += entry.header.size;
@@ -351,8 +405,9 @@ export async function rollbackInstallation(targetPath: string, backupPath?: stri
 export async function cleanupBackup(backupPath: string): Promise<void> {
   try {
     await fs.rm(backupPath, { recursive: true, force: true });
-  } catch {
+  } catch (error) {
     // Ignore cleanup errors - temp directories are cleaned up eventually
+    debug(`Failed to cleanup backup at ${backupPath}`, error);
   }
 }
 
@@ -428,6 +483,7 @@ async function createDryRunPreview(
   }
 
   return {
+    type: 'dry-run-preview',
     skillName,
     targetPath,
     files,
@@ -443,12 +499,14 @@ async function createDryRunPreview(
  * @param archive - The AdmZip instance
  * @param skillName - Name of the skill
  * @param targetPath - Target directory path
+ * @param thorough - Use content hashing for accurate comparison
  * @returns File comparison results
  */
 async function compareFiles(
   archive: AdmZip,
   skillName: string,
-  targetPath: string
+  targetPath: string,
+  thorough: boolean = false
 ): Promise<FileComparison[]> {
   const entries = getZipEntries(archive);
   const rootPrefix = `${skillName}/`;
@@ -468,16 +526,38 @@ async function compareFiles(
     let existsInTarget = false;
     let targetSize: number | undefined;
     let wouldModify = false;
+    let packageHash: string | undefined;
+    let targetHash: string | undefined;
 
     try {
       const stats = await fs.stat(targetFilePath);
       existsInTarget = true;
       targetSize = stats.size;
-      // File would be modified if sizes differ
+
+      // Default: sizes differ means modification
       wouldModify = stats.size !== entry.header.size;
+
+      // Thorough mode: use content hashing for accurate comparison
+      if (thorough && !wouldModify) {
+        // Sizes are same, check content hash
+        packageHash = hashBuffer(entry.getData());
+        targetHash = await hashFile(targetFilePath);
+        wouldModify = packageHash !== targetHash;
+      } else if (thorough) {
+        // For completeness, compute hashes even when sizes differ
+        packageHash = hashBuffer(entry.getData());
+        try {
+          targetHash = await hashFile(targetFilePath);
+        } catch {
+          debug('compareFiles', `Could not hash target file: ${targetFilePath}`);
+        }
+      }
     } catch {
       // File doesn't exist
       wouldModify = true; // New file counts as modification
+      if (thorough) {
+        packageHash = hashBuffer(entry.getData());
+      }
     }
 
     comparisons.push({
@@ -486,6 +566,8 @@ async function compareFiles(
       packageSize: entry.header.size,
       targetSize,
       wouldModify,
+      packageHash,
+      targetHash,
     });
   }
 
@@ -519,8 +601,9 @@ async function listFilesRecursively(
         files.push(relativePath);
       }
     }
-  } catch {
-    // Ignore errors reading directory
+  } catch (error) {
+    // Ignore errors reading directory (e.g., permission denied)
+    debug(`Failed to read directory ${dirPath}`, error);
   }
 
   return files;
@@ -551,27 +634,27 @@ async function copyDirectory(src: string, dest: string): Promise<void> {
 
 /**
  * Check if a result is an OverwriteRequired object
+ *
+ * Uses discriminant-based type narrowing for reliable type checking.
  */
-export function isOverwriteRequired(
-  result: InstallResult | DryRunPreview | OverwriteRequired
-): result is OverwriteRequired {
-  return 'requiresOverwrite' in result && result.requiresOverwrite === true;
+export function isOverwriteRequired(result: InstallResultUnion): result is OverwriteRequired {
+  return result.type === 'overwrite-required';
 }
 
 /**
  * Check if a result is a DryRunPreview object
+ *
+ * Uses discriminant-based type narrowing for reliable type checking.
  */
-export function isDryRunPreview(
-  result: InstallResult | DryRunPreview | OverwriteRequired
-): result is DryRunPreview {
-  return 'wouldOverwrite' in result && !('success' in result);
+export function isDryRunPreview(result: InstallResultUnion): result is DryRunPreview {
+  return result.type === 'dry-run-preview';
 }
 
 /**
  * Check if a result is an InstallResult object
+ *
+ * Uses discriminant-based type narrowing for reliable type checking.
  */
-export function isInstallResult(
-  result: InstallResult | DryRunPreview | OverwriteRequired
-): result is InstallResult {
-  return 'success' in result;
+export function isInstallResult(result: InstallResultUnion): result is InstallResult {
+  return result.type === 'install-result';
 }

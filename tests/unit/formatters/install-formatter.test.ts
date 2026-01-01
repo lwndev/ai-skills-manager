@@ -208,6 +208,7 @@ describe('Install Formatter', () => {
   describe('formatInstallSuccess', () => {
     it('formats successful installation result', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: true,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -227,6 +228,7 @@ describe('Install Formatter', () => {
 
     it('indicates when previous version was overwritten', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: true,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -245,6 +247,7 @@ describe('Install Formatter', () => {
   describe('formatDryRunOutput', () => {
     it('formats dry-run preview', () => {
       const preview: DryRunPreview = {
+        type: 'dry-run-preview',
         skillName: 'my-skill',
         targetPath: '/path/to/skill',
         files: [
@@ -267,6 +270,7 @@ describe('Install Formatter', () => {
 
     it('indicates overwrite in dry-run', () => {
       const preview: DryRunPreview = {
+        type: 'dry-run-preview',
         skillName: 'my-skill',
         targetPath: '/path/to/skill',
         files: [{ path: 'SKILL.md', size: 500, isDirectory: false }],
@@ -285,6 +289,7 @@ describe('Install Formatter', () => {
   describe('formatQuietOutput', () => {
     it('returns skill path on success', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: true,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -301,6 +306,7 @@ describe('Install Formatter', () => {
 
     it('returns FAIL with errors on failure', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: false,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -448,6 +454,7 @@ describe('Install Formatter', () => {
   describe('formatDryRunOutput edge cases', () => {
     it('truncates long conflict list', () => {
       const preview: DryRunPreview = {
+        type: 'dry-run-preview',
         skillName: 'my-skill',
         targetPath: '/path/to/skill',
         files: [{ path: 'SKILL.md', size: 500, isDirectory: false }],
@@ -470,6 +477,7 @@ describe('Install Formatter', () => {
       }));
 
       const preview: DryRunPreview = {
+        type: 'dry-run-preview',
         skillName: 'my-skill',
         targetPath: '/path/to/skill',
         files,
@@ -488,6 +496,7 @@ describe('Install Formatter', () => {
   describe('formatInstallOutput', () => {
     it('returns quiet output when quiet option is true', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: true,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -504,6 +513,7 @@ describe('Install Formatter', () => {
 
     it('returns full success output when quiet is false', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: true,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',
@@ -523,6 +533,7 @@ describe('Install Formatter', () => {
   describe('formatQuietOutput edge cases', () => {
     it('returns Unknown error when errors array is empty', () => {
       const result: InstallResult = {
+        type: 'install-result',
         success: false,
         skillPath: '/path/to/skill',
         skillName: 'my-skill',

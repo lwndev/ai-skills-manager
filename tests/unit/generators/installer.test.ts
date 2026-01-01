@@ -20,6 +20,7 @@ import {
   isOverwriteRequired,
   isDryRunPreview,
   isInstallResult,
+  isPathWithinTarget,
 } from '../../../src/generators/installer';
 import { openZipArchive } from '../../../src/utils/extractor';
 import { InvalidPackageError } from '../../../src/utils/errors';
@@ -157,6 +158,43 @@ describe('Installer Generator', () => {
         .then(() => true)
         .catch(() => false);
       expect(helperExists).toBe(true);
+    });
+  });
+
+  describe('isPathWithinTarget (path traversal prevention)', () => {
+    it('returns true for path directly in target', () => {
+      const target = '/home/user/skills/my-skill';
+      const resolved = '/home/user/skills/my-skill/file.txt';
+      expect(isPathWithinTarget(target, resolved)).toBe(true);
+    });
+
+    it('returns true for path in subdirectory', () => {
+      const target = '/home/user/skills/my-skill';
+      const resolved = '/home/user/skills/my-skill/sub/dir/file.txt';
+      expect(isPathWithinTarget(target, resolved)).toBe(true);
+    });
+
+    it('returns true for target directory itself', () => {
+      const target = '/home/user/skills/my-skill';
+      expect(isPathWithinTarget(target, target)).toBe(true);
+    });
+
+    it('returns false for path escaping with ../', () => {
+      const target = '/home/user/skills/my-skill';
+      const resolved = '/home/user/skills/escaped.txt';
+      expect(isPathWithinTarget(target, resolved)).toBe(false);
+    });
+
+    it('returns false for path completely outside', () => {
+      const target = '/home/user/skills/my-skill';
+      const resolved = '/etc/passwd';
+      expect(isPathWithinTarget(target, resolved)).toBe(false);
+    });
+
+    it('returns false for sibling directory', () => {
+      const target = '/home/user/skills/my-skill';
+      const resolved = '/home/user/skills/other-skill/file.txt';
+      expect(isPathWithinTarget(target, resolved)).toBe(false);
     });
   });
 
@@ -400,10 +438,11 @@ describe('Installer Generator', () => {
     });
   });
 
-  describe('type guards', () => {
+  describe('type guards with discriminant fields', () => {
     describe('isOverwriteRequired', () => {
-      it('returns true for OverwriteRequired', () => {
+      it('returns true for OverwriteRequired with type discriminant', () => {
         const result = {
+          type: 'overwrite-required' as const,
           requiresOverwrite: true as const,
           skillName: 'test',
           existingPath: '/path',
@@ -414,6 +453,7 @@ describe('Installer Generator', () => {
 
       it('returns false for InstallResult', () => {
         const result = {
+          type: 'install-result' as const,
           success: true,
           skillPath: '/path',
           skillName: 'test',
@@ -424,11 +464,25 @@ describe('Installer Generator', () => {
         };
         expect(isOverwriteRequired(result)).toBe(false);
       });
+
+      it('returns false for DryRunPreview', () => {
+        const result = {
+          type: 'dry-run-preview' as const,
+          skillName: 'test',
+          targetPath: '/path',
+          files: [],
+          totalSize: 100,
+          wouldOverwrite: false,
+          conflicts: [],
+        };
+        expect(isOverwriteRequired(result)).toBe(false);
+      });
     });
 
     describe('isDryRunPreview', () => {
-      it('returns true for DryRunPreview', () => {
+      it('returns true for DryRunPreview with type discriminant', () => {
         const result = {
+          type: 'dry-run-preview' as const,
           skillName: 'test',
           targetPath: '/path',
           files: [],
@@ -441,6 +495,7 @@ describe('Installer Generator', () => {
 
       it('returns false for InstallResult', () => {
         const result = {
+          type: 'install-result' as const,
           success: true,
           skillPath: '/path',
           skillName: 'test',
@@ -451,11 +506,23 @@ describe('Installer Generator', () => {
         };
         expect(isDryRunPreview(result)).toBe(false);
       });
+
+      it('returns false for OverwriteRequired', () => {
+        const result = {
+          type: 'overwrite-required' as const,
+          requiresOverwrite: true as const,
+          skillName: 'test',
+          existingPath: '/path',
+          files: [],
+        };
+        expect(isDryRunPreview(result)).toBe(false);
+      });
     });
 
     describe('isInstallResult', () => {
-      it('returns true for InstallResult', () => {
+      it('returns true for InstallResult with type discriminant', () => {
         const result = {
+          type: 'install-result' as const,
           success: true,
           skillPath: '/path',
           skillName: 'test',
@@ -469,6 +536,7 @@ describe('Installer Generator', () => {
 
       it('returns false for DryRunPreview', () => {
         const result = {
+          type: 'dry-run-preview' as const,
           skillName: 'test',
           targetPath: '/path',
           files: [],
@@ -477,6 +545,64 @@ describe('Installer Generator', () => {
           conflicts: [],
         };
         expect(isInstallResult(result)).toBe(false);
+      });
+
+      it('returns false for OverwriteRequired', () => {
+        const result = {
+          type: 'overwrite-required' as const,
+          requiresOverwrite: true as const,
+          skillName: 'test',
+          existingPath: '/path',
+          files: [],
+        };
+        expect(isInstallResult(result)).toBe(false);
+      });
+    });
+
+    describe('type narrowing flow', () => {
+      it('correctly narrows types through discriminant checks', () => {
+        // Simulate results from installSkill
+        const results = [
+          {
+            type: 'install-result' as const,
+            success: true,
+            skillPath: '/path',
+            skillName: 'test',
+            fileCount: 1,
+            size: 100,
+            wasOverwritten: false,
+            errors: [],
+          },
+          {
+            type: 'dry-run-preview' as const,
+            skillName: 'test',
+            targetPath: '/path',
+            files: [],
+            totalSize: 100,
+            wouldOverwrite: false,
+            conflicts: [],
+          },
+          {
+            type: 'overwrite-required' as const,
+            requiresOverwrite: true as const,
+            skillName: 'test',
+            existingPath: '/path',
+            files: [],
+          },
+        ];
+
+        const installResults = results.filter(isInstallResult);
+        const dryRunPreviews = results.filter(isDryRunPreview);
+        const overwriteRequireds = results.filter(isOverwriteRequired);
+
+        expect(installResults).toHaveLength(1);
+        expect(dryRunPreviews).toHaveLength(1);
+        expect(overwriteRequireds).toHaveLength(1);
+
+        // Verify each filtered result has the correct type
+        expect(installResults[0].type).toBe('install-result');
+        expect(dryRunPreviews[0].type).toBe('dry-run-preview');
+        expect(overwriteRequireds[0].type).toBe('overwrite-required');
       });
     });
   });

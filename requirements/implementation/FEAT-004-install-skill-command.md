@@ -319,6 +319,141 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 ---
 
+### Phase 7: Security Hardening and Code Quality Improvements
+**Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (Hardening)
+**Status:** ✅ Complete
+
+#### Rationale
+- Code review identified security and code quality improvements
+- Path traversal vulnerability could allow malicious packages to write outside target directory
+- Type guards use implicit property checks that are fragile to type changes
+- Silent catch blocks make debugging difficult in production
+- File comparison by size only could miss content changes
+- Hardcoded file permissions don't preserve original archive permissions
+
+#### Implementation Steps
+
+##### 1. Path Traversal Prevention (Security - Critical)
+Add path traversal validation in `src/generators/installer.ts`:
+- Create `isPathWithinTarget(targetPath: string, resolvedPath: string): boolean` helper
+- Use `path.resolve()` to get absolute path of destination file
+- Verify resolved path starts with target directory path
+- Reject entries with `..` sequences or absolute paths that escape target
+- Add to `extractSkillToTarget()` before writing each file:
+  ```typescript
+  const destPath = path.join(targetPath, relativePath);
+  const resolvedDest = path.resolve(destPath);
+  if (!resolvedDest.startsWith(path.resolve(targetPath) + path.sep)) {
+    throw new InvalidPackageError(packagePath, `Path traversal detected: ${relativePath}`);
+  }
+  ```
+- Write tests for malicious ZIP entries like `../../../.bashrc` and `/etc/passwd`
+
+##### 2. Discriminant-Based Type Guards (Code Quality)
+Update type definitions in `src/types/install.ts`:
+- Add `type` discriminant field to result types:
+  ```typescript
+  export interface InstallResult {
+    type: 'install-result';
+    // ... existing fields
+  }
+
+  export interface DryRunPreview {
+    type: 'dry-run-preview';
+    // ... existing fields
+  }
+  ```
+- Add `OverwriteRequired` type with `type: 'overwrite-required'` discriminant
+- Update type guards in `src/generators/installer.ts`:
+  ```typescript
+  export function isDryRunPreview(result: InstallResultUnion): result is DryRunPreview {
+    return result.type === 'dry-run-preview';
+  }
+  ```
+- Update all places that create these objects to include the `type` field
+- Update tests to include discriminant field
+
+##### 3. Debug Logging for Silent Catch Blocks (Code Quality)
+Add optional debug logging utility:
+- Create `src/utils/debug.ts`:
+  ```typescript
+  const DEBUG = process.env.ASM_DEBUG === '1' || process.env.DEBUG?.includes('asm');
+  export function debugLog(context: string, message: string, error?: unknown): void {
+    if (DEBUG) {
+      console.error(`[ASM DEBUG] ${context}: ${message}`, error || '');
+    }
+  }
+  ```
+- Update silent catch blocks in:
+  - `src/commands/install.ts:176-178` (warning analysis errors)
+  - `src/generators/installer.ts:354-356` (cleanup errors)
+  - `src/generators/installer.ts:522-524` (directory read errors)
+- Example update:
+  ```typescript
+  } catch (error) {
+    debugLog('install', 'Warning analysis failed', error);
+  }
+  ```
+- Document `ASM_DEBUG=1` environment variable in README
+
+##### 4. Content-Based File Comparison (Enhancement)
+Add optional content hashing for accurate file comparison:
+- Create `src/utils/hash.ts`:
+  ```typescript
+  import * as crypto from 'crypto';
+  export function hashBuffer(buffer: Buffer): string {
+    return crypto.createHash('md5').update(buffer).digest('hex');
+  }
+  export async function hashFile(filePath: string): Promise<string> {
+    const content = await fs.readFile(filePath);
+    return hashBuffer(content);
+  }
+  ```
+- Update `compareFiles()` in `src/generators/installer.ts`:
+  - Add optional `thorough` parameter to `InstallOptions`
+  - When `thorough: true`, compare content hashes instead of just sizes
+  - Default to size comparison for performance
+- Add `--thorough` flag to install command for users who want accurate comparison
+- Document the trade-off (speed vs accuracy) in help text
+
+##### 5. Preserve Original File Permissions (Enhancement)
+Update `extractSkillToTarget()` in `src/generators/installer.ts`:
+- Read Unix permissions from ZIP entry: `entry.attr >>> 16` (external file attributes)
+- Apply permissions when writing files (where available):
+  ```typescript
+  const mode = (entry.attr >>> 16) & 0o777;
+  const finalMode = mode || 0o644; // Fallback to default if not set
+  await fs.writeFile(destPath, content, { mode: finalMode });
+  ```
+- Handle directories similarly with fallback to `0o755`
+- Note: Windows systems will ignore Unix permissions gracefully
+- Add tests verifying permission preservation on Unix systems
+
+##### 6. Update Tests
+- Add unit tests for path traversal detection
+- Add unit tests for discriminant-based type guards
+- Add integration test with malicious ZIP containing `../` paths
+- Add test for debug logging output when `ASM_DEBUG=1`
+- Add test for `--thorough` file comparison mode
+- Add test for permission preservation (Unix only)
+
+#### Deliverables
+- [x] Path traversal prevention in `src/generators/installer.ts`
+- [x] `src/utils/debug.ts` - Debug logging utility
+- [x] Updated type definitions with discriminant fields in `src/types/install.ts`
+- [x] Updated type guards in `src/generators/installer.ts`
+- [x] `src/utils/hash.ts` - Content hashing utility
+- [x] `--thorough` flag for accurate file comparison
+- [x] Permission preservation in extraction
+- [x] Debug logging in silent catch blocks
+- [x] `ASM_DEBUG` documentation in README
+- [x] `tests/unit/utils/debug.test.ts` - Debug utility tests
+- [x] `tests/unit/utils/hash.test.ts` - Hash utility tests
+- [x] `tests/security/path-traversal.test.ts` - Path traversal prevention tests
+- [x] Updated existing tests with discriminant fields
+
+---
+
 ## Shared Infrastructure
 
 ### Reusable from Previous Features
@@ -334,6 +469,8 @@ This implementation builds on the existing CLI infrastructure, validation system
 - **Extractor Utilities**: `src/utils/extractor.ts` - May be reused for future package inspection
 - **Scope Resolver**: `src/utils/scope-resolver.ts` - Reusable for future skill management commands
 - **Install Types**: `src/types/install.ts` - Will be reused by future `asm update` command
+- **Debug Utilities**: `src/utils/debug.ts` - Reusable debug logging for all commands (Phase 7)
+- **Hash Utilities**: `src/utils/hash.ts` - Reusable content hashing for file comparison (Phase 7)
 
 ## Testing Strategy
 
@@ -409,6 +546,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
+| **Path traversal attack** | **Critical** | **Medium** | **Validate all extracted paths stay within target directory (Phase 7)** |
 | ZIP extraction fails mid-way | High | Low | Implement atomic extraction with rollback; clean up on error |
 | Cross-platform path issues | Medium | Medium | Use path.posix for archive paths; normalize on extraction; test on Windows |
 | File permission loss | Low | Medium | Attempt to preserve permissions; document limitations on Windows |
@@ -442,6 +580,16 @@ This implementation builds on the existing CLI infrastructure, validation system
 - [x] Exit codes match specification (0, 1, 2, 3, 4)
 - [x] Error messages are clear and actionable
 - [x] All edge cases are handled
+
+### Phase 7 Security & Quality Metrics (Complete)
+- [x] Path traversal attacks are prevented
+- [x] Malicious ZIP entries (e.g., `../../../.bashrc`) are rejected with clear error
+- [x] Type guards use discriminant fields for reliable type narrowing
+- [x] Debug logging available via `ASM_DEBUG=1` environment variable
+- [x] Silent catch blocks log errors in debug mode
+- [x] `--thorough` flag enables content-based file comparison
+- [x] File permissions from archive are preserved (Unix only)
+- [x] Security tests cover path traversal scenarios
 
 ### Quality Metrics
 - [x] Unit test coverage ≥80%
@@ -496,7 +644,9 @@ src/
 │   ├── archiver.ts         (existing - FEAT-003)
 │   ├── prompts.ts          (existing - extend with install prompts)
 │   ├── extractor.ts        (new - ZIP extraction utilities)
-│   └── scope-resolver.ts   (new - scope and path resolution)
+│   ├── scope-resolver.ts   (new - scope and path resolution)
+│   ├── debug.ts            (new Phase 7 - debug logging utility)
+│   └── hash.ts             (new Phase 7 - content hashing utility)
 │
 ├── types/
 │   ├── validation.ts       (existing - FEAT-002)
@@ -519,7 +669,12 @@ tests/
 │
 ├── utils/
 │   ├── extractor.test.ts   (new - extractor utility tests)
-│   └── scope-resolver.test.ts (new - scope resolution tests)
+│   ├── scope-resolver.test.ts (new - scope resolution tests)
+│   ├── debug.test.ts       (new Phase 7 - debug utility tests)
+│   └── hash.test.ts        (new Phase 7 - hash utility tests)
+│
+├── security/
+│   └── path-traversal.test.ts (new Phase 7 - path traversal prevention tests)
 │
 └── integration/
     └── install.test.ts     (new - end-to-end install workflow)
@@ -533,6 +688,8 @@ tests/
 3. **Phase 3** is independent and can be developed in parallel with Phase 2
 4. **Phase 4** requires Phase 1, 2, and 3 to be complete
 5. **Phase 5** requires Phase 4 (installer) to be complete
+6. **Phase 6** requires Phase 5 (command integration) to be complete
+7. **Phase 7** can be implemented after Phase 6; it hardens existing code without new dependencies
 
 ### Development Workflow
 1. Implement phases sequentially for clear progress tracking (Phases 2 and 3 can be parallel)

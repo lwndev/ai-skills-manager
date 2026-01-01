@@ -281,6 +281,7 @@ describe('Install Types', () => {
 
   it('can create valid InstallResult', () => {
     const result: import('../../../src/types/install').InstallResult = {
+      type: 'install-result',
       success: true,
       skillPath: '/path/to/skill',
       skillName: 'my-skill',
@@ -292,6 +293,7 @@ describe('Install Types', () => {
 
     expect(result.success).toBe(true);
     expect(result.skillName).toBe('my-skill');
+    expect(result.type).toBe('install-result');
   });
 
   it('can create valid ExtractedFileInfo', () => {
@@ -307,6 +309,7 @@ describe('Install Types', () => {
 
   it('can create valid DryRunPreview', () => {
     const preview: import('../../../src/types/install').DryRunPreview = {
+      type: 'dry-run-preview',
       skillName: 'my-skill',
       targetPath: '/path/to/target',
       files: [{ path: 'SKILL.md', size: 100, isDirectory: false }],
@@ -317,5 +320,6 @@ describe('Install Types', () => {
 
     expect(preview.skillName).toBe('my-skill');
     expect(preview.files).toHaveLength(1);
+    expect(preview.type).toBe('dry-run-preview');
   });
 });

@@ -240,6 +240,7 @@ asm install my-skill.skill --quiet
 | `-f, --force` | Overwrite existing skill without prompting |
 | `-n, --dry-run` | Show what would be installed without making changes |
 | `-q, --quiet` | Quiet mode - minimal output |
+| `-t, --thorough` | Use content hashing for accurate file comparison (slower) |
 
 #### Installation Scopes
 
@@ -361,6 +362,20 @@ Only these top-level keys are allowed in frontmatter: `name`, `description`, `li
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.
+
+### Debug Mode
+
+For troubleshooting, you can enable debug logging by setting the `ASM_DEBUG` environment variable:
+
+```bash
+# Enable debug output
+ASM_DEBUG=1 asm install my-skill.skill
+
+# Alternative: use DEBUG variable
+DEBUG=asm asm install my-skill.skill
+```
+
+Debug mode shows detailed information about internal operations, which can help diagnose issues with package installation, validation, or extraction.
 
 ## License
 
