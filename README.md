@@ -1,13 +1,30 @@
 # AI Skills Manager
 
+[![npm version](https://img.shields.io/npm/v/ai-skills-manager.svg)](https://www.npmjs.com/package/ai-skills-manager)
+[![npm downloads](https://img.shields.io/npm/dm/ai-skills-manager.svg)](https://www.npmjs.com/package/ai-skills-manager)
+[![license](https://img.shields.io/npm/l/ai-skills-manager.svg)](https://github.com/lwndev/ai-skills-manager/blob/main/LICENSE)
+
 AI Skills Manager (ASM) enables team members to create, test, distribute, install, update, and remove skills. It focuses on the [Claude Code Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) system developed by Anthropic.
 
 ## Installation
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 20.19.6 or later (LTS recommended)
-- [npm](https://www.npmjs.com/) (comes with Node.js)
+- [Node.js](https://nodejs.org/) 20.19.6 (LTS) or later
+
+### From NPM
+
+#### Global Install
+
+```bash
+npm install -g ai-skills-manager
+```
+
+### As a Project Dependency
+
+```bash
+npm install ai-skills-manager
+```
 
 ### From Source
 
@@ -309,19 +326,26 @@ npm run quality
 ```
 src/
   cli.ts              # CLI entry point
-  commands/           # Command implementations
-  generators/         # File/directory generation
+  index.ts            # Main library entry point
+  commands/           # Command implementations (scaffold, validate, package, install)
+  formatters/         # Output formatting for commands
+  generators/         # File/directory generation and business logic
   templates/          # Template generation
-  validators/         # Input validation
+  types/              # TypeScript type definitions
   utils/              # Shared utilities
+  validators/         # Input validation
 
 tests/
   unit/               # Unit tests (mirrors src/ structure)
+    edge-cases/       # Edge case tests
+    formatters/
     generators/
     templates/
     utils/
     validators/
   integration/        # End-to-end tests
+  security/           # Security-focused tests
+  fixtures/           # Test fixtures and sample skills
 ```
 
 ## Contributing
@@ -339,6 +363,21 @@ A: In `.claude/skills/` within your project directory.
 
 **Q: Where are personal skills stored?**
 A: In `~/.claude/skills/` in your home directory.
+
+**Q: What's the difference between project and personal scopes?**
+A: Project skills (`.claude/skills/`) are specific to one project and typically checked into version control. Personal skills (`~/.claude/skills/`) are available across all your projects.
+
+**Q: What is a .skill package?**
+A: A `.skill` file is a ZIP archive containing the skill directory structure (SKILL.md, scripts/, etc.). It's the distribution format for sharing skills.
+
+**Q: Can I share skills with my team?**
+A: Yes. Use `asm package ./my-skill` to create a `.skill` file, then share it with your team. Recipients use `asm install my-skill.skill` to install it.
+
+**Q: How do I see what skills are installed?**
+A: List the contents of `.claude/skills/` (project scope) or `~/.claude/skills/` (personal scope). Each subdirectory is an installed skill.
+
+**Q: What happens if I install a skill that already exists?**
+A: ASM will prompt for confirmation before overwriting. Use `--force` to skip the prompt, or `--dry-run` to preview what would be installed without making changes.
 
 **Q: How do I test my skill?**
 A: After creating a skill, invoke it in Claude Code by name. Claude will discover skills in the standard locations.
@@ -362,6 +401,24 @@ Only these top-level keys are allowed in frontmatter: `name`, `description`, `li
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.
+
+**Error: Invalid package file**
+The file must be a valid `.skill` package created by `asm package`. Ensure the file hasn't been corrupted during transfer.
+
+**Error: Package extraction failed**
+Check that the `.skill` file is not corrupted and you have write permissions to the target directory.
+
+**Error: Installation validation failed**
+The skill was extracted but failed post-installation validation. ASM automatically rolls back the installation. Check the error message for specific validation failures.
+
+**Error: Permission denied**
+Ensure you have write permissions to the target directory. For personal skills, check permissions on `~/.claude/skills/`.
+
+**Error: Description too long**
+Skill descriptions must be 1024 characters or less. Shorten your description in SKILL.md.
+
+**Error: Name contains reserved word**
+Skill names cannot contain "anthropic" or "claude". Choose a different name.
 
 ### Debug Mode
 
