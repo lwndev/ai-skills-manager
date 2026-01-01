@@ -61,3 +61,46 @@ export class ValidationFailedError extends ASMError {
     this.validationErrors = validationErrors;
   }
 }
+
+/**
+ * Package not found error - thrown when the .skill package file doesn't exist
+ */
+export class PackageNotFoundError extends ASMError {
+  /** Path to the package file that was not found */
+  public readonly packagePath: string;
+
+  constructor(packagePath: string) {
+    super(`Package file not found: ${packagePath}`);
+    this.packagePath = packagePath;
+  }
+}
+
+/**
+ * Invalid package error - thrown when the file is not a valid .skill package
+ * (e.g., bad ZIP format, wrong extension, or invalid structure)
+ */
+export class InvalidPackageError extends ASMError {
+  /** Path to the invalid package file */
+  public readonly packagePath: string;
+  /** Specific reason why the package is invalid */
+  public readonly reason: string;
+
+  constructor(packagePath: string, reason: string) {
+    super(`Invalid package: ${reason}`);
+    this.packagePath = packagePath;
+    this.reason = reason;
+  }
+}
+
+/**
+ * Package validation error - thrown when package content validation fails
+ */
+export class PackageValidationError extends ASMError {
+  /** Array of validation error messages */
+  public readonly validationErrors: string[];
+
+  constructor(message: string, validationErrors: string[] = []) {
+    super(message);
+    this.validationErrors = validationErrors;
+  }
+}
