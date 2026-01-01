@@ -110,7 +110,7 @@ This implementation builds on the existing CLI infrastructure, validation system
 
 ### Phase 3: Scope and Path Resolution
 **Feature:** [FEAT-004](../features/FEAT-004-install-skill-command.md) | [#4](https://github.com/lwndev/ai-skills-manager/issues/4) (Path Handling)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Handles the complexity of installation scope resolution
@@ -139,10 +139,10 @@ This implementation builds on the existing CLI infrastructure, validation system
 4. Write unit tests for scope resolution
 
 #### Deliverables
-- [ ] `src/utils/scope-resolver.ts` - Scope and path resolution
-- [ ] `src/types/scope.ts` - Scope type definitions
-- [ ] `tests/unit/utils/scope-resolver.test.ts` - Scope resolution tests
-- [ ] Cross-platform path handling (Windows, macOS, Linux)
+- [x] `src/utils/scope-resolver.ts` - Scope and path resolution
+- [x] `src/types/scope.ts` - Scope type definitions
+- [x] `tests/unit/utils/scope-resolver.test.ts` - Scope resolution tests
+- [x] Cross-platform path handling (Windows, macOS, Linux)
 
 ---
 
