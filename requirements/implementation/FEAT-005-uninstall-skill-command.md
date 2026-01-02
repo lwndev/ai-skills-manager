@@ -66,7 +66,7 @@ This implementation prioritizes security due to the destructive nature of the op
 
 ### Phase 2: Skill Discovery & Pre-Removal Validation
 **Feature:** [FEAT-005](../features/FEAT-005-uninstall-skill-command.md) | [#5](https://github.com/lwndev/ai-skills-manager/issues/5) (Discovery)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Builds on Phase 1 validation to locate skills safely
@@ -115,12 +115,12 @@ This implementation prioritizes security due to the destructive nature of the op
 4. Write unit tests for all discovery and enumeration functions
 
 #### Deliverables
-- [ ] `src/generators/skill-discovery.ts` - Skill location and verification
-- [ ] `src/generators/file-enumerator.ts` - Streaming file enumeration
-- [ ] `src/generators/pre-removal-validator.ts` - Pre-removal checks
-- [ ] `tests/unit/generators/skill-discovery.test.ts` - Discovery tests
-- [ ] `tests/unit/generators/file-enumerator.test.ts` - Enumerator tests
-- [ ] `tests/unit/generators/pre-removal-validator.test.ts` - Pre-removal tests
+- [x] `src/generators/skill-discovery.ts` - Skill location and verification
+- [x] `src/generators/file-enumerator.ts` - Streaming file enumeration
+- [x] `src/generators/pre-removal-validator.ts` - Pre-removal checks
+- [x] `tests/unit/generators/skill-discovery.test.ts` - Discovery tests
+- [x] `tests/unit/generators/file-enumerator.test.ts` - Enumerator tests
+- [x] `tests/unit/generators/pre-removal-validator.test.ts` - Pre-removal tests
 
 ---
 
