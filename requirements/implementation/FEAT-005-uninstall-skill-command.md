@@ -126,7 +126,7 @@ This implementation prioritizes security due to the destructive nature of the op
 
 ### Phase 3: Security Checks (Symlinks, Hard Links, TOCTOU)
 **Feature:** [FEAT-005](../features/FEAT-005-uninstall-skill-command.md) | [#5](https://github.com/lwndev/ai-skills-manager/issues/5) (Security Hardening)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Implements critical security checks before any deletion occurs
@@ -177,13 +177,13 @@ This implementation prioritizes security due to the destructive nature of the op
 4. Write security-focused tests including attack simulations
 
 #### Deliverables
-- [ ] `src/generators/security-checker.ts` - Symlink and hard link detection
-- [ ] `src/generators/path-verifier.ts` - Containment and TOCTOU verification
-- [ ] `src/utils/safe-delete.ts` - Safe deletion utilities
-- [ ] `tests/unit/generators/security-checker.test.ts` - Security check tests
-- [ ] `tests/unit/generators/path-verifier.test.ts` - Verification tests
-- [ ] `tests/unit/utils/safe-delete.test.ts` - Safe delete tests
-- [ ] `tests/security/uninstall-security.test.ts` - Attack simulation tests
+- [x] `src/generators/security-checker.ts` - Symlink and hard link detection
+- [x] `src/generators/path-verifier.ts` - Containment and TOCTOU verification
+- [x] `src/utils/safe-delete.ts` - Safe deletion utilities
+- [x] `tests/unit/generators/security-checker.test.ts` - Security check tests
+- [x] `tests/unit/generators/path-verifier.test.ts` - Verification tests
+- [x] `tests/unit/utils/safe-delete.test.ts` - Safe delete tests
+- [x] `tests/security/uninstall-security.test.ts` - Attack simulation tests
 
 ---
 
