@@ -189,7 +189,7 @@ This implementation prioritizes security due to the destructive nature of the op
 
 ### Phase 4: Core Uninstall Logic & Audit Logging
 **Feature:** [FEAT-005](../features/FEAT-005-uninstall-skill-command.md) | [#5](https://github.com/lwndev/ai-skills-manager/issues/5) (Core Logic)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Builds on all previous phases to implement the core uninstall operation
@@ -250,14 +250,14 @@ This implementation prioritizes security due to the destructive nature of the op
 5. Write unit and integration tests
 
 #### Deliverables
-- [ ] `src/generators/uninstaller.ts` - Core uninstall logic
-- [ ] `src/utils/audit-logger.ts` - Audit logging utilities
-- [ ] `src/utils/timeout.ts` - Timeout wrapper utility
-- [ ] Enhanced `src/utils/errors.ts` with TimeoutError, PartialRemovalError
-- [ ] `tests/unit/generators/uninstaller.test.ts` - Uninstaller unit tests
-- [ ] `tests/unit/utils/audit-logger.test.ts` - Audit logger tests
-- [ ] `tests/unit/utils/timeout.test.ts` - Timeout utility tests
-- [ ] `tests/integration/uninstall.test.ts` - End-to-end uninstall tests
+- [x] `src/generators/uninstaller.ts` - Core uninstall logic
+- [x] `src/utils/audit-logger.ts` - Audit logging utilities
+- [x] `src/utils/timeout.ts` - Timeout wrapper utility
+- [x] Enhanced `src/utils/errors.ts` with TimeoutError, PartialRemovalError
+- [x] `tests/unit/generators/uninstaller.test.ts` - Uninstaller unit tests
+- [x] `tests/unit/utils/audit-logger.test.ts` - Audit logger tests
+- [x] `tests/unit/utils/timeout.test.ts` - Timeout utility tests
+- [x] `tests/integration/uninstall.test.ts` - End-to-end uninstall tests
 
 ---
 

@@ -18,6 +18,10 @@ export interface UninstallOptions {
   quiet: boolean;
   /** Skill names to uninstall */
   skillNames: string[];
+  /** Override current working directory (for testing) */
+  cwd?: string;
+  /** Override home directory (for testing) */
+  homedir?: string;
 }
 
 /**
