@@ -104,3 +104,49 @@ export class PackageValidationError extends ASMError {
     this.validationErrors = validationErrors;
   }
 }
+
+/**
+ * Skill not found error - thrown when a skill directory doesn't exist
+ */
+export class SkillNotFoundError extends ASMError {
+  /** Name of the skill that was not found */
+  public readonly skillName: string;
+  /** Path where the skill was searched */
+  public readonly searchedPath: string;
+
+  constructor(skillName: string, searchedPath: string) {
+    super(`Skill "${skillName}" not found at ${searchedPath}`);
+    this.skillName = skillName;
+    this.searchedPath = searchedPath;
+  }
+}
+
+/**
+ * Security error - thrown when a security violation is detected
+ * (e.g., path traversal, symlink escape, containment violation)
+ */
+export class SecurityError extends ASMError {
+  /** Type of security violation */
+  public readonly reason:
+    | 'path-traversal'
+    | 'symlink-escape'
+    | 'hard-link-detected'
+    | 'containment-violation'
+    | 'case-mismatch';
+  /** Additional details about the violation */
+  public readonly details: string;
+
+  constructor(
+    reason:
+      | 'path-traversal'
+      | 'symlink-escape'
+      | 'hard-link-detected'
+      | 'containment-violation'
+      | 'case-mismatch',
+    details: string
+  ) {
+    super(`Security error (${reason}): ${details}`);
+    this.reason = reason;
+    this.details = details;
+  }
+}
