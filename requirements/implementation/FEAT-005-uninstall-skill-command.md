@@ -542,50 +542,50 @@ This implementation prioritizes security due to the destructive nature of the op
 ## Success Criteria
 
 ### Functional Requirements
-- [ ] Command accepts skill name argument(s)
-- [ ] Command accepts multiple skill names
-- [ ] Command accepts --scope with only `project` or `personal` values
-- [ ] Command rejects invalid --scope values with clear error
-- [ ] Command accepts --force, --dry-run, --quiet options
-- [ ] Skill discovery works correctly in both scopes
-- [ ] SKILL.md verification required (or --force) before removal
-- [ ] Confirmation prompt shows files to be removed
-- [ ] Confirmation prompt shows total size
-- [ ] --force flag bypasses confirmation
-- [ ] --dry-run mode shows preview without removing
-- [ ] --quiet flag produces minimal output (but never silent with --force)
-- [ ] Multiple skills can be uninstalled in one command
-- [ ] Bulk --force (3+ skills) requires typing "yes" to confirm
-- [ ] Exit codes match specification (0-5)
-- [ ] Error messages are clear and actionable
+- [x] Command accepts skill name argument(s)
+- [x] Command accepts multiple skill names
+- [x] Command accepts --scope with only `project` or `personal` values
+- [x] Command rejects invalid --scope values with clear error
+- [x] Command accepts --force, --dry-run, --quiet options
+- [x] Skill discovery works correctly in both scopes
+- [x] SKILL.md verification required (or --force) before removal
+- [x] Confirmation prompt shows files to be removed
+- [x] Confirmation prompt shows total size
+- [x] --force flag bypasses confirmation
+- [x] --dry-run mode shows preview without removing
+- [x] --quiet flag produces minimal output (but never silent with --force)
+- [x] Multiple skills can be uninstalled in one command
+- [x] Bulk --force (3+ skills) requires typing "yes" to confirm
+- [x] Exit codes match specification (0-5)
+- [x] Error messages are clear and actionable
 
 ### Security Requirements (Critical)
-- [ ] Only `project` and `personal` scopes are accepted (no arbitrary paths)
-- [ ] Skill name input validation rejects path separators (`/`, `\`)
-- [ ] Skill name input validation rejects `..` and `.`
-- [ ] Skill name input validation rejects absolute paths
-- [ ] Skill name input validation rejects null bytes and control characters
-- [ ] Skill name input validation rejects non-ASCII characters
-- [ ] Skill name format validation matches install command rules
-- [ ] Path canonicalization uses realpath() before containment check
-- [ ] Containment check verifies resolved path is within scope
-- [ ] Case sensitivity verification on case-insensitive filesystems
-- [ ] Symlink skill directories pointing outside scope are rejected
-- [ ] Directory symlinks are not followed during recursive deletion
-- [ ] Nested directory symlinks are removed as files, not descended into
-- [ ] Hard links detected and require --force to proceed
-- [ ] TOCTOU protection: each file re-verified before deletion
-- [ ] Audit logging captures all security-relevant events
-- [ ] Resource limits prevent DoS (>10K files or >1GB require --force)
-- [ ] Signal handling prevents undefined state
-- [ ] All security tests pass
+- [x] Only `project` and `personal` scopes are accepted (no arbitrary paths)
+- [x] Skill name input validation rejects path separators (`/`, `\`)
+- [x] Skill name input validation rejects `..` and `.`
+- [x] Skill name input validation rejects absolute paths
+- [x] Skill name input validation rejects null bytes and control characters
+- [x] Skill name input validation rejects non-ASCII characters
+- [x] Skill name format validation matches install command rules
+- [x] Path canonicalization uses realpath() before containment check
+- [x] Containment check verifies resolved path is within scope
+- [x] Case sensitivity verification on case-insensitive filesystems
+- [x] Symlink skill directories pointing outside scope are rejected
+- [x] Directory symlinks are not followed during recursive deletion
+- [x] Nested directory symlinks are removed as files, not descended into
+- [x] Hard links detected and require --force to proceed
+- [x] TOCTOU protection: each file re-verified before deletion
+- [x] Audit logging captures all security-relevant events
+- [x] Resource limits prevent DoS (>10K files or >1GB require --force)
+- [x] Signal handling prevents undefined state
+- [x] All security tests pass
 
 ### Quality Requirements
-- [ ] All edge cases from feature spec are handled
-- [ ] Unit test coverage ≥80%
-- [ ] Security tests pass with 100% coverage of attack vectors
-- [ ] Documentation updated
-- [ ] Uninstalled skills no longer available in Claude Code
+- [x] All edge cases from feature spec are handled
+- [x] Unit test coverage ≥80% (90.06% statements, 94.42% functions)
+- [x] Security tests pass with 100% coverage of attack vectors
+- [x] Documentation updated
+- [x] Uninstalled skills no longer available in Claude Code
 
 ## Code Organization
 
