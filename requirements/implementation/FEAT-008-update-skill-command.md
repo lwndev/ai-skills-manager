@@ -91,7 +91,22 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 3. Add backup-related types to `src/types/update.ts`:
    - `BackupResult` (success, path, size, fileCount)
    - `BackupDirValidation` (valid, errors, warnings)
-4. Unit tests for:
+   - `BackupWritabilityResult` (writable, error?)
+4. Implement backup writability check (Edge case 20):
+   - `validateBackupWritability(): Promise<BackupWritabilityResult>` - Check before any operations
+   - Test write permissions by creating/removing temp file in backup directory
+   - Return clear error if backup location not writable
+   - Skip check if `--no-backup` flag is set
+5. Implement backup collision handling (Edge case 7):
+   - After generating filename, check if file already exists
+   - If exists: regenerate with new random component (up to 3 attempts)
+   - If still collides: append incrementing suffix (-1, -2, etc.)
+   - Log warning if collision detected
+6. Implement streaming backup creation (NFR-8):
+   - Use streaming ZIP creation (don't buffer entire skill in memory)
+   - Process files incrementally using async iterators
+   - Track progress for large skills (>100 files or >10MB)
+7. Unit tests for:
    - Backup directory creation and validation
    - Filename generation (format, uniqueness, randomness)
    - Security validations (symlink rejection, containment)
@@ -103,6 +118,9 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 - [ ] `tests/unit/services/backup-manager.test.ts` - Unit tests
 - [ ] Backup directory created with correct permissions (0700)
 - [ ] Backup files created with correct permissions (0600)
+- [ ] Backup writability verified before update starts
+- [ ] Backup filename collision handling implemented
+- [ ] Streaming backup creation for memory efficiency
 
 ---
 
@@ -124,7 +142,8 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - `calculateFileDiff(installedFiles, newFiles): FileChange[]` - Categorize files:
      - Added: in new, not in installed
      - Removed: in installed, not in new
-     - Modified: in both, different size or hash
+     - Modified: in both, different size (or hash if sizes equal)
+     - Use size comparison first (fast), hash comparison only when sizes match (NFR-8)
    - `summarizeChanges(diff): ChangeSummary` - Aggregate stats (counts, size changes)
    - `formatDiffLine(change): string` - Format: `+ file.md (added)` or `~ file.md (modified, +50 bytes)`
 2. Use existing components:
@@ -132,11 +151,17 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - `getZipEntries()` from `extractor.ts` for new package
    - `parseFrontmatter()` from `frontmatter-parser.ts` for metadata
    - `hashFile()` from `hash.ts` for thorough comparison (optional, size-only by default)
-3. Add comparison types to `src/types/update.ts`:
+3. Implement memory-safe comparison (NFR-8):
+   - Use streaming enumeration via async generators for file lists
+   - Compare files incrementally, not loading all paths into memory at once
+   - For file content comparison: use size first, hash only if sizes match
+   - Limit in-memory file list to 1000 entries; stream beyond that
+   - `streamFileComparison(installed, new): AsyncGenerator<FileChange>` - Yield changes incrementally
+4. Add comparison types to `src/types/update.ts`:
    - `SkillMetadata` (name, description, version?, lastModified?)
    - `DowngradeInfo` (isDowngrade, installedDate, newDate, message)
    - `ChangeSummary` (added, removed, modified counts and sizes)
-4. Unit tests for:
+5. Unit tests for:
    - File categorization (added/removed/modified)
    - Downgrade detection
    - Size change calculations
@@ -147,6 +172,8 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 - [ ] Updated `src/types/update.ts` - Comparison types
 - [ ] `tests/unit/services/version-comparator.test.ts` - Unit tests
 - [ ] Accurate diff calculation for various scenarios
+- [ ] Streaming comparison for large skills (>1000 files)
+- [ ] Memory usage bounded during diff calculation
 
 ---
 
@@ -177,11 +204,18 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - `formatError(error): string` - Error formatting with suggestions
    - `formatHardLinkWarning(files): string` - Hard link detection warning
    - `formatLockConflict(lockInfo): string` - Concurrent update error
-2. Use existing output utilities:
+2. Implement progress indicator formatting (NFR-1):
+   - `formatProgressBar(current, total, label): string` - Render progress bar
+   - `formatProgressSpinner(stage): string` - Spinning indicator for indeterminate progress
+   - `shouldShowProgress(startTime): boolean` - Returns true if >2 seconds elapsed
+   - Progress format: `[████████░░░░░░░░] 50% Backing up files...`
+   - Use carriage return (`\r`) for in-place updates in TTY mode
+   - Fall back to periodic line output in non-TTY mode
+3. Use existing output utilities:
    - Import `success()`, `error()`, `warning()`, `info()` from `utils/output.ts`
    - Follow color patterns from `install-formatter.ts` and `uninstall-formatter.ts`
-3. Match exact output format from requirements document (lines 231-367)
-4. Unit tests for:
+4. Match exact output format from requirements document (lines 231-367)
+5. Unit tests for:
    - Each format function with sample data
    - Edge cases (empty diffs, large file counts, long paths)
    - Quiet mode output
@@ -190,6 +224,9 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 - [ ] `src/formatters/update-formatter.ts` - Complete formatter
 - [ ] `tests/unit/formatters/update-formatter.test.ts` - Unit tests
 - [ ] Output matches requirements document exactly
+- [ ] Progress bar formatting for determinate operations
+- [ ] Progress spinner for indeterminate operations
+- [ ] 2-second threshold before showing progress (NFR-1)
 
 ---
 
@@ -217,15 +254,25 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Use `discoverSkill()` from `generators/skill-discovery.ts` (FR-1)
    - Handle not-found error with clear message
    - Handle case-mismatch error with suggestion
-4. Implement Package Validation:
+4. Implement case sensitivity verification (NFR-3):
+   - After discovering skill path, read parent directory entries with `fs.readdir()`
+   - Find the actual entry name that matches (case-insensitive)
+   - Compare actual entry name byte-for-byte with input skill name
+   - If case differs (e.g., input "my-skill" but actual "My-Skill"):
+     - Return security error (exit code 5)
+     - Message: "Security error: Skill name case mismatch. Input: '<input>', Actual: '<actual>'"
+   - This prevents symlink substitution attacks on case-insensitive filesystems (macOS/Windows)
+5. Implement Package Validation:
    - Extract package to temp directory using `extractPackage()` from `utils/extractor.ts`
    - Use `validatePackageStructure()` from `install-validator.ts` (FR-2)
    - Use `validatePackageContent()` from `install-validator.ts` (FR-2)
    - Verify skill name matches installed skill (FR-2 edge case 15)
    - Clean up temp directory on validation failure
-5. Unit tests for:
+6. Unit tests for:
    - Input validation (valid and invalid cases)
    - Skill discovery (found, not-found, case-mismatch)
+   - Case sensitivity verification (exact match required)
+   - Case mismatch rejection with clear error
    - Package validation (valid, invalid structure, name mismatch)
 
 #### Deliverables
@@ -233,6 +280,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 - [ ] `tests/unit/generators/updater.test.ts` - Unit tests for Phases 5 functionality
 - [ ] Input validation working with appropriate error messages
 - [ ] Skill discovery integrated with error handling
+- [ ] Case sensitivity verification preventing symlink substitution attacks
 
 ---
 
@@ -252,25 +300,51 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Use `detectHardLinkWarnings()` for hard link detection (FR-16)
    - Validate ZIP entries for path traversal (FR-15) - leverage existing `install-validator.ts`
    - Require `--force` for hard links, return error otherwise
-2. Implement Version Comparison:
+2. Implement TOCTOU-safe file operations (NFR-3):
+   - Open skill directory with `O_DIRECTORY | O_NOFOLLOW` flag at start
+   - Store directory file descriptor for duration of operation
+   - Use `fstatat(dirFd, filename, AT_SYMLINK_NOFOLLOW)` before each file operation
+   - Implement `openat()`/`unlinkat()` pattern for file operations:
+     - `safeOpenAt(dirFd, relativePath, flags): Promise<number>` - Open relative to directory FD
+     - `safeUnlinkAt(dirFd, relativePath): Promise<void>` - Unlink relative to directory FD
+     - `safeStatAt(dirFd, relativePath): Promise<Stats>` - Stat relative to directory FD
+   - Re-verify containment immediately before each destructive operation
+   - Reject operation if any path resolves outside expected scope during execution
+   - Note: Node.js doesn't expose `openat()` directly; implement via:
+     - Opening directory, then using relative paths with realpath verification
+     - Or use native addon for true `openat()` support (optional enhancement)
+3. Implement Version Comparison:
    - Use `compareVersions()` from `version-comparator.ts` (FR-3)
    - Detect and warn on apparent downgrades
    - Calculate file diff (added, removed, modified)
-3. Implement Resource Limits:
-   - Check skill size < 1GB and file count < 10,000 (NFR-8)
+4. Implement Resource Limits (NFR-8):
+   - Check skill size < 1GB and file count < 10,000
    - Require `--force` to exceed limits
    - Return clear error with limit values
-4. Unit tests for:
+   - Implement operation timeouts using `utils/timeout.ts`:
+     - Complete update timeout: 5 minutes (300,000ms)
+     - Backup creation timeout: 2 minutes (120,000ms)
+     - Extraction timeout: 2 minutes (120,000ms)
+     - Package validation timeout: 5 seconds (5,000ms) per NFR-1
+   - Wrap long-running operations with timeout:
+     - `withTimeout(operation, timeoutMs, operationName): Promise<T>`
+   - On timeout: clean up partial state, return clear error
+5. Unit tests for:
    - Security check pass/fail scenarios
    - Hard link detection and --force requirement
+   - TOCTOU protection (file descriptor anchoring)
    - Version comparison accuracy
    - Resource limit enforcement
+   - Operation timeout enforcement
+   - Timeout cleanup behavior
 
 #### Deliverables
 - [ ] Updated `src/generators/updater.ts` - Security checks and version comparison
 - [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 6 tests
 - [ ] Security checks blocking unsafe operations
 - [ ] Version comparison providing accurate diffs
+- [ ] TOCTOU-safe file operations using directory FD anchoring
+- [ ] Operation timeouts enforced (5min update, 2min backup, 2min extraction)
 
 ---
 
@@ -290,10 +364,13 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Check for stale locks (process not running)
    - Return `UpdateError` if lock cannot be acquired
 2. Implement Backup Creation (unless `--no-backup`):
+   - First call `validateBackupWritability()` from `backup-manager.ts` (Edge case 20)
+   - If not writable and not `--no-backup`: return error before any modifications
    - Use `createBackup()` from `backup-manager.ts` (FR-4)
    - Store backup path for potential rollback
    - Skip with warning if `--no-backup` flag set
    - Log backup location to user
+   - Show progress indicator if backup takes >2 seconds (NFR-1)
 3. Implement Confirmation (unless `--force`):
    - Format summary using `update-formatter.ts` (FR-5)
    - Display version comparison, file changes, backup location
@@ -337,7 +414,23 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - On success: Remove renamed old directory using `safeDelete()`
    - On success: Remove backup unless `--keep-backup` (FR-9)
    - Always: Release lock file
-   - Always: Log to audit log (NFR-6)
+   - Always: Log to audit log with exact format (NFR-6):
+     ```
+     [ISO-8601 timestamp] UPDATE <skill-name> <scope> <status> <details>
+     ```
+     Where:
+     - timestamp: e.g., `2025-01-15T14:30:00.000Z`
+     - skill-name: validated skill name
+     - scope: `project` or `personal`
+     - status: `SUCCESS`, `FAILED`, `ROLLED_BACK`, or `ROLLBACK_FAILED`
+     - details: JSON object with:
+       - `packagePath`: source package path
+       - `backupPath`: backup location (if created)
+       - `previousFiles`: file count before
+       - `currentFiles`: file count after (on success)
+       - `error`: error message (on failure)
+       - `noBackup`: boolean if --no-backup was used
+   - Use existing `audit-logger.ts` with update-specific formatter
 4. Unit tests for:
    - Successful update flow
    - Extraction failure handling
@@ -349,6 +442,8 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 - [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 8 tests
 - [ ] Atomic update operation working
 - [ ] Proper cleanup in all scenarios
+- [ ] Audit log entries follow exact format from NFR-6
+- [ ] Audit log captures --no-backup flag usage
 
 ---
 
@@ -378,8 +473,14 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 3. Implement Signal Handling (NFR-7):
    - Use existing `signal-handler.ts`
    - Clean up lock file on SIGINT/SIGTERM
-   - If mid-execution: complete current operation then rollback
+   - If mid-execution: complete current atomic operation then rollback
    - If pre-execution: clean exit with no changes
+   - Track current operation phase for proper cleanup:
+     - `Phase.VALIDATION`: exit immediately, no cleanup needed
+     - `Phase.BACKUP`: complete backup, then exit
+     - `Phase.EXECUTION`: complete current file op, then rollback
+     - `Phase.CLEANUP`: complete cleanup, then exit
+   - Display clear state after interruption showing what was preserved/rolled back
 4. Unit tests for:
    - Rollback from various failure points
    - Rollback failure handling (critical error)
