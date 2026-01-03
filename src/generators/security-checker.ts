@@ -245,29 +245,28 @@ export async function* checkHardLinks(skillPath: string): AsyncGenerator<HardLin
 export async function detectHardLinkWarnings(skillPath: string): Promise<HardLinkWarning | null> {
   const hardLinks: HardLinkInfo[] = [];
   const MAX_REPORTED = 10;
+  let totalCount = 0;
 
   for await (const hardLink of checkHardLinks(skillPath)) {
+    totalCount++;
+    // Only store up to MAX_REPORTED for display, but keep counting all
     if (hardLinks.length < MAX_REPORTED) {
-      hardLinks.push(hardLink);
-    } else if (hardLinks.length === MAX_REPORTED) {
-      // We've collected enough, but continue counting
       hardLinks.push(hardLink);
     }
   }
 
-  if (hardLinks.length === 0) {
+  if (totalCount === 0) {
     return null;
   }
 
-  const count = hardLinks.length;
-  const filesWord = count === 1 ? 'file has' : 'files have';
-  const moreText = count > MAX_REPORTED ? ` (showing first ${MAX_REPORTED})` : '';
+  const filesWord = totalCount === 1 ? 'file has' : 'files have';
+  const moreText = totalCount > MAX_REPORTED ? ` (showing first ${MAX_REPORTED})` : '';
 
   return {
-    count,
-    files: hardLinks.slice(0, MAX_REPORTED),
+    count: totalCount,
+    files: hardLinks,
     message:
-      `Warning: ${count} ${filesWord} multiple hard links${moreText}. ` +
+      `Warning: ${totalCount} ${filesWord} multiple hard links${moreText}. ` +
       'These files exist in other locations and removing them here will not delete the data. ' +
       'Use --force to proceed.',
   };

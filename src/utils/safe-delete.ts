@@ -84,10 +84,24 @@ export interface DeleteSummary {
 }
 
 /**
+ * Delay in milliseconds before retrying a locked file deletion
+ */
+const LOCKED_FILE_RETRY_DELAY_MS = 100;
+
+/**
  * Delay for retry attempts
  */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Internal result type that includes the original error for retry logic.
+ * This is never exposed externally - it's converted to SafeDeleteResult before returning.
+ */
+interface InternalDeleteAttempt {
+  result: SafeDeleteResult;
+  originalError?: unknown;
 }
 
 /**
@@ -142,25 +156,29 @@ export async function safeUnlink(basePath: string, filePath: string): Promise<Sa
   }
 
   // Now we know the file exists and is within bounds - delete it
-  const attemptDelete = async (): Promise<SafeDeleteResult> => {
+  const attemptDelete = async (): Promise<InternalDeleteAttempt> => {
     try {
       if (verification.pathType === 'directory') {
         // Try to remove as empty directory
         try {
           await fs.rmdir(filePath);
           return {
-            type: 'success',
-            path: filePath,
-            pathType: 'directory',
-            size: 0,
+            result: {
+              type: 'success',
+              path: filePath,
+              pathType: 'directory',
+              size: 0,
+            },
           };
         } catch (error) {
           if (hasErrorCode(error, 'ENOTEMPTY')) {
             return {
-              type: 'skipped',
-              path: filePath,
-              reason: 'not-empty',
-              message: 'Directory is not empty (will be retried after contents are deleted)',
+              result: {
+                type: 'skipped',
+                path: filePath,
+                reason: 'not-empty',
+                message: 'Directory is not empty (will be retried after contents are deleted)',
+              },
             };
           }
           throw error;
@@ -169,43 +187,37 @@ export async function safeUnlink(basePath: string, filePath: string): Promise<Sa
         // Files and symlinks use unlink
         await fs.unlink(filePath);
         return {
-          type: 'success',
-          path: filePath,
-          pathType: verification.pathType,
-          size: verification.size,
+          result: {
+            type: 'success',
+            path: filePath,
+            pathType: verification.pathType,
+            size: verification.size,
+          },
         };
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
-        type: 'error',
-        path: filePath,
-        message: `Failed to delete: ${message}`,
-        // Store the original error for retry logic
-        _originalError: error,
-      } as DeleteError & { _originalError: unknown };
+        result: {
+          type: 'error',
+          path: filePath,
+          message: `Failed to delete: ${message}`,
+        },
+        originalError: error,
+      };
     }
   };
 
   // First attempt
-  let result = await attemptDelete();
+  let attempt = await attemptDelete();
 
   // Retry once if file is locked
-  if (
-    result.type === 'error' &&
-    '_originalError' in result &&
-    isFileLocked((result as { _originalError: unknown })._originalError)
-  ) {
-    // Wait 100ms and retry once
-    await delay(100);
-    result = await attemptDelete();
+  if (attempt.result.type === 'error' && isFileLocked(attempt.originalError)) {
+    await delay(LOCKED_FILE_RETRY_DELAY_MS);
+    attempt = await attemptDelete();
 
     // If still locked, provide a helpful message
-    if (
-      result.type === 'error' &&
-      '_originalError' in result &&
-      isFileLocked((result as { _originalError: unknown })._originalError)
-    ) {
+    if (attempt.result.type === 'error' && isFileLocked(attempt.originalError)) {
       return {
         type: 'skipped',
         path: filePath,
@@ -215,13 +227,7 @@ export async function safeUnlink(basePath: string, filePath: string): Promise<Sa
     }
   }
 
-  // Clean up the internal _originalError property before returning
-  if (result.type === 'error' && '_originalError' in result) {
-    const { _originalError, ...cleanResult } = result as DeleteError & { _originalError: unknown };
-    return cleanResult as DeleteError;
-  }
-
-  return result;
+  return attempt.result;
 }
 
 /**

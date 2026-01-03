@@ -447,4 +447,181 @@ describe('uninstall integration', () => {
       await expect(fs.access(skillPath)).rejects.toThrow();
     });
   });
+
+  describe('CLI invocation', () => {
+    /**
+     * Helper to run uninstall CLI command
+     */
+    function runUninstallCli(
+      args: string,
+      options?: { expectError?: boolean }
+    ): { stdout: string; exitCode: number } {
+      try {
+        const stdout = execSync(`node "${cliPath}" uninstall ${args}`, {
+          encoding: 'utf-8',
+          cwd: tempDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        return { stdout, exitCode: 0 };
+      } catch (error) {
+        if (options?.expectError) {
+          const execError = error as { stdout?: string; status?: number };
+          return {
+            stdout: execError.stdout || '',
+            exitCode: execError.status || 1,
+          };
+        }
+        throw error;
+      }
+    }
+
+    it('displays help with --help flag', () => {
+      const { stdout } = runUninstallCli('--help');
+
+      expect(stdout).toContain('Uninstall Claude Code skills');
+      expect(stdout).toContain('--scope');
+      expect(stdout).toContain('--force');
+      expect(stdout).toContain('--dry-run');
+      expect(stdout).toContain('--quiet');
+      expect(stdout).toContain('Examples:');
+      expect(stdout).toContain('Exit Codes:');
+    });
+
+    it('uninstalls a skill via CLI with --force', async () => {
+      // Create a skill to uninstall
+      const skillPath = path.join(tempDir, '.claude', 'skills', 'cli-test-skill');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(
+        path.join(skillPath, 'SKILL.md'),
+        '---\nname: cli-test-skill\ndescription: CLI test\n---\n\n# CLI Test'
+      );
+
+      const { stdout, exitCode } = runUninstallCli('cli-test-skill --force');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Successfully uninstalled');
+      expect(stdout).toContain('cli-test-skill');
+
+      // Verify skill is removed
+      await expect(fs.access(skillPath)).rejects.toThrow();
+    });
+
+    it('shows dry-run output without removing files', async () => {
+      const skillPath = path.join(tempDir, '.claude', 'skills', 'dry-run-cli');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), '# Dry run test');
+      await fs.writeFile(path.join(skillPath, 'extra.txt'), 'Extra content');
+
+      const { stdout, exitCode } = runUninstallCli('dry-run-cli --dry-run');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/dry run/i); // Case-insensitive match
+      expect(stdout).toContain('SKILL.md');
+      expect(stdout).toMatch(/no changes/i);
+
+      // Verify skill still exists
+      const stats = await fs.stat(skillPath);
+      expect(stats.isDirectory()).toBe(true);
+    });
+
+    it('outputs minimal info with --quiet --force', async () => {
+      const skillPath = path.join(tempDir, '.claude', 'skills', 'quiet-cli');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), '# Quiet test');
+
+      const { stdout, exitCode } = runUninstallCli('quiet-cli --quiet --force');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('quiet-cli');
+      expect(stdout).toContain('uninstalled');
+      // Quiet output should be concise (single line)
+      const lines = stdout
+        .trim()
+        .split('\n')
+        .filter((l) => l.trim());
+      expect(lines.length).toBeLessThanOrEqual(2);
+    });
+
+    it('returns exit code 1 for skill not found', async () => {
+      const { exitCode } = runUninstallCli('nonexistent-skill --force', {
+        expectError: true,
+      });
+
+      expect(exitCode).toBe(1);
+    });
+
+    it('returns exit code 5 for invalid skill name', async () => {
+      const { exitCode } = runUninstallCli('../../../etc/passwd --force', {
+        expectError: true,
+      });
+
+      expect(exitCode).toBe(5);
+    });
+
+    it('returns exit code 5 for invalid scope', async () => {
+      const { exitCode } = runUninstallCli('some-skill --scope /tmp/evil --force', {
+        expectError: true,
+      });
+
+      expect(exitCode).toBe(5);
+    });
+
+    it('uninstalls multiple skills via CLI', async () => {
+      // Create multiple skills
+      for (const name of ['multi-cli-1', 'multi-cli-2', 'multi-cli-3']) {
+        const skillPath = path.join(tempDir, '.claude', 'skills', name);
+        await fs.mkdir(skillPath, { recursive: true });
+        await fs.writeFile(path.join(skillPath, 'SKILL.md'), `# ${name}`);
+      }
+
+      // Need to type "yes" for bulk force uninstall, so use --force with less than 3
+      // or test with 2 skills
+      const { stdout, exitCode } = runUninstallCli('multi-cli-1 multi-cli-2 --force');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('multi-cli-1');
+      expect(stdout).toContain('multi-cli-2');
+
+      // Verify skills are removed
+      await expect(
+        fs.access(path.join(tempDir, '.claude', 'skills', 'multi-cli-1'))
+      ).rejects.toThrow();
+      await expect(
+        fs.access(path.join(tempDir, '.claude', 'skills', 'multi-cli-2'))
+      ).rejects.toThrow();
+    });
+
+    it('shows personal scope path when using --scope personal', async () => {
+      // This test just verifies the output mentions the personal scope
+      // We don't actually create a skill in ~/.claude/skills to avoid side effects
+      const { stdout } = runUninstallCli('nonexistent --scope personal --force', {
+        expectError: true,
+      });
+
+      // Should show the personal scope path in error message
+      expect(stdout).toMatch(/\.claude\/skills/);
+    });
+
+    it('full lifecycle: scaffold → uninstall via CLI', async () => {
+      // Scaffold a skill
+      execSync(
+        `node "${cliPath}" scaffold lifecycle-cli-test --output "${path.join(tempDir, '.claude', 'skills')}" --description "Lifecycle test" --force`,
+        { encoding: 'utf-8', cwd: tempDir }
+      );
+
+      // Verify it was created
+      const skillPath = path.join(tempDir, '.claude', 'skills', 'lifecycle-cli-test');
+      const stats = await fs.stat(skillPath);
+      expect(stats.isDirectory()).toBe(true);
+
+      // Uninstall via CLI
+      const { stdout, exitCode } = runUninstallCli('lifecycle-cli-test --force');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Successfully uninstalled');
+
+      // Verify it's gone
+      await expect(fs.access(skillPath)).rejects.toThrow();
+    });
+  });
 });
