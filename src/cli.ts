@@ -7,6 +7,7 @@ import { registerScaffoldCommand } from './commands/scaffold';
 import { registerValidateCommand } from './commands/validate';
 import { registerPackageCommand } from './commands/package';
 import { registerInstallCommand } from './commands/install';
+import { registerUninstallCommand } from './commands/uninstall';
 
 const program = new Command();
 
@@ -22,5 +23,6 @@ registerScaffoldCommand(program);
 registerValidateCommand(program);
 registerPackageCommand(program);
 registerInstallCommand(program);
+registerUninstallCommand(program);
 
 program.parse();

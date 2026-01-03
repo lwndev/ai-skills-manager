@@ -293,9 +293,120 @@ Skills can execute code and access files. Only install packages from trusted sou
 
 *Coming soon*
 
-### Remove a Skill
+### Uninstall a Skill
 
-*Coming soon*
+Use the `uninstall` command to remove installed Claude Code skills:
+
+```bash
+# Uninstall from project scope (default: .claude/skills/)
+asm uninstall my-skill
+
+# Uninstall from personal scope (~/.claude/skills/)
+asm uninstall my-skill --scope personal
+
+# Force uninstall without confirmation
+asm uninstall my-skill --force
+
+# Preview what would be removed (dry run)
+asm uninstall my-skill --dry-run
+
+# Uninstall multiple skills
+asm uninstall skill1 skill2 skill3
+
+# Quiet mode for CI/CD
+asm uninstall my-skill --quiet --force
+```
+
+#### Uninstall Options
+
+| Option | Description |
+|--------|-------------|
+| `-s, --scope <scope>` | Skill location: "project" or "personal" (default: project) |
+| `-f, --force` | Remove without confirmation prompt |
+| `-n, --dry-run` | Preview what would be removed without making changes |
+| `-q, --quiet` | Quiet mode - minimal output |
+
+#### Security Restrictions
+
+For safety, the uninstall command only supports the two official Claude Code skill locations:
+
+| Scope | Directory | Description |
+|-------|-----------|-------------|
+| `project` | `.claude/skills/` | Skills for current project only |
+| `personal` | `~/.claude/skills/` | Skills available across all projects |
+
+Custom paths are not allowed for uninstall operations to prevent accidental deletion of important files.
+
+#### Skill Name Validation
+
+Skill names are validated to prevent path traversal attacks:
+
+- Contain only lowercase letters, numbers, and hyphens
+- Cannot start or end with a hyphen
+- Cannot contain consecutive hyphens
+- No path separators (`/` or `\`)
+- 1-64 characters long
+
+Note: Unlike the `scaffold` command, `uninstall` does not block reserved words ("anthropic", "claude") to allow uninstalling skills created before that restriction was added.
+
+#### Exit Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Skill(s) uninstalled successfully |
+| 1 | Skill not found |
+| 2 | File system error (permission denied, etc.) |
+| 3 | User cancelled uninstallation |
+| 4 | Partial failure (some skills removed, some failed) |
+| 5 | Security error (invalid name, symlink escape, etc.) |
+
+#### Bulk Uninstall Safety
+
+When uninstalling 3 or more skills with `--force`, you will be prompted to type "yes" to confirm. This is an additional safety measure for bulk operations.
+
+#### Output Examples
+
+**Normal output (single skill):**
+```
+Locating skill 'my-skill' in .claude/skills/...
+Found: .claude/skills/my-skill
+
+Files to be removed:
+  SKILL.md (1.2 KB)
+  scripts/helper.sh (500 B)
+
+Total: 2 files, 1.7 KB
+
+This action cannot be undone.
+Proceed with uninstall? [y/N] y
+
+Removing files...
+  ✓ scripts/helper.sh
+  ✓ SKILL.md
+  ✓ scripts/
+  ✓ my-skill/
+
+✓ Successfully uninstalled 'my-skill'
+  Removed: 4 items (1.7 KB)
+```
+
+**Quiet output:**
+```
+✓ my-skill uninstalled from project (4 files, 1.7 KB)
+```
+
+**Dry run output:**
+```
+[DRY RUN] Would remove skill 'my-skill' from .claude/skills/
+
+Files that would be removed:
+  SKILL.md (1.2 KB)
+  scripts/helper.sh (500 B)
+
+Total: 2 files, 1.7 KB
+
+No changes were made.
+```
 
 ## Development
 
@@ -419,6 +530,21 @@ Skill descriptions must be 1024 characters or less. Shorten your description in 
 
 **Error: Name contains reserved word**
 Skill names cannot contain "anthropic" or "claude". Choose a different name.
+
+**Error: Skill not found**
+The specified skill does not exist in the target scope. Check the skill name and use `--scope personal` if the skill is in your personal directory.
+
+**Error: Skill is currently being uninstalled**
+Another uninstall operation is in progress for this skill. Wait for it to complete or check if a stale lock file exists.
+
+**Error: Security error - symlink escape**
+The skill directory or its contents contain symlinks pointing outside the allowed scope. This is blocked for security. Review the skill directory contents and remove any symlinks pointing to external locations.
+
+**Error: SKILL.md not found (use --force)**
+The directory exists but doesn't contain a SKILL.md file, suggesting it may not be a valid skill. Use `--force` if you're sure you want to remove it.
+
+**Error: Hard links detected (use --force)**
+Files in the skill directory have hard links to other locations. Deleting them will leave the data accessible elsewhere. Use `--force` if this is acceptable.
 
 ### Debug Mode
 

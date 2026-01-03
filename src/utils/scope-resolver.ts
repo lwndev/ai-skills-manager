@@ -58,10 +58,12 @@ export function getProjectSkillsDir(cwd?: string): string {
  * Gets the personal skills directory path
  * Returns ~/.claude/skills/ with tilde expanded
  *
+ * @param homedir - Home directory override (defaults to os.homedir())
  * @returns Absolute path to personal skills directory
  */
-export function getPersonalSkillsDir(): string {
-  return path.join(os.homedir(), PERSONAL_SKILLS_DIR);
+export function getPersonalSkillsDir(homedir?: string): string {
+  const home = homedir ?? os.homedir();
+  return path.join(home, PERSONAL_SKILLS_DIR);
 }
 
 /**
@@ -69,9 +71,10 @@ export function getPersonalSkillsDir(): string {
  *
  * @param scope - The scope option value ('project', 'personal', or custom path)
  * @param cwd - Current working directory for project scope (defaults to process.cwd())
+ * @param homedir - Home directory for personal scope (defaults to os.homedir())
  * @returns Resolved scope information
  */
-export function resolveScope(scope: string | undefined, cwd?: string): ScopeInfo {
+export function resolveScope(scope: string | undefined, cwd?: string, homedir?: string): ScopeInfo {
   // Default to project scope if not specified
   if (!scope) {
     return {
@@ -93,7 +96,7 @@ export function resolveScope(scope: string | undefined, cwd?: string): ScopeInfo
   if (normalizedScope === 'personal') {
     return {
       type: 'personal',
-      path: getPersonalSkillsDir(),
+      path: getPersonalSkillsDir(homedir),
     };
   }
 
