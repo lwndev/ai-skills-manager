@@ -263,7 +263,7 @@ This implementation prioritizes security due to the destructive nature of the op
 
 ### Phase 5: User Interaction & Output Formatting
 **Feature:** [FEAT-005](../features/FEAT-005-uninstall-skill-command.md) | [#5](https://github.com/lwndev/ai-skills-manager/issues/5) (User Experience)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Provides the user-facing layer for the uninstall operation
@@ -318,9 +318,9 @@ This implementation prioritizes security due to the destructive nature of the op
 3. Write tests for all formatters
 
 #### Deliverables
-- [ ] `src/formatters/uninstall-formatter.ts` - Output formatting
-- [ ] Extended `src/utils/prompts.ts` with uninstall confirmations
-- [ ] `tests/unit/formatters/uninstall-formatter.test.ts` - Formatter tests
+- [x] `src/formatters/uninstall-formatter.ts` - Output formatting
+- [x] Extended `src/utils/prompts.ts` with uninstall confirmations
+- [x] `tests/unit/formatters/uninstall-formatter.test.ts` - Formatter tests
 
 ---
 
