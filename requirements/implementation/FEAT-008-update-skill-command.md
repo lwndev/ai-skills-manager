@@ -14,6 +14,15 @@ The implementation leverages 35+ existing components from FEAT-004 (install) and
 
 ## Recommended Build Sequence
 
+This implementation uses 14 phases, splitting the complex updater logic and comprehensive testing into manageable increments:
+
+- **Phases 1-4**: Foundation (types, backup, comparator, formatter)
+- **Phases 5-9**: Core updater logic (split from original monolithic phase)
+- **Phase 10**: CLI command integration
+- **Phases 11-14**: Testing and documentation (split from original monolithic phase)
+
+---
+
 ### Phase 1: Type Definitions & Infrastructure
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
 **Status:** Pending
@@ -184,96 +193,215 @@ The implementation leverages 35+ existing components from FEAT-004 (install) and
 
 ---
 
-### Phase 5: Core Update Generator
+### Phase 5: Updater - Input & Discovery
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
 **Status:** Pending
 
 #### Rationale
-- **Core orchestration**: Ties all components together
-- **Depends on Phases 2-4**: Requires backup manager, comparator, and types
-- **Complex state management**: Must handle success, failure, and rollback paths
-- **Security-critical**: Implements all security requirements
+- **Foundation for updater**: Establishes the updater module structure
+- **Depends on Phases 1-4**: Requires types, backup manager, comparator, and formatter
+- **Validates inputs early**: Fails fast on invalid inputs before any file operations
+- **Reuses existing validators**: Leverages install/uninstall validation logic
 
 #### Implementation Steps
-1. Create `src/generators/updater.ts` with main orchestration:
-   - `updateSkill(skillName, packagePath, options): Promise<UpdateResultUnion>` - Main entry point
-2. Implement update phases:
-   - **Phase A: Input Validation**
-     - Use `validateSkillName()` from `validators/uninstall-name.ts` (FR-13)
-     - Use `validateUninstallScope()` from `validators/uninstall-scope.ts` (FR-12)
-     - Use `validatePackageFile()` from `validators/package-file.ts` (FR-14)
-   - **Phase B: Skill Discovery**
-     - Use `discoverSkill()` from `generators/skill-discovery.ts` (FR-1)
-     - Handle not-found and case-mismatch errors
-   - **Phase C: Package Validation**
-     - Extract package to temp directory
-     - Use `validatePackageStructure()` and `validatePackageContent()` from `install-validator.ts` (FR-2)
-     - Verify skill name matches installed skill (FR-2 edge case 15)
-   - **Phase D: Security Checks**
-     - Use `checkSymlinkSafety()` from `security-checker.ts` for installed skill
-     - Use `detectHardLinkWarnings()` for hard link detection (FR-16)
-     - Validate ZIP entries for path traversal (FR-15) - leverage existing `install-validator.ts`
-     - Require `--force` for hard links
-   - **Phase E: Version Comparison**
-     - Use `compareVersions()` from `version-comparator.ts` (FR-3)
-     - Detect and warn on downgrades
-   - **Phase F: Resource Limits**
-     - Check skill size < 1GB and file count < 10,000 (NFR-8)
-     - Require `--force` to exceed limits
-   - **Phase G: Lock Acquisition**
-     - Create lock file using existing `lock-file.ts` pattern (FR-17)
-     - Check for stale locks (process not running)
-   - **Phase H: Backup Creation** (unless `--no-backup`)
-     - Use `createBackup()` from `backup-manager.ts` (FR-4)
-     - Skip with warning if `--no-backup`
-   - **Phase I: Confirmation** (unless `--force`)
-     - Display summary using formatter (FR-5)
-     - Require explicit y/N confirmation
-   - **Phase J: Update Execution** (FR-6)
-     - Rename current skill to temporary name (atomic)
-     - Extract new package to skill location
-     - Verify extraction success
-     - If failure: rollback to renamed directory
-   - **Phase K: Post-Update Validation** (FR-7)
-     - Use `validateSkill()` from `generators/validate.ts`
-     - If failure: trigger rollback
-   - **Phase L: Cleanup**
-     - Remove renamed old directory (success) or restore (failure)
-     - Remove backup unless `--keep-backup` (FR-9)
-     - Release lock file
-     - Log to audit log (NFR-6)
-3. Implement rollback logic (FR-8):
-   - `rollbackUpdate(skillPath, tempPath, backupPath): Promise<RollbackResult>`
-   - Remove partial new installation
-   - Restore from renamed temp directory
-   - Keep backup on rollback
-4. Implement dry-run mode (FR-10):
-   - Run phases A-F only
-   - Return `UpdateDryRunPreview` with all information
-5. Handle signal interruption (NFR-7):
-   - Use existing `signal-handler.ts`
-   - Clean up lock file on SIGINT/SIGTERM
-   - Complete current operation then rollback
-6. Unit tests for:
-   - Each phase in isolation (mocked dependencies)
-   - State transitions (success → cleanup, failure → rollback)
-   - Exit code mapping
+1. Create `src/generators/updater.ts` with module structure:
+   - `updateSkill(skillName, packagePath, options): Promise<UpdateResultUnion>` - Main entry point (stub)
+   - Internal phase orchestration framework
+   - Result type handling
+2. Implement Input Validation:
+   - Use `validateSkillName()` from `validators/uninstall-name.ts` (FR-13)
+   - Use `validateUninstallScope()` from `validators/uninstall-scope.ts` (FR-12)
+   - Use `validatePackageFile()` from `validators/package-file.ts` (FR-14)
+   - Return early with appropriate `UpdateError` on validation failure
+3. Implement Skill Discovery:
+   - Use `discoverSkill()` from `generators/skill-discovery.ts` (FR-1)
+   - Handle not-found error with clear message
+   - Handle case-mismatch error with suggestion
+4. Implement Package Validation:
+   - Extract package to temp directory using `extractPackage()` from `utils/extractor.ts`
+   - Use `validatePackageStructure()` from `install-validator.ts` (FR-2)
+   - Use `validatePackageContent()` from `install-validator.ts` (FR-2)
+   - Verify skill name matches installed skill (FR-2 edge case 15)
+   - Clean up temp directory on validation failure
+5. Unit tests for:
+   - Input validation (valid and invalid cases)
+   - Skill discovery (found, not-found, case-mismatch)
+   - Package validation (valid, invalid structure, name mismatch)
 
 #### Deliverables
-- [ ] `src/generators/updater.ts` - Core update logic (~400-500 lines)
-- [ ] `tests/unit/generators/updater.test.ts` - Unit tests
-- [ ] All security requirements implemented
-- [ ] Rollback logic verified
+- [ ] `src/generators/updater.ts` - Module structure with input/discovery/package validation
+- [ ] `tests/unit/generators/updater.test.ts` - Unit tests for Phases 5 functionality
+- [ ] Input validation working with appropriate error messages
+- [ ] Skill discovery integrated with error handling
 
 ---
 
-### Phase 6: CLI Command Integration
+### Phase 6: Updater - Security & Analysis
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **Security before modification**: All security checks complete before any file changes
+- **Depends on Phase 5**: Requires validated inputs and discovered skill
+- **Leverages existing security**: Reuses security-checker.ts from install/uninstall
+- **Provides user visibility**: Version comparison shows what will change
+
+#### Implementation Steps
+1. Implement Security Checks:
+   - Use `checkSymlinkSafety()` from `security-checker.ts` for installed skill
+   - Use `detectHardLinkWarnings()` for hard link detection (FR-16)
+   - Validate ZIP entries for path traversal (FR-15) - leverage existing `install-validator.ts`
+   - Require `--force` for hard links, return error otherwise
+2. Implement Version Comparison:
+   - Use `compareVersions()` from `version-comparator.ts` (FR-3)
+   - Detect and warn on apparent downgrades
+   - Calculate file diff (added, removed, modified)
+3. Implement Resource Limits:
+   - Check skill size < 1GB and file count < 10,000 (NFR-8)
+   - Require `--force` to exceed limits
+   - Return clear error with limit values
+4. Unit tests for:
+   - Security check pass/fail scenarios
+   - Hard link detection and --force requirement
+   - Version comparison accuracy
+   - Resource limit enforcement
+
+#### Deliverables
+- [ ] Updated `src/generators/updater.ts` - Security checks and version comparison
+- [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 6 tests
+- [ ] Security checks blocking unsafe operations
+- [ ] Version comparison providing accurate diffs
+
+---
+
+### Phase 7: Updater - Preparation
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **Pre-execution setup**: Lock, backup, and confirm before any destructive operations
+- **Depends on Phase 6**: Requires security checks to pass first
+- **User confirmation**: Last chance to abort before changes
+- **Safety net**: Backup created before any modifications
+
+#### Implementation Steps
+1. Implement Lock Acquisition:
+   - Create lock file using existing `lock-file.ts` pattern (FR-17)
+   - Check for stale locks (process not running)
+   - Return `UpdateError` if lock cannot be acquired
+2. Implement Backup Creation (unless `--no-backup`):
+   - Use `createBackup()` from `backup-manager.ts` (FR-4)
+   - Store backup path for potential rollback
+   - Skip with warning if `--no-backup` flag set
+   - Log backup location to user
+3. Implement Confirmation (unless `--force`):
+   - Format summary using `update-formatter.ts` (FR-5)
+   - Display version comparison, file changes, backup location
+   - Require explicit y/N confirmation
+   - Return `UserCancelledError` on 'n' or Ctrl+C
+4. Unit tests for:
+   - Lock acquisition success/failure
+   - Backup creation success/failure
+   - Confirmation prompt handling
+   - --force and --no-backup flag behavior
+
+#### Deliverables
+- [ ] Updated `src/generators/updater.ts` - Lock, backup, and confirmation
+- [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 7 tests
+- [ ] Lock file preventing concurrent updates
+- [ ] Backup created with correct format and permissions
+
+---
+
+### Phase 8: Updater - Execution & Cleanup
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **Core update logic**: Performs the actual file replacement
+- **Depends on Phase 7**: Requires lock acquired and backup created
+- **Atomic operation**: Uses rename for safe replacement
+- **Post-validation**: Verifies update succeeded before cleanup
+
+#### Implementation Steps
+1. Implement Update Execution (FR-6):
+   - Rename current skill to temporary name (atomic operation)
+   - Extract new package to skill location using `extractPackage()`
+   - Verify extraction success (all files present)
+   - If extraction fails: immediately restore renamed directory
+2. Implement Post-Update Validation (FR-7):
+   - Use `validateSkill()` from `generators/validate.ts`
+   - Verify SKILL.md present and valid
+   - If validation fails: trigger rollback
+3. Implement Cleanup:
+   - On success: Remove renamed old directory using `safeDelete()`
+   - On success: Remove backup unless `--keep-backup` (FR-9)
+   - Always: Release lock file
+   - Always: Log to audit log (NFR-6)
+4. Unit tests for:
+   - Successful update flow
+   - Extraction failure handling
+   - Post-validation failure handling
+   - Cleanup in success and failure cases
+
+#### Deliverables
+- [ ] Updated `src/generators/updater.ts` - Execution and cleanup logic
+- [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 8 tests
+- [ ] Atomic update operation working
+- [ ] Proper cleanup in all scenarios
+
+---
+
+### Phase 9: Updater - Recovery Paths
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **Reliability**: Ensures skill is never left in broken state
+- **Depends on Phase 8**: Requires update execution logic complete
+- **Multiple recovery paths**: Handles rollback, dry-run, and signal interruption
+- **User confidence**: Clear feedback on recovery actions
+
+#### Implementation Steps
+1. Implement Rollback Logic (FR-8):
+   - `rollbackUpdate(skillPath, tempPath, backupPath): Promise<RollbackResult>`
+   - Remove partial new installation if present
+   - Restore from renamed temp directory (preferred) or backup
+   - Keep backup on rollback for manual recovery
+   - Return `UpdateRollbackError` on successful rollback
+   - Return `UpdateCriticalError` if rollback also fails
+2. Implement Dry-Run Mode (FR-10):
+   - Run phases 5-6 only (input, discovery, package, security, comparison)
+   - Skip phases 7-8 (lock, backup, confirmation, execution)
+   - Return `UpdateDryRunPreview` with all information
+   - Format output using `formatDryRun()` from formatter
+3. Implement Signal Handling (NFR-7):
+   - Use existing `signal-handler.ts`
+   - Clean up lock file on SIGINT/SIGTERM
+   - If mid-execution: complete current operation then rollback
+   - If pre-execution: clean exit with no changes
+4. Unit tests for:
+   - Rollback from various failure points
+   - Rollback failure handling (critical error)
+   - Dry-run output accuracy
+   - Signal handling cleanup
+
+#### Deliverables
+- [ ] Updated `src/generators/updater.ts` - Complete with all recovery paths (~400-500 lines total)
+- [ ] Updated `tests/unit/generators/updater.test.ts` - Complete unit test coverage
+- [ ] Rollback working from any failure point
+- [ ] Dry-run providing accurate preview
+- [ ] Signal handling cleaning up properly
+
+---
+
+### Phase 10: CLI Command Integration
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
 **Status:** Pending
 
 #### Rationale
 - **Final assembly**: Connects generator to CLI
-- **Depends on Phase 5**: Requires complete generator
+- **Depends on Phases 5-9**: Requires complete updater generator
 - **Follows established patterns**: Mirrors install/uninstall command structure
 - **User-facing interface**: All options and arguments defined here
 
@@ -320,86 +448,153 @@ The implementation leverages 35+ existing components from FEAT-004 (install) and
 
 ---
 
-### Phase 7: Comprehensive Testing & Documentation
+### Phase 11: Security Tests
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
 **Status:** Pending
 
 #### Rationale
-- **Quality assurance**: Ensures all requirements met before release
-- **Security verification**: All security tests must pass
-- **Documentation**: Users need clear guidance
-- **Depends on all phases**: Full implementation required
+- **Security first**: All security tests must pass before release
+- **Depends on Phase 10**: Requires complete CLI command
+- **Comprehensive coverage**: Tests all attack vectors
+- **100% pass rate required**: No security compromises allowed
 
 #### Implementation Steps
-1. Complete security test suite (requirements lines 591-684):
+1. Create `tests/security/update-security.test.ts` with test categories:
    - Input validation tests (path traversal, null bytes, Unicode)
    - Package security tests (ZIP bombs, symlinks, traversal)
    - Symlink tests (escape prevention, TOCTOU)
    - Case sensitivity tests (macOS/Windows)
    - Hard link tests (detection, warning, --force requirement)
+2. Add additional security test categories:
    - TOCTOU tests (race condition prevention)
    - Path resolution tests (containment verification)
    - Backup security tests (permissions, path escapes)
    - Resource limit tests (size, count, timeouts)
    - Concurrent access tests (lock files)
    - Signal handling tests (SIGINT cleanup)
-2. Edge case tests (requirements lines 536-552):
+3. Run security test suite and fix any failures
+4. Document security test coverage
+
+#### Deliverables
+- [ ] `tests/security/update-security.test.ts` - Complete security test suite
+- [ ] All security tests passing (100%)
+- [ ] Security test coverage documented
+
+---
+
+### Phase 12: Edge Cases & Integration Tests
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **Real-world scenarios**: Tests actual user workflows
+- **Depends on Phase 11**: Security tests should pass first
+- **Error handling**: Verifies graceful degradation
+- **Rollback verification**: Ensures recovery works correctly
+
+#### Implementation Steps
+1. Create `tests/integration/update-edge-cases.test.ts` with scenarios:
    - Same version update (info message)
    - Apparent downgrade (warning)
    - Backup directory creation
    - Disk full scenarios
    - Permission denied
    - Skill in use
-   - Rollback scenarios
+2. Add rollback and error scenarios:
+   - Rollback from extraction failure
+   - Rollback from validation failure
    - Name mismatch rejection
    - Concurrent update rejection
-   - **`--no-backup` failure scenario**: Test that when update fails with `--no-backup`:
-     - Warning message displayed: "Warning: Update failed and no backup exists. Original skill may be in inconsistent state."
-     - Rollback from temp directory attempted
-     - If rollback succeeds: Clear message that skill was restored from temp directory
-     - If rollback fails: Critical error with manual recovery instructions
-     - Audit log captures `--no-backup` flag and failure state
-3. Performance benchmark tests (NFR-1 compliance):
-   - Package validation completes within 5 seconds for typical packages
-   - Full update completes within 30 seconds for skills up to 50MB
-   - Backup creation completes within 2 minutes for skills up to 1GB
-   - Progress indicators displayed for operations >2 seconds
-   - Test fixture: Create test packages of varying sizes (1KB, 1MB, 50MB, 500MB)
-   - Benchmark runner: Measure and assert timing thresholds
-   - CI integration: Run performance tests on standardized hardware profile
-4. Output snapshot tests (formatter verification):
-   - Create snapshot fixtures matching requirements document output (lines 231-367)
-   - Test `formatUpdateProgress()` against expected progress messages
-   - Test `formatCurrentVersion()` / `formatNewVersion()` format
-   - Test `formatChangeSummary()` with sample diffs (added/removed/modified)
-   - Test `formatConfirmationPrompt()` complete summary
-   - Test `formatDowngradeWarning()` warning format
-   - Test `formatUpdateSuccess()` success message with stats
-   - Test `formatRollbackSuccess()` / `formatRollbackFailed()` messages
-   - Test `formatDryRun()` preview output
-   - Test `formatQuietOutput()` single-line format
-   - Test `formatError()` for each error type with suggestions
-   - Snapshot comparison: Exact match against requirements examples
-   - Update snapshots intentionally when output format changes
-5. Update README.md with:
-   - Update command documentation
-   - Examples for all options
-   - Backup/restore instructions
-6. Run full test suite:
-   - `npm run quality` must pass
-   - Coverage > 80% for new code
-   - All security tests passing (100%)
+3. Test `--no-backup` failure scenario:
+   - Warning message displayed: "Warning: Update failed and no backup exists..."
+   - Rollback from temp directory attempted
+   - If rollback succeeds: Clear message that skill was restored
+   - If rollback fails: Critical error with manual recovery instructions
+   - Audit log captures `--no-backup` flag and failure state
+4. Run integration tests and verify all pass
 
 #### Deliverables
-- [ ] `tests/security/update-security.test.ts` - Security test suite
-- [ ] `tests/integration/update-edge-cases.test.ts` - Edge case tests (including `--no-backup` failure scenario)
-- [ ] `tests/performance/update-benchmark.test.ts` - Performance benchmark tests (NFR-1)
-- [ ] `tests/unit/formatters/update-formatter.snapshot.test.ts` - Output snapshot tests
-- [ ] `tests/fixtures/snapshots/update-output/` - Snapshot fixtures matching requirements output
+- [ ] `tests/integration/update-edge-cases.test.ts` - Edge case tests
+- [ ] `--no-backup` failure scenario fully tested
+- [ ] All integration tests passing
+- [ ] Coverage > 80% for edge case code paths
+
+---
+
+### Phase 13: Performance & Snapshot Tests
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **NFR-1 compliance**: Performance thresholds must be met
+- **Depends on Phase 12**: Core functionality verified first
+- **Output verification**: Formatter output matches requirements exactly
+- **Regression prevention**: Snapshots catch unintended output changes
+
+#### Implementation Steps
+1. Create performance test fixtures:
+   - Small package: 1KB (baseline)
+   - Medium package: 1MB (typical)
+   - Large package: 50MB (stress test)
+   - XLarge package: 500MB (limit test, run separately)
+2. Create `tests/performance/update-benchmark.test.ts`:
+   - Package validation: <5 seconds for packages up to 50MB
+   - Full update cycle: <30 seconds for skills up to 50MB
+   - Backup creation: <2 minutes for skills up to 1GB
+   - Progress indicator threshold: 2 seconds
+   - Allow 20% variance for CI environment fluctuations
+3. Create output snapshot tests:
+   - `tests/unit/formatters/update-formatter.snapshot.test.ts`
+   - Test all formatter functions against expected output
+   - Create `tests/fixtures/snapshots/update-output/` directory
+   - Snapshots for: success, error, rollback, dry-run, quiet, downgrade-warning
+4. Run benchmarks and snapshot tests
+
+#### Deliverables
+- [ ] `tests/fixtures/packages/` - Test packages of varying sizes
+- [ ] `tests/performance/update-benchmark.test.ts` - Performance benchmark tests
+- [ ] `tests/unit/formatters/update-formatter.snapshot.test.ts` - Snapshot tests
+- [ ] `tests/fixtures/snapshots/update-output/` - Snapshot fixtures
+- [ ] Performance benchmarks within thresholds (5s validation, 30s update, 2m backup)
+
+---
+
+### Phase 14: Documentation & Final QA
+**Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
+**Status:** Pending
+
+#### Rationale
+- **User guidance**: Clear documentation for update command
+- **Depends on Phases 11-13**: All tests must pass first
+- **Quality gate**: Final verification before release
+- **Complete feature**: Ready for merge
+
+#### Implementation Steps
+1. Update README.md with:
+   - Update command documentation
+   - Examples for all options (--force, --dry-run, --quiet, --no-backup, --keep-backup)
+   - Backup/restore instructions
+   - Troubleshooting section
+2. Run full quality suite:
+   - `npm run quality` must pass
+   - Verify coverage > 80% for all new code
+   - Verify all security tests passing (100%)
+   - Verify all performance benchmarks met
+3. Manual testing verification:
+   - Test update happy path in real environment
+   - Test rollback scenario manually
+   - Verify output matches requirements document
+4. Final review and cleanup:
+   - Remove any TODO comments
+   - Verify all deliverables complete
+   - Update implementation plan status to Complete
+
+#### Deliverables
 - [ ] Updated `README.md` - Update command documentation
 - [ ] All tests passing with >80% coverage
-- [ ] All security tests passing (100%)
-- [ ] Performance benchmarks within thresholds (5s validation, 30s update, 2m backup)
+- [ ] `npm run quality` passing
+- [ ] Manual testing completed
+- [ ] Implementation plan marked complete
 
 ---
 
@@ -578,9 +773,9 @@ Each phase must meet:
 ```
 src/
 ├── commands/
-│   └── update.ts              # Phase 6: CLI command
+│   └── update.ts              # Phase 10: CLI command
 ├── generators/
-│   └── updater.ts             # Phase 5: Core logic
+│   └── updater.ts             # Phases 5-9: Core logic
 ├── services/
 │   ├── backup-manager.ts      # Phase 2: Backup operations
 │   └── version-comparator.ts  # Phase 3: Version comparison
@@ -596,22 +791,22 @@ tests/
 │   │   └── version-comparator.test.ts
 │   ├── formatters/
 │   │   ├── update-formatter.test.ts
-│   │   └── update-formatter.snapshot.test.ts  # Phase 7: Snapshot tests
+│   │   └── update-formatter.snapshot.test.ts  # Phase 13: Snapshot tests
 │   └── generators/
 │       └── updater.test.ts
 ├── integration/
 │   ├── commands/
 │   │   └── update.test.ts
-│   └── update-edge-cases.test.ts              # Phase 7: Edge cases incl. --no-backup failure
+│   └── update-edge-cases.test.ts              # Phase 12: Edge cases incl. --no-backup failure
 ├── performance/
-│   └── update-benchmark.test.ts               # Phase 7: NFR-1 benchmarks
+│   └── update-benchmark.test.ts               # Phase 13: NFR-1 benchmarks
 ├── fixtures/
 │   ├── packages/                              # Test packages of varying sizes
 │   │   ├── small-skill.skill                  # 1KB
 │   │   ├── medium-skill.skill                 # 1MB
 │   │   └── large-skill.skill                  # 50MB (generated)
 │   └── snapshots/
-│       └── update-output/                     # Phase 7: Output snapshots
+│       └── update-output/                     # Phase 13: Output snapshots
 │           ├── success-output.snap
 │           ├── error-output.snap
 │           ├── rollback-output.snap
@@ -619,7 +814,7 @@ tests/
 │           ├── quiet-output.snap
 │           └── downgrade-warning.snap
 └── security/
-    └── update-security.test.ts
+    └── update-security.test.ts                # Phase 11: Security tests
 ```
 
 ---
@@ -633,8 +828,8 @@ tests/
 - Document security-critical functions
 
 ### Commit Strategy
-- One phase per branch (feat/FEAT-008-phase-N)
-- Squash merge to feature branch
+- One commit per phase
+- Squash merge to feature branch when PR is merged
 - Reference FEAT-008 and #16 in commits
 
 ### Review Process
@@ -653,10 +848,10 @@ The FEAT-008 update command builds on the robust foundation established by FEAT-
 3. **User visibility** via version comparison and detailed output
 4. **Comprehensive security** with 100 security tests
 
-The 7-phase approach ensures incremental progress with testable milestones:
-- Phases 1-4 build independent components in parallel-friendly order
-- Phase 5 integrates everything into core logic
-- Phase 6 exposes functionality to users
-- Phase 7 ensures quality and documentation
+The 14-phase approach ensures incremental progress with testable milestones:
+- **Phases 1-4**: Build independent foundation components (types, backup, comparator, formatter)
+- **Phases 5-9**: Implement updater logic incrementally (input → security → preparation → execution → recovery)
+- **Phase 10**: Expose functionality to users via CLI
+- **Phases 11-14**: Ensure quality (security tests → edge cases → performance → documentation)
 
 This completes the skill lifecycle management: create → validate → package → install → **update** → uninstall.
