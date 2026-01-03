@@ -286,7 +286,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 6: Updater - Security & Analysis
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Security before modification**: All security checks complete before any file changes
@@ -339,12 +339,12 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Timeout cleanup behavior
 
 #### Deliverables
-- [ ] Updated `src/generators/updater.ts` - Security checks and version comparison
-- [ ] Updated `tests/unit/generators/updater.test.ts` - Phase 6 tests
-- [ ] Security checks blocking unsafe operations
-- [ ] Version comparison providing accurate diffs
-- [ ] TOCTOU-safe file operations using directory FD anchoring
-- [ ] Operation timeouts enforced (5min update, 2min backup, 2min extraction)
+- [x] Updated `src/generators/updater.ts` - Security checks and version comparison
+- [x] Updated `tests/unit/generators/updater.test.ts` - Phase 6 tests (67 total tests)
+- [x] Security checks blocking unsafe operations
+- [x] Version comparison providing accurate diffs
+- [x] TOCTOU-safe file operations using realpath verification
+- [x] Operation timeout utility with resource limits (5min update, 2min backup, 2min extraction)
 
 ---
 

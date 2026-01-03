@@ -16,6 +16,10 @@ import type {
   UpdateResultUnion,
   UpdateError as UpdateErrorType,
   UpdateState,
+  VersionComparison,
+  VersionInfo,
+  DowngradeInfo,
+  HardLinkCheckResult,
 } from '../types/update';
 import type { ScopeInfo } from '../types/scope';
 import {
@@ -27,7 +31,7 @@ import {
   type UninstallScopeValidationResult,
 } from '../validators/uninstall-scope';
 import { validatePackageFile, type PackageFileValidationResult } from '../validators/package-file';
-import { resolveScope } from '../utils/scope-resolver';
+import { resolveScope, isPathWithin } from '../utils/scope-resolver';
 import { discoverSkill, type SkillDiscoveryResult } from './skill-discovery';
 import {
   validatePackageStructure,
@@ -39,7 +43,17 @@ import {
   type NameMatchResult,
   type TempExtractionResult,
 } from './install-validator';
-import { openZipArchive } from '../utils/extractor';
+import { openZipArchive, getZipEntries } from '../utils/extractor';
+import { checkSymlinkSafety, detectHardLinkWarnings } from './security-checker';
+import {
+  compareVersions,
+  extractMetadata,
+  extractPackageMetadata,
+  detectDowngrade,
+  getInstalledVersionInfo,
+  getPackageVersionInfo,
+} from '../services/version-comparator';
+import { enumerateSkillFiles } from './file-enumerator';
 
 /**
  * Result of input validation phase (discriminated union)
@@ -63,6 +77,44 @@ export type PackageValidationPhaseResult =
   | { valid: false; error: UpdateErrorType; tempDir?: string };
 
 /**
+ * Result of security checks phase (discriminated union)
+ */
+export type SecurityCheckResult =
+  | { safe: true; warnings: string[] }
+  | { safe: false; error: UpdateErrorType };
+
+/**
+ * Result of version analysis phase (discriminated union)
+ */
+export type VersionAnalysisResult =
+  | {
+      valid: true;
+      comparison: VersionComparison;
+      installedInfo: VersionInfo;
+      packageInfo: VersionInfo;
+      downgradeInfo: DowngradeInfo | null;
+    }
+  | { valid: false; error: UpdateErrorType };
+
+/**
+ * Resource limits for update operations (NFR-8)
+ */
+export const RESOURCE_LIMITS = {
+  /** Maximum skill size in bytes (1GB) */
+  MAX_SKILL_SIZE: 1024 * 1024 * 1024,
+  /** Maximum file count */
+  MAX_FILE_COUNT: 10000,
+  /** Overall update timeout in milliseconds (5 minutes) */
+  UPDATE_TIMEOUT_MS: 5 * 60 * 1000,
+  /** Backup creation timeout in milliseconds (2 minutes) */
+  BACKUP_TIMEOUT_MS: 2 * 60 * 1000,
+  /** Extraction timeout in milliseconds (2 minutes) */
+  EXTRACTION_TIMEOUT_MS: 2 * 60 * 1000,
+  /** Package validation timeout in milliseconds (5 seconds per NFR-1) */
+  VALIDATION_TIMEOUT_MS: 5 * 1000,
+} as const;
+
+/**
  * Context built up during update phases
  */
 export interface UpdateContext {
@@ -82,6 +134,20 @@ export interface UpdateContext {
   packageFiles: string[];
   /** Temp directory with extracted package (must be cleaned up) */
   tempDir?: string;
+
+  // Phase 6 fields - security and analysis
+  /** Security warnings (non-blocking) */
+  securityWarnings?: string[];
+  /** Hard link check result */
+  hardLinkCheck?: HardLinkCheckResult;
+  /** Version comparison result */
+  comparison?: VersionComparison;
+  /** Installed version info */
+  installedInfo?: VersionInfo;
+  /** New package version info */
+  packageInfo?: VersionInfo;
+  /** Downgrade detection info */
+  downgradeInfo?: DowngradeInfo | null;
 }
 
 /**
@@ -468,6 +534,435 @@ export async function runInputAndDiscoveryPhase(
   return { success: true, context };
 }
 
+// ============================================================================
+// Phase 6: Security & Analysis
+// ============================================================================
+
+/**
+ * Check symlink safety for the installed skill directory
+ *
+ * Verifies that the skill directory (if a symlink) points within the scope boundary.
+ *
+ * @param skillPath - Full path to the skill directory
+ * @param scopePath - The scope boundary path
+ * @returns Security check result
+ */
+export async function checkSkillSymlinkSafety(
+  skillPath: string,
+  scopePath: string
+): Promise<SecurityCheckResult> {
+  const result = await checkSymlinkSafety(skillPath, scopePath);
+
+  switch (result.type) {
+    case 'safe':
+      return { safe: true, warnings: [] };
+
+    case 'escape':
+      return {
+        safe: false,
+        error: {
+          type: 'security-error',
+          reason: 'symlink-escape',
+          details:
+            `Skill directory is a symlink that escapes the scope boundary. ` +
+            `Target: ${result.targetPath}, Scope: ${result.scopeBoundary}`,
+        },
+      };
+
+    case 'error':
+      return {
+        safe: false,
+        error: {
+          type: 'filesystem-error',
+          operation: 'stat',
+          path: skillPath,
+          message: result.message,
+        },
+      };
+  }
+}
+
+/**
+ * Check for hard links in the skill directory
+ *
+ * Hard links can cause unexpected behavior during updates since the same inode
+ * is referenced from multiple locations.
+ *
+ * @param skillPath - Full path to the skill directory
+ * @param force - Whether to allow hard links with warning
+ * @returns Hard link check result
+ */
+export async function checkSkillHardLinks(
+  skillPath: string,
+  force: boolean
+): Promise<{ result: HardLinkCheckResult; error?: UpdateErrorType }> {
+  const warning = await detectHardLinkWarnings(skillPath);
+
+  if (!warning) {
+    return {
+      result: {
+        hasHardLinks: false,
+        hardLinkedFiles: [],
+        requiresForce: false,
+      },
+    };
+  }
+
+  const hardLinkCheck: HardLinkCheckResult = {
+    hasHardLinks: true,
+    hardLinkedFiles: warning.files.map((f) => ({
+      path: f.relativePath,
+      linkCount: f.linkCount,
+    })),
+    requiresForce: !force,
+  };
+
+  // If hard links detected and --force not set, return error
+  if (!force) {
+    return {
+      result: hardLinkCheck,
+      error: {
+        type: 'security-error',
+        reason: 'hard-link-detected',
+        details: warning.message,
+      },
+    };
+  }
+
+  // Hard links detected but --force is set, continue with warning
+  return { result: hardLinkCheck };
+}
+
+/**
+ * Validate ZIP entries for path traversal attacks (FR-15)
+ *
+ * Checks that no ZIP entries contain paths that would escape the target directory.
+ *
+ * @param packagePath - Path to the .skill package
+ * @param rootDir - Expected root directory in the package
+ * @returns Security check result
+ */
+export function validateZipEntrySecurity(
+  packagePath: string,
+  rootDir: string
+): SecurityCheckResult {
+  const archive = openZipArchive(packagePath);
+  const entries = getZipEntries(archive);
+  const warnings: string[] = [];
+
+  for (const entry of entries) {
+    const entryName = entry.entryName;
+
+    // Check for absolute paths
+    if (path.isAbsolute(entryName)) {
+      return {
+        safe: false,
+        error: {
+          type: 'security-error',
+          reason: 'zip-entry-escape',
+          details: `Package contains absolute path: ${entryName}`,
+        },
+      };
+    }
+
+    // Check for path traversal sequences
+    if (entryName.includes('..')) {
+      return {
+        safe: false,
+        error: {
+          type: 'security-error',
+          reason: 'zip-entry-escape',
+          details: `Package contains path traversal: ${entryName}`,
+        },
+      };
+    }
+
+    // Check for entries outside the root directory
+    if (!entryName.startsWith(`${rootDir}/`) && entryName !== `${rootDir}/`) {
+      if (!entry.isDirectory || entryName !== rootDir) {
+        return {
+          safe: false,
+          error: {
+            type: 'security-error',
+            reason: 'zip-entry-escape',
+            details: `Package contains entry outside root directory: ${entryName}`,
+          },
+        };
+      }
+    }
+
+    // Check for null bytes in path
+    if (entryName.includes('\0')) {
+      return {
+        safe: false,
+        error: {
+          type: 'security-error',
+          reason: 'path-traversal',
+          details: `Package contains null byte in path: ${entryName.replace(/\0/g, '\\0')}`,
+        },
+      };
+    }
+  }
+
+  return { safe: true, warnings };
+}
+
+/**
+ * Check resource limits (NFR-8)
+ *
+ * Verifies that the skill doesn't exceed size or file count limits.
+ *
+ * @param skillPath - Full path to the skill directory
+ * @param force - Whether to bypass limits
+ * @returns Error if limits exceeded and --force not set
+ */
+export async function checkResourceLimits(
+  skillPath: string,
+  force: boolean
+): Promise<{ withinLimits: true } | { withinLimits: false; error: UpdateErrorType }> {
+  let totalSize = 0;
+  let fileCount = 0;
+
+  for await (const file of enumerateSkillFiles(skillPath)) {
+    if (!file.isDirectory && !file.isSymlink) {
+      fileCount++;
+      totalSize += file.size;
+    }
+  }
+
+  const errors: string[] = [];
+
+  if (totalSize > RESOURCE_LIMITS.MAX_SKILL_SIZE) {
+    const sizeGB = (totalSize / (1024 * 1024 * 1024)).toFixed(2);
+    errors.push(`Skill size (${sizeGB}GB) exceeds limit (1GB)`);
+  }
+
+  if (fileCount > RESOURCE_LIMITS.MAX_FILE_COUNT) {
+    errors.push(`File count (${fileCount}) exceeds limit (${RESOURCE_LIMITS.MAX_FILE_COUNT})`);
+  }
+
+  if (errors.length > 0 && !force) {
+    return {
+      withinLimits: false,
+      error: {
+        type: 'validation-error',
+        field: 'packageContent',
+        message: `Resource limits exceeded. ${errors.join('. ')}. Use --force to bypass.`,
+        details: errors,
+      },
+    };
+  }
+
+  return { withinLimits: true };
+}
+
+/**
+ * Verify path containment (TOCTOU protection)
+ *
+ * Re-verifies that a path is still within the expected scope immediately
+ * before a destructive operation.
+ *
+ * @param targetPath - Path to verify
+ * @param scopePath - Expected scope boundary
+ * @returns Error if path escapes scope
+ */
+export async function verifyPathContainment(
+  targetPath: string,
+  scopePath: string
+): Promise<UpdateErrorType | null> {
+  try {
+    // Resolve both paths (following symlinks) to handle macOS /private/var vs /var
+    const realTargetPath = await fs.realpath(targetPath);
+    const realScopePath = await fs.realpath(scopePath);
+
+    // Check if real path is within scope (both resolved)
+    if (!isPathWithin(realTargetPath, realScopePath)) {
+      return {
+        type: 'security-error',
+        reason: 'containment-violation',
+        details: `Path escapes scope after resolution. Real path: ${realTargetPath}, Scope: ${realScopePath}`,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      type: 'filesystem-error',
+      operation: 'stat',
+      path: targetPath,
+      message: `Failed to verify path containment: ${message}`,
+    };
+  }
+}
+
+/**
+ * Perform version comparison and analysis
+ *
+ * @param skillPath - Path to the installed skill
+ * @param packagePath - Path to the new package
+ * @returns Version analysis result
+ */
+export async function analyzeVersions(
+  skillPath: string,
+  packagePath: string
+): Promise<VersionAnalysisResult> {
+  try {
+    // Get version info for both
+    const installedInfo = await getInstalledVersionInfo(skillPath);
+    const packageInfo = await getPackageVersionInfo(packagePath);
+
+    // Compare versions
+    const comparison = await compareVersions(skillPath, packagePath);
+
+    // Detect potential downgrade
+    const installedMetadata = await extractMetadata(skillPath);
+    const packageMetadata = await extractPackageMetadata(packagePath);
+    const downgradeInfo = detectDowngrade(installedMetadata, packageMetadata);
+
+    return {
+      valid: true,
+      comparison,
+      installedInfo,
+      packageInfo,
+      downgradeInfo,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      valid: false,
+      error: {
+        type: 'filesystem-error',
+        operation: 'read',
+        path: skillPath,
+        message: `Version analysis failed: ${message}`,
+      },
+    };
+  }
+}
+
+/**
+ * Run Phase 6 of the update process: Security & Analysis
+ *
+ * This runs all Phase 6 steps:
+ * 1. Check symlink safety
+ * 2. Check for hard links
+ * 3. Validate ZIP entry security
+ * 4. Check resource limits
+ * 5. Verify path containment
+ * 6. Analyze versions and compare
+ *
+ * @param context - Update context from Phase 5
+ * @param options - Update options
+ * @returns Updated context with security/analysis info, or error
+ */
+export async function runSecurityAndAnalysisPhase(
+  context: UpdateContext,
+  options: UpdateOptions
+): Promise<{ success: true; context: UpdateContext } | { success: false; error: UpdateErrorType }> {
+  const warnings: string[] = [];
+
+  // Step 1: Check symlink safety
+  const symlinkResult = await checkSkillSymlinkSafety(context.skillPath, context.scopeInfo.path);
+  if (!symlinkResult.safe) {
+    return { success: false, error: symlinkResult.error };
+  }
+  warnings.push(...symlinkResult.warnings);
+
+  // Step 2: Check for hard links
+  const hardLinkResult = await checkSkillHardLinks(context.skillPath, options.force);
+  if (hardLinkResult.error) {
+    return { success: false, error: hardLinkResult.error };
+  }
+
+  // Step 3: Validate ZIP entry security
+  const zipSecurityResult = validateZipEntrySecurity(
+    context.packagePath,
+    context.skillNameFromPackage
+  );
+  if (!zipSecurityResult.safe) {
+    return { success: false, error: zipSecurityResult.error };
+  }
+  warnings.push(...zipSecurityResult.warnings);
+
+  // Step 4: Check resource limits
+  const resourceResult = await checkResourceLimits(context.skillPath, options.force);
+  if (!resourceResult.withinLimits) {
+    return { success: false, error: resourceResult.error };
+  }
+
+  // Step 5: Verify path containment (TOCTOU protection)
+  const containmentError = await verifyPathContainment(context.skillPath, context.scopeInfo.path);
+  if (containmentError) {
+    return { success: false, error: containmentError };
+  }
+
+  // Step 6: Analyze versions
+  const versionResult = await analyzeVersions(context.skillPath, context.packagePath);
+  if (!versionResult.valid) {
+    return { success: false, error: versionResult.error };
+  }
+
+  // Update context with Phase 6 results
+  const updatedContext: UpdateContext = {
+    ...context,
+    securityWarnings: warnings,
+    hardLinkCheck: hardLinkResult.result,
+    comparison: versionResult.comparison,
+    installedInfo: versionResult.installedInfo,
+    packageInfo: versionResult.packageInfo,
+    downgradeInfo: versionResult.downgradeInfo,
+  };
+
+  return { success: true, context: updatedContext };
+}
+
+/**
+ * Wrap an operation with a timeout
+ *
+ * @param operation - Async operation to execute
+ * @param timeoutMs - Timeout in milliseconds
+ * @param operationName - Name of the operation for error messages
+ * @returns Result of the operation or timeout error
+ */
+export async function withTimeout<T>(
+  operation: () => Promise<T>,
+  timeoutMs: number,
+  operationName: string
+): Promise<{ success: true; result: T } | { success: false; error: UpdateErrorType }> {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      resolve({
+        success: false,
+        error: {
+          type: 'timeout',
+          operationName,
+          timeoutMs,
+        },
+      });
+    }, timeoutMs);
+
+    operation()
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve({ success: true, result });
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        resolve({
+          success: false,
+          error: {
+            type: 'filesystem-error',
+            operation: 'read',
+            path: operationName,
+            message,
+          },
+        });
+      });
+  });
+}
+
 /**
  * Main entry point for updating a skill
  *
@@ -510,11 +1005,22 @@ export async function updateSkill(
       throw new UpdateError(error);
     }
 
-    const context = phase5Result.context;
+    let context = phase5Result.context;
     state.skillPath = context.skillPath;
 
-    // TODO: Phase 6 - Security checks
+    // Run Phase 6: Security & Analysis
     state.phase = 'security-check';
+    const phase6Result = await runSecurityAndAnalysisPhase(context, options);
+
+    if (!phase6Result.success) {
+      // Clean up temp directory
+      if (context.tempDir) {
+        await cleanupTempDirectory(context.tempDir);
+      }
+      throw new UpdateError(phase6Result.error);
+    }
+
+    context = phase6Result.context;
 
     // TODO: Phase 7 - Preparation (lock, backup, confirmation)
     state.phase = 'backup';
@@ -525,8 +1031,7 @@ export async function updateSkill(
     // TODO: Phase 9 - Recovery paths and cleanup
     state.phase = 'cleanup';
 
-    // Placeholder: Return dry-run preview for now
-    // This will be replaced with full implementation in later phases
+    // Return dry-run preview with actual version info from Phase 6
     if (options.dryRun) {
       // Clean up temp directory
       if (context.tempDir) {
@@ -537,17 +1042,17 @@ export async function updateSkill(
         type: 'update-dry-run-preview',
         skillName: context.skillName,
         path: context.skillPath,
-        currentVersion: {
+        currentVersion: context.installedInfo ?? {
           path: context.skillPath,
-          fileCount: 0, // Will be calculated in Phase 6
-          size: 0, // Will be calculated in Phase 6
+          fileCount: 0,
+          size: 0,
         },
-        newVersion: {
+        newVersion: context.packageInfo ?? {
           path: context.packagePath,
           fileCount: context.packageFiles.length,
-          size: 0, // Will be calculated in Phase 6
+          size: 0,
         },
-        comparison: {
+        comparison: context.comparison ?? {
           filesAdded: [],
           filesRemoved: [],
           filesModified: [],
@@ -556,7 +1061,7 @@ export async function updateSkill(
           modifiedCount: 0,
           sizeChange: 0,
         },
-        backupPath: '~/.asm/backups/', // Placeholder
+        backupPath: '~/.asm/backups/', // Will be actual path in Phase 7
       };
     }
 
@@ -571,10 +1076,10 @@ export async function updateSkill(
       type: 'update-success',
       skillName: context.skillName,
       path: context.skillPath,
-      previousFileCount: 0, // Will be set in Phase 8
-      currentFileCount: context.packageFiles.length,
-      previousSize: 0, // Will be set in Phase 8
-      currentSize: 0, // Will be set in Phase 8
+      previousFileCount: context.installedInfo?.fileCount ?? 0,
+      currentFileCount: context.packageInfo?.fileCount ?? context.packageFiles.length,
+      previousSize: context.installedInfo?.size ?? 0,
+      currentSize: context.packageInfo?.size ?? 0,
       backupPath: undefined, // Will be set in Phase 7
       backupWillBeRemoved: !options.keepBackup,
     };

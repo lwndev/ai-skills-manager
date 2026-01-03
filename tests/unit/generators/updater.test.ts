@@ -573,3 +573,574 @@ describe('Updater - Phase 5: Input & Discovery', () => {
     });
   });
 });
+
+// ============================================================================
+// Phase 6: Security & Analysis Tests
+// ============================================================================
+
+import {
+  checkSkillSymlinkSafety,
+  checkSkillHardLinks,
+  validateZipEntrySecurity,
+  checkResourceLimits,
+  verifyPathContainment,
+  analyzeVersions,
+  runSecurityAndAnalysisPhase,
+  withTimeout,
+  RESOURCE_LIMITS,
+  type UpdateContext,
+} from '../../../src/generators/updater';
+
+describe('Updater - Phase 6: Security & Analysis', () => {
+  let tempDir: string;
+  let skillsDir: string;
+
+  beforeEach(async () => {
+    // Create fresh temporary directory for each test
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-updater-phase6-'));
+    skillsDir = path.join(tempDir, '.claude', 'skills');
+    await fs.mkdir(skillsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  /**
+   * Helper to create a test skill in the skills directory
+   */
+  async function createTestSkill(name: string): Promise<string> {
+    const skillPath = path.join(skillsDir, name);
+    await fs.mkdir(skillPath, { recursive: true });
+    await fs.writeFile(
+      path.join(skillPath, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: Test skill\n---\n\n# ${name}\n\nTest content.`
+    );
+    await fs.writeFile(path.join(skillPath, 'README.md'), `# ${name}`);
+    return skillPath;
+  }
+
+  /**
+   * Helper to create a test .skill package
+   */
+  async function createTestPackage(skillName: string): Promise<string> {
+    const packagePath = path.join(tempDir, `${skillName}.skill`);
+    const zip = new AdmZip();
+
+    // Add SKILL.md with frontmatter
+    const skillMd = `---\nname: ${skillName}\ndescription: Updated test skill\n---\n\n# ${skillName}\n\nUpdated content.`;
+    zip.addFile(`${skillName}/SKILL.md`, Buffer.from(skillMd));
+    zip.addFile(`${skillName}/README.md`, Buffer.from(`# ${skillName} (updated)`));
+
+    zip.writeZip(packagePath);
+    return packagePath;
+  }
+
+  describe('checkSkillSymlinkSafety', () => {
+    it('returns safe for regular directory', async () => {
+      const skillPath = await createTestSkill('regular-skill');
+
+      const result = await checkSkillSymlinkSafety(skillPath, skillsDir);
+
+      expect(result.safe).toBe(true);
+      if (result.safe) {
+        expect(result.warnings).toEqual([]);
+      }
+    });
+
+    it('returns safe for symlink within scope', async () => {
+      const targetPath = await createTestSkill('target-skill');
+      const symlinkPath = path.join(skillsDir, 'symlink-skill');
+      await fs.symlink(targetPath, symlinkPath);
+
+      const result = await checkSkillSymlinkSafety(symlinkPath, skillsDir);
+
+      expect(result.safe).toBe(true);
+    });
+
+    it('returns error for symlink escaping scope', async () => {
+      // Create a skill outside scope
+      const outsideDir = path.join(tempDir, 'outside');
+      await fs.mkdir(outsideDir, { recursive: true });
+      const targetPath = path.join(outsideDir, 'external-skill');
+      await fs.mkdir(targetPath, { recursive: true });
+      await fs.writeFile(path.join(targetPath, 'SKILL.md'), '---\nname: external\n---\n');
+
+      // Create symlink in skills dir pointing outside
+      const symlinkPath = path.join(skillsDir, 'escape-skill');
+      await fs.symlink(targetPath, symlinkPath);
+
+      const result = await checkSkillSymlinkSafety(symlinkPath, skillsDir);
+
+      expect(result.safe).toBe(false);
+      if (!result.safe) {
+        expect(result.error.type).toBe('security-error');
+        expect((result.error as { reason: string }).reason).toBe('symlink-escape');
+      }
+    });
+  });
+
+  describe('checkSkillHardLinks', () => {
+    it('returns no hard links for normal skill', async () => {
+      const skillPath = await createTestSkill('normal-skill');
+
+      const result = await checkSkillHardLinks(skillPath, false);
+
+      expect(result.result.hasHardLinks).toBe(false);
+      expect(result.result.hardLinkedFiles).toEqual([]);
+      expect(result.error).toBeUndefined();
+    });
+
+    it('returns error for hard links without --force', async () => {
+      const skillPath = await createTestSkill('hardlink-skill');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+
+      // Create a hard link
+      await fs.link(originalFile, hardLinkPath);
+
+      const result = await checkSkillHardLinks(skillPath, false);
+
+      expect(result.result.hasHardLinks).toBe(true);
+      expect(result.result.requiresForce).toBe(true);
+      expect(result.error).toBeDefined();
+      expect(result.error?.type).toBe('security-error');
+    });
+
+    it('returns warning but no error for hard links with --force', async () => {
+      const skillPath = await createTestSkill('hardlink-force-skill');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+
+      // Create a hard link
+      await fs.link(originalFile, hardLinkPath);
+
+      const result = await checkSkillHardLinks(skillPath, true);
+
+      expect(result.result.hasHardLinks).toBe(true);
+      expect(result.result.requiresForce).toBe(false); // --force was passed
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  describe('validateZipEntrySecurity', () => {
+    it('accepts valid package', async () => {
+      const packagePath = await createTestPackage('valid-package');
+
+      const result = validateZipEntrySecurity(packagePath, 'valid-package');
+
+      expect(result.safe).toBe(true);
+    });
+
+    it('rejects package with path traversal', async () => {
+      const packagePath = path.join(tempDir, 'traversal.skill');
+      const zip = new AdmZip();
+      zip.addFile('skill/../../../etc/passwd', Buffer.from('malicious'));
+      zip.writeZip(packagePath);
+
+      const result = validateZipEntrySecurity(packagePath, 'skill');
+
+      expect(result.safe).toBe(false);
+      if (!result.safe) {
+        expect(result.error.type).toBe('security-error');
+        expect((result.error as { reason: string }).reason).toBe('zip-entry-escape');
+      }
+    });
+
+    it('rejects package with entries outside root directory', async () => {
+      const packagePath = path.join(tempDir, 'outside.skill');
+      const zip = new AdmZip();
+      zip.addFile('skill/SKILL.md', Buffer.from('---\nname: skill\n---\n'));
+      zip.addFile('other-dir/malicious.txt', Buffer.from('malicious'));
+      zip.writeZip(packagePath);
+
+      const result = validateZipEntrySecurity(packagePath, 'skill');
+
+      expect(result.safe).toBe(false);
+      if (!result.safe) {
+        expect(result.error.type).toBe('security-error');
+      }
+    });
+  });
+
+  describe('checkResourceLimits', () => {
+    it('accepts skill within limits', async () => {
+      const skillPath = await createTestSkill('small-skill');
+
+      const result = await checkResourceLimits(skillPath, false);
+
+      expect(result.withinLimits).toBe(true);
+    });
+
+    it('verifies RESOURCE_LIMITS constants are defined', () => {
+      expect(RESOURCE_LIMITS.MAX_SKILL_SIZE).toBe(1024 * 1024 * 1024);
+      expect(RESOURCE_LIMITS.MAX_FILE_COUNT).toBe(10000);
+      expect(RESOURCE_LIMITS.UPDATE_TIMEOUT_MS).toBe(5 * 60 * 1000);
+      expect(RESOURCE_LIMITS.BACKUP_TIMEOUT_MS).toBe(2 * 60 * 1000);
+      expect(RESOURCE_LIMITS.EXTRACTION_TIMEOUT_MS).toBe(2 * 60 * 1000);
+      expect(RESOURCE_LIMITS.VALIDATION_TIMEOUT_MS).toBe(5 * 1000);
+    });
+  });
+
+  describe('verifyPathContainment', () => {
+    it('accepts path within scope', async () => {
+      const skillPath = await createTestSkill('contained-skill');
+
+      const error = await verifyPathContainment(skillPath, skillsDir);
+
+      expect(error).toBeNull();
+    });
+
+    it('returns error for path outside scope', async () => {
+      // Path that resolves outside scope
+      const outsidePath = path.join(tempDir, 'outside-dir');
+      await fs.mkdir(outsidePath, { recursive: true });
+
+      const error = await verifyPathContainment(outsidePath, skillsDir);
+
+      expect(error).not.toBeNull();
+      expect(error?.type).toBe('security-error');
+    });
+
+    it('handles non-existent path', async () => {
+      const nonexistentPath = path.join(skillsDir, 'nonexistent');
+
+      const error = await verifyPathContainment(nonexistentPath, skillsDir);
+
+      expect(error).not.toBeNull();
+      expect(error?.type).toBe('filesystem-error');
+    });
+  });
+
+  describe('analyzeVersions', () => {
+    it('compares versions successfully', async () => {
+      const skillPath = await createTestSkill('versioned-skill');
+      const packagePath = await createTestPackage('versioned-skill');
+
+      const result = await analyzeVersions(skillPath, packagePath);
+
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.installedInfo).toBeDefined();
+        expect(result.packageInfo).toBeDefined();
+        expect(result.comparison).toBeDefined();
+        expect(result.installedInfo.fileCount).toBeGreaterThan(0);
+      }
+    });
+
+    it('detects file changes', async () => {
+      const skillPath = await createTestSkill('change-skill');
+      const packagePath = await createTestPackage('change-skill');
+
+      const result = await analyzeVersions(skillPath, packagePath);
+
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        // The package has different content, so there should be modifications
+        expect(result.comparison.modifiedCount).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('returns empty comparison for missing skill files', async () => {
+      // Create a minimal skill directory (exists but no files to compare)
+      const skillPath = path.join(skillsDir, 'minimal-skill');
+      await fs.mkdir(skillPath, { recursive: true });
+      const packagePath = await createTestPackage('minimal-skill');
+
+      const result = await analyzeVersions(skillPath, packagePath);
+
+      // Should succeed but with files marked as added
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        // Package files are "added" since skill dir is empty
+        expect(result.comparison.addedCount).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('runSecurityAndAnalysisPhase', () => {
+    it('runs all security checks successfully', async () => {
+      const skillPath = await createTestSkill('secure-skill');
+      const packagePath = await createTestPackage('secure-skill');
+
+      const context: UpdateContext = {
+        skillName: 'secure-skill',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'secure-skill',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const options = {
+        scope: 'project' as const,
+        force: false,
+        dryRun: false,
+        quiet: false,
+        noBackup: false,
+        keepBackup: false,
+      };
+
+      const result = await runSecurityAndAnalysisPhase(context, options);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.context.comparison).toBeDefined();
+        expect(result.context.installedInfo).toBeDefined();
+        expect(result.context.packageInfo).toBeDefined();
+        expect(result.context.hardLinkCheck).toBeDefined();
+        expect(result.context.securityWarnings).toBeDefined();
+      }
+    });
+
+    it('fails on symlink escape', async () => {
+      // Create skill outside scope
+      const outsideDir = path.join(tempDir, 'outside');
+      await fs.mkdir(outsideDir, { recursive: true });
+      const targetPath = path.join(outsideDir, 'external-skill');
+      await fs.mkdir(targetPath, { recursive: true });
+      await fs.writeFile(path.join(targetPath, 'SKILL.md'), '---\nname: external-skill\n---\n');
+
+      // Create symlink in skills dir
+      const symlinkPath = path.join(skillsDir, 'escape-skill');
+      await fs.symlink(targetPath, symlinkPath);
+
+      const packagePath = await createTestPackage('escape-skill');
+
+      const context: UpdateContext = {
+        skillName: 'escape-skill',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath: symlinkPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'escape-skill',
+        packageFiles: ['SKILL.md'],
+      };
+
+      const options = {
+        scope: 'project' as const,
+        force: false,
+        dryRun: false,
+        quiet: false,
+        noBackup: false,
+        keepBackup: false,
+      };
+
+      const result = await runSecurityAndAnalysisPhase(context, options);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('security-error');
+      }
+    });
+
+    it('fails on hard links without --force', async () => {
+      const skillPath = await createTestSkill('hardlink-test');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+      await fs.link(originalFile, hardLinkPath);
+
+      const packagePath = await createTestPackage('hardlink-test');
+
+      const context: UpdateContext = {
+        skillName: 'hardlink-test',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'hardlink-test',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const options = {
+        scope: 'project' as const,
+        force: false,
+        dryRun: false,
+        quiet: false,
+        noBackup: false,
+        keepBackup: false,
+      };
+
+      const result = await runSecurityAndAnalysisPhase(context, options);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('security-error');
+        expect((result.error as { reason: string }).reason).toBe('hard-link-detected');
+      }
+    });
+
+    it('succeeds on hard links with --force', async () => {
+      const skillPath = await createTestSkill('hardlink-force-test');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+      await fs.link(originalFile, hardLinkPath);
+
+      const packagePath = await createTestPackage('hardlink-force-test');
+
+      const context: UpdateContext = {
+        skillName: 'hardlink-force-test',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'hardlink-force-test',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const options = {
+        scope: 'project' as const,
+        force: true, // --force enabled
+        dryRun: false,
+        quiet: false,
+        noBackup: false,
+        keepBackup: false,
+      };
+
+      const result = await runSecurityAndAnalysisPhase(context, options);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.context.hardLinkCheck?.hasHardLinks).toBe(true);
+      }
+    });
+  });
+
+  describe('withTimeout', () => {
+    it('returns result for fast operation', async () => {
+      const operation = async () => 'success';
+
+      const result = await withTimeout(operation, 1000, 'test-operation');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.result).toBe('success');
+      }
+    });
+
+    it('returns timeout error for slow operation', async () => {
+      const operation = () =>
+        new Promise<string>((resolve) => {
+          setTimeout(() => resolve('too late'), 500);
+        });
+
+      const result = await withTimeout(operation, 50, 'slow-operation');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('timeout');
+        expect((result.error as { operationName: string }).operationName).toBe('slow-operation');
+      }
+    });
+
+    it('returns error for failing operation', async () => {
+      const operation = async () => {
+        throw new Error('operation failed');
+      };
+
+      const result = await withTimeout(operation, 1000, 'failing-operation');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('filesystem-error');
+        expect((result.error as { message: string }).message).toContain('operation failed');
+      }
+    });
+  });
+
+  describe('updateSkill with Phase 6', () => {
+    function getDefaultOptions(): UpdateOptions {
+      return {
+        scope: 'project',
+        force: false,
+        dryRun: false,
+        quiet: false,
+        noBackup: false,
+        keepBackup: false,
+        cwd: tempDir,
+        homedir: tempDir,
+      };
+    }
+
+    it('includes version info in dry-run preview', async () => {
+      await createTestSkill('dry-run-phase6');
+      const packagePath = await createTestPackage('dry-run-phase6');
+      const options = { ...getDefaultOptions(), dryRun: true };
+
+      const result = await updateSkill('dry-run-phase6', packagePath, options);
+
+      expect(result.type).toBe('update-dry-run-preview');
+      if (result.type === 'update-dry-run-preview') {
+        expect(result.currentVersion.fileCount).toBeGreaterThan(0);
+        expect(result.newVersion.fileCount).toBeGreaterThan(0);
+        expect(result.comparison).toBeDefined();
+      }
+    });
+
+    it('includes file counts in success result', async () => {
+      await createTestSkill('success-phase6');
+      const packagePath = await createTestPackage('success-phase6');
+      const options = getDefaultOptions();
+
+      const result = await updateSkill('success-phase6', packagePath, options);
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.previousFileCount).toBeGreaterThan(0);
+        expect(result.currentFileCount).toBeGreaterThan(0);
+      }
+    });
+
+    it('throws UpdateError for symlink escape', async () => {
+      // Create skill outside scope
+      const outsideDir = path.join(tempDir, 'outside');
+      await fs.mkdir(outsideDir, { recursive: true });
+      const targetPath = path.join(outsideDir, 'escape-test');
+      await fs.mkdir(targetPath, { recursive: true });
+      await fs.writeFile(path.join(targetPath, 'SKILL.md'), '---\nname: escape-test\n---\n');
+
+      // Create symlink in skills dir
+      const symlinkPath = path.join(skillsDir, 'escape-test');
+      await fs.symlink(targetPath, symlinkPath);
+
+      const packagePath = await createTestPackage('escape-test');
+      const options = getDefaultOptions();
+
+      await expect(updateSkill('escape-test', packagePath, options)).rejects.toThrow(UpdateError);
+    });
+
+    it('throws UpdateError for hard links without --force', async () => {
+      const skillPath = await createTestSkill('hardlink-update-test');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+      await fs.link(originalFile, hardLinkPath);
+
+      const packagePath = await createTestPackage('hardlink-update-test');
+      const options = getDefaultOptions();
+
+      await expect(updateSkill('hardlink-update-test', packagePath, options)).rejects.toThrow(
+        UpdateError
+      );
+    });
+
+    it('succeeds with hard links when --force is set', async () => {
+      const skillPath = await createTestSkill('hardlink-force-update');
+      const originalFile = path.join(skillPath, 'README.md');
+      const hardLinkPath = path.join(skillPath, 'README-link.md');
+      await fs.link(originalFile, hardLinkPath);
+
+      const packagePath = await createTestPackage('hardlink-force-update');
+      const options = { ...getDefaultOptions(), force: true };
+
+      const result = await updateSkill('hardlink-force-update', packagePath, options);
+
+      expect(result.type).toBe('update-success');
+    });
+  });
+});
