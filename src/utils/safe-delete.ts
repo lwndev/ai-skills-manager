@@ -84,10 +84,32 @@ export interface DeleteSummary {
 }
 
 /**
+ * Delay for retry attempts
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if an error indicates a locked file
+ */
+function isFileLocked(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return false;
+  }
+  const code = (error as { code: unknown }).code;
+  // EBUSY: resource busy or locked (Windows/macOS)
+  // ETXTBSY: text file busy (Unix)
+  // EACCES with specific conditions can also indicate lock
+  return code === 'EBUSY' || code === 'ETXTBSY';
+}
+
+/**
  * Safely delete a single file with containment verification
  *
  * Verifies the file is still within the skill directory before deletion.
  * Uses fs.unlink() for files and symlinks, fs.rmdir() for empty directories.
+ * Retries once if file is locked by another process.
  *
  * @param basePath - The containing skill directory
  * @param filePath - Path to the file to delete
@@ -120,46 +142,86 @@ export async function safeUnlink(basePath: string, filePath: string): Promise<Sa
   }
 
   // Now we know the file exists and is within bounds - delete it
-  try {
-    if (verification.pathType === 'directory') {
-      // Try to remove as empty directory
-      try {
-        await fs.rmdir(filePath);
+  const attemptDelete = async (): Promise<SafeDeleteResult> => {
+    try {
+      if (verification.pathType === 'directory') {
+        // Try to remove as empty directory
+        try {
+          await fs.rmdir(filePath);
+          return {
+            type: 'success',
+            path: filePath,
+            pathType: 'directory',
+            size: 0,
+          };
+        } catch (error) {
+          if (hasErrorCode(error, 'ENOTEMPTY')) {
+            return {
+              type: 'skipped',
+              path: filePath,
+              reason: 'not-empty',
+              message: 'Directory is not empty (will be retried after contents are deleted)',
+            };
+          }
+          throw error;
+        }
+      } else {
+        // Files and symlinks use unlink
+        await fs.unlink(filePath);
         return {
           type: 'success',
           path: filePath,
-          pathType: 'directory',
-          size: 0,
+          pathType: verification.pathType,
+          size: verification.size,
         };
-      } catch (error) {
-        if (hasErrorCode(error, 'ENOTEMPTY')) {
-          return {
-            type: 'skipped',
-            path: filePath,
-            reason: 'not-empty',
-            message: 'Directory is not empty (will be retried after contents are deleted)',
-          };
-        }
-        throw error;
       }
-    } else {
-      // Files and symlinks use unlink
-      await fs.unlink(filePath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
-        type: 'success',
+        type: 'error',
         path: filePath,
-        pathType: verification.pathType,
-        size: verification.size,
+        message: `Failed to delete: ${message}`,
+        // Store the original error for retry logic
+        _originalError: error,
+      } as DeleteError & { _originalError: unknown };
+    }
+  };
+
+  // First attempt
+  let result = await attemptDelete();
+
+  // Retry once if file is locked
+  if (
+    result.type === 'error' &&
+    '_originalError' in result &&
+    isFileLocked((result as { _originalError: unknown })._originalError)
+  ) {
+    // Wait 100ms and retry once
+    await delay(100);
+    result = await attemptDelete();
+
+    // If still locked, provide a helpful message
+    if (
+      result.type === 'error' &&
+      '_originalError' in result &&
+      isFileLocked((result as { _originalError: unknown })._originalError)
+    ) {
+      return {
+        type: 'skipped',
+        path: filePath,
+        reason: 'verification-failed',
+        message: 'File is locked by another process. Skipping after retry.',
       };
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      type: 'error',
-      path: filePath,
-      message: `Failed to delete: ${message}`,
-    };
   }
+
+  // Clean up the internal _originalError property before returning
+  if (result.type === 'error' && '_originalError' in result) {
+    const { _originalError, ...cleanResult } = result as DeleteError & { _originalError: unknown };
+    return cleanResult as DeleteError;
+  }
+
+  return result;
 }
 
 /**

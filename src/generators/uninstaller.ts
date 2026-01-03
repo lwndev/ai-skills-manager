@@ -28,6 +28,7 @@ import {
   createPartialEntry,
 } from '../utils/audit-logger';
 import { createTimeoutController, DEFAULT_UNINSTALL_TIMEOUT } from '../utils/timeout';
+import { acquireUninstallLock, releaseUninstallLock } from '../utils/lock-file';
 import type {
   UninstallOptions,
   UninstallResult,
@@ -170,6 +171,9 @@ export async function uninstallSkill(
   const summary = await getSkillSummary(skillPath);
   const totalSize = files.reduce((sum, f) => sum + (f.isDirectory ? 0 : f.size), 0);
 
+  // Edge case: empty skill directory
+  const isEmptySkill = files.length === 0;
+
   const skillInfo: SkillInfo = {
     name: skillName,
     path: skillPath,
@@ -177,7 +181,13 @@ export async function uninstallSkill(
     totalSize,
     hasSkillMd: discoveryResult.hasSkillMd,
     warnings: [],
+    isEmpty: isEmptySkill,
   };
+
+  // Add warning for empty skill directory
+  if (isEmptySkill) {
+    skillInfo.warnings.push('Skill directory is empty. It may have been partially uninstalled.');
+  }
 
   // Pre-removal validation (informational only)
   const preRemovalResult = await validateBeforeRemoval(skillPath);
@@ -314,8 +324,33 @@ export async function uninstallSkill(
     return generateDryRunPreview(skillInfo);
   }
 
-  // Execute removal
-  const removalResult = await executeRemoval(skillInfo, options);
+  // Acquire lock to prevent concurrent uninstalls
+  const lockResult = await acquireUninstallLock(skillPath);
+  if (!lockResult.acquired) {
+    const failure: UninstallFailure = {
+      success: false,
+      skillName,
+      error: {
+        type: 'filesystem-error',
+        operation: 'delete',
+        path: skillPath,
+        message: lockResult.message || 'Skill is currently being uninstalled by another process.',
+      },
+    };
+    await logUninstallOperation(
+      createFailureEntry(skillName, scope, 'FAILED', 'concurrent_uninstall_blocked')
+    );
+    return failure;
+  }
+
+  // Execute removal (with lock held)
+  let removalResult: RemovalExecutionResult;
+  try {
+    removalResult = await executeRemoval(skillInfo, options);
+  } finally {
+    // Always release the lock
+    await releaseUninstallLock(lockResult.lockPath);
+  }
 
   if (removalResult.type === 'success') {
     const result: UninstallResult = {

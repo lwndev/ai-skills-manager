@@ -119,6 +119,8 @@ export interface SkillInfo {
   hasSkillMd: boolean;
   /** Any warnings detected during discovery */
   warnings: string[];
+  /** Whether the skill directory is empty */
+  isEmpty?: boolean;
 }
 
 /**

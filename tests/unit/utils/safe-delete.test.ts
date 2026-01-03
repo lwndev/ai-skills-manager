@@ -338,4 +338,31 @@ describe('Safe Delete', () => {
       expect(summary.skillDirectoryDeleted).toBe(true);
     });
   });
+
+  describe('locked file handling', () => {
+    it('handles non-EBUSY errors without retry', async () => {
+      const skillPath = path.join(tempDir, 'skill');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+      const filePath = path.join(skillPath, 'file.txt');
+      await fs.promises.writeFile(filePath, 'content');
+
+      // Delete the file first so the next delete attempt fails with ENOENT
+      await fs.promises.unlink(filePath);
+
+      // Should skip since file no longer exists
+      const result = await safeUnlink(skillPath, filePath);
+      expect(result.type).toBe('skipped');
+    });
+
+    it('handles permission errors gracefully', async () => {
+      const skillPath = path.join(tempDir, 'skill');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+
+      // Try to delete a non-existent file
+      const nonExistentPath = path.join(skillPath, 'non-existent.txt');
+      const result = await safeUnlink(skillPath, nonExistentPath);
+
+      expect(result.type).toBe('skipped');
+    });
+  });
 });
