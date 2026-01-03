@@ -2,23 +2,23 @@
 
 Detailed guidance for each step in the phase implementation workflow.
 
-## Step 1: Update Implementation Doc Status
+## Table of Contents
 
-Update the phase status in the implementation plan to indicate work has started.
+- [Step 1: Locate the Implementation Plan](#step-1-locate-the-implementation-plan)
+- [Step 2: Identify Target Phase](#step-2-identify-target-phase)
+- [Step 3: Update Implementation Doc Status](#step-3-update-implementation-doc-status)
+- [Step 4: Update GitHub Issue (Start)](#step-4-update-github-issue-start)
+- [Step 5: Branch Strategy](#step-5-branch-strategy)
+- [Step 6: Load Steps into Todos](#step-6-load-steps-into-todos)
+- [Step 7: Execute Implementation](#step-7-execute-implementation)
+- [Step 8: Verify Deliverables](#step-8-verify-deliverables)
+- [Step 9: Update Plan Status](#step-9-update-plan-status)
+- [Step 10: Update GitHub Issue (Completion)](#step-10-update-github-issue-completion)
+- [Common Patterns](#common-patterns)
 
-**Change:**
-```markdown
-**Status:** Pending
-```
+---
 
-**To:**
-```markdown
-**Status:** 🔄 In Progress
-```
-
-This provides visibility into current work across the team.
-
-## Step 2: Locate the Implementation Plan
+## Step 1: Locate the Implementation Plan
 
 Find the relevant implementation plan:
 
@@ -32,7 +32,7 @@ Read the plan file to understand:
 - Deliverables checklist
 - Shared infrastructure references
 
-## Step 3: Identify Target Phase
+## Step 2: Identify Target Phase
 
 Determine which phase to implement:
 
@@ -49,22 +49,92 @@ Determine which phase to implement:
 - Feature reference link
 - Rationale for phase ordering
 
-## Step 4: Update GitHub Issue
+## Step 3: Update Implementation Doc Status
 
-Post a phase start comment using templates from [github-templates.md](github-templates.md).
+Update the phase status in the implementation plan to indicate work has started.
 
-Include:
-- Phase name and number
-- All implementation steps from the plan
-- Expected deliverables list
-- Status indicator
+**Change:**
+```markdown
+**Status:** Pending
+```
+
+**To:**
+```markdown
+**Status:** 🔄 In Progress
+```
+
+**Example edit:**
+```markdown
+### Phase 2: Validation Engine
+**Feature:** [FEAT-002](../features/02-validate-skill-command.md) | [#2](https://github.com/...)
+**Status:** 🔄 In Progress
+```
+
+This provides visibility into current work across the team.
+
+## Step 4: Update GitHub Issue (Start)
+
+Post a phase start comment to the GitHub issue.
+
+**Finding the Issue Number:**
+
+The GitHub issue number is referenced in the phase header:
+
+```markdown
+### Phase N: [Phase Name]
+**Feature:** [FEAT-XXX](../features/...) | [#2](https://github.com/...)
+```
+
+Extract the number from `[#N]` notation.
+
+**Command Template:**
+
+```bash
+gh issue comment <ISSUE_NUM> --body "🔄 Starting Phase <N>: <Phase Name>
+
+**Implementation Steps:**
+1. <Step 1>
+2. <Step 2>
+...
+
+**Expected Deliverables:**
+- <Deliverable 1>
+- <Deliverable 2>
+...
+
+**Status:** 🔄 In Progress"
+```
+
+**Example:**
+
+```bash
+gh issue comment 2 --body "🔄 Starting Phase 2: Validation Engine
+
+**Implementation Steps:**
+1. Create file-exists validator
+2. Create required-fields validator
+3. Create validation orchestrator
+4. Write file-exists tests
+5. Write required-fields tests
+6. Write orchestrator tests
+
+**Expected Deliverables:**
+- src/validators/file-exists.ts
+- src/validators/required-fields.ts
+- src/generators/validate.ts
+- tests/unit/validators/file-exists.test.ts
+- tests/unit/validators/required-fields.test.ts
+- tests/unit/generators/validate.test.ts
+
+**Status:** 🔄 In Progress"
+```
 
 ## Step 5: Branch Strategy
 
 Create a feature branch following the naming convention:
 
 ```bash
-git checkout -b feat/{Feature ID}-{2-3-word-summary}`
+git checkout -b feat/{Feature ID}-{2-3-word-summary}
 ```
 
 **Naming guidelines:**
@@ -215,17 +285,68 @@ Edit the implementation plan file to mark the phase complete:
 
 Update both the status line and all deliverable checkboxes.
 
-## Step 10: Update GitHub Issue
+## Step 10: Update GitHub Issue (Completion)
 
-Post a completion comment using templates from [github-templates.md](github-templates.md).
+Post a completion comment to the GitHub issue.
 
-Include:
-- Phase completion confirmation
-- All deliverables with checkmarks
-- Verification results (tests, build, coverage)
-- Final status
+**Command Template:**
 
-**If final phase:** Close the issue with a summary of all completed phases.
+```bash
+gh issue comment <ISSUE_NUM> --body "✅ Completed Phase <N>: <Phase Name>
+
+**Deliverables Verified:**
+- [x] <Deliverable 1>
+- [x] <Deliverable 2>
+...
+
+**Verification:**
+- ✅ Tests passing
+- ✅ Build successful
+- ✅ Coverage: <X>%
+
+**Status:** ✅ Complete"
+```
+
+**Example:**
+
+```bash
+gh issue comment 2 --body "✅ Completed Phase 2: Validation Engine
+
+**Deliverables Verified:**
+- [x] src/validators/file-exists.ts - File/directory existence validation
+- [x] src/validators/required-fields.ts - Required fields validation
+- [x] src/generators/validate.ts - Validation orchestration
+- [x] tests/unit/validators/file-exists.test.ts - File existence tests
+- [x] tests/unit/validators/required-fields.test.ts - Required fields tests
+- [x] tests/unit/generators/validate.test.ts - Orchestrator tests
+
+**Verification:**
+- ✅ Tests passing
+- ✅ Build successful
+- ✅ Coverage: 85%
+
+**Status:** ✅ Complete"
+```
+
+**Closing Issue (Final Phase):**
+
+When all phases are complete, close the issue:
+
+```bash
+gh issue close <ISSUE_NUM> --comment "✅ All phases complete
+
+**Feature Summary:**
+- Phase 1: <Name> ✅
+- Phase 2: <Name> ✅
+- Phase 3: <Name> ✅
+...
+
+All deliverables implemented, tested, and verified.
+
+Implementation complete."
+```
+
+---
 
 ## Common Patterns
 
