@@ -42,35 +42,25 @@ import {
 import { openZipArchive } from '../utils/extractor';
 
 /**
- * Result of input validation phase
+ * Result of input validation phase (discriminated union)
  */
-export interface InputValidationResult {
-  valid: boolean;
-  error?: UpdateErrorType;
-  scopeInfo?: ScopeInfo;
-  packagePath?: string;
-}
+export type InputValidationResult =
+  | { valid: true; scopeInfo: ScopeInfo; packagePath: string }
+  | { valid: false; error: UpdateErrorType };
 
 /**
- * Result of skill discovery phase
+ * Result of skill discovery phase (discriminated union)
  */
-export interface DiscoveryResult {
-  valid: boolean;
-  error?: UpdateErrorType;
-  skillPath?: string;
-  hasSkillMd?: boolean;
-}
+export type DiscoveryResult =
+  | { valid: true; skillPath: string; hasSkillMd: boolean }
+  | { valid: false; error: UpdateErrorType };
 
 /**
- * Result of package validation phase
+ * Result of package validation phase (discriminated union)
  */
-export interface PackageValidationPhaseResult {
-  valid: boolean;
-  error?: UpdateErrorType;
-  skillNameFromPackage?: string;
-  files?: string[];
-  tempDir?: string;
-}
+export type PackageValidationPhaseResult =
+  | { valid: true; skillNameFromPackage: string; files: string[]; tempDir?: string }
+  | { valid: false; error: UpdateErrorType; tempDir?: string };
 
 /**
  * Context built up during update phases
@@ -153,6 +143,18 @@ export async function validateInputs(
 
   // Resolve scope to path
   const scopeInfo = resolveScope(scopeResult.scope, options.cwd, options.homedir);
+
+  // packagePath is guaranteed to exist when valid is true (external type limitation)
+  if (!packageResult.packagePath) {
+    return {
+      valid: false,
+      error: {
+        type: 'validation-error',
+        field: 'packagePath',
+        message: 'Package path was not resolved',
+      },
+    };
+  }
 
   return {
     valid: true,
@@ -420,20 +422,20 @@ export async function runInputAndDiscoveryPhase(
   // Step 1: Validate inputs
   const inputResult = await validateInputs(skillName, packagePath, options);
   if (!inputResult.valid) {
-    return { success: false, error: inputResult.error! };
+    return { success: false, error: inputResult.error };
   }
 
-  const scopeInfo = inputResult.scopeInfo!;
-  const validatedPackagePath = inputResult.packagePath!;
+  const scopeInfo = inputResult.scopeInfo;
+  const validatedPackagePath = inputResult.packagePath;
 
   // Step 2: Discover installed skill
   const discoveryResult = await discoverInstalledSkill(skillName, scopeInfo);
   if (!discoveryResult.valid) {
-    return { success: false, error: discoveryResult.error! };
+    return { success: false, error: discoveryResult.error };
   }
 
-  const skillPath = discoveryResult.skillPath!;
-  const hasSkillMd = discoveryResult.hasSkillMd!;
+  const skillPath = discoveryResult.skillPath;
+  const hasSkillMd = discoveryResult.hasSkillMd;
 
   // Step 3: Additional case sensitivity verification (NFR-3)
   const caseError = await verifyCaseSensitivity(skillPath, skillName);
@@ -448,7 +450,7 @@ export async function runInputAndDiscoveryPhase(
     if (packageResult.tempDir) {
       await cleanupTempDirectory(packageResult.tempDir);
     }
-    return { success: false, error: packageResult.error! };
+    return { success: false, error: packageResult.error };
   }
 
   // Build context for later phases
@@ -458,8 +460,8 @@ export async function runInputAndDiscoveryPhase(
     packagePath: validatedPackagePath,
     skillPath,
     hasSkillMd,
-    skillNameFromPackage: packageResult.skillNameFromPackage!,
-    packageFiles: packageResult.files!,
+    skillNameFromPackage: packageResult.skillNameFromPackage,
+    packageFiles: packageResult.files,
     tempDir: packageResult.tempDir,
   };
 

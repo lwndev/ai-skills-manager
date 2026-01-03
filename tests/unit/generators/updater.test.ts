@@ -97,8 +97,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('valid-skill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(true);
-        expect(result.scopeInfo).toBeDefined();
-        expect(result.packagePath).toBeDefined();
+        if (result.valid) {
+          expect(result.scopeInfo).toBeDefined();
+          expect(result.packagePath).toBeDefined();
+        }
       });
 
       it('rejects empty skill name', async () => {
@@ -106,8 +108,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
-        expect((result.error as { field: string }).field).toBe('skillName');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+          expect((result.error as { field: string }).field).toBe('skillName');
+        }
       });
 
       it('rejects skill name with path separators', async () => {
@@ -115,8 +119,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('../escape', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
-        expect((result.error as { field: string }).field).toBe('skillName');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+          expect((result.error as { field: string }).field).toBe('skillName');
+        }
       });
 
       it('rejects skill name with uppercase letters', async () => {
@@ -124,7 +130,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('TestSkill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+        }
       });
 
       it('rejects skill name with consecutive hyphens', async () => {
@@ -132,7 +140,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test--skill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+        }
       });
 
       it('rejects skill name starting with hyphen', async () => {
@@ -140,7 +150,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('-test-skill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+        }
       });
 
       it('rejects skill name with null bytes', async () => {
@@ -148,7 +160,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test\0skill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+        }
       });
     });
 
@@ -159,7 +173,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', packagePath, options);
 
         expect(result.valid).toBe(true);
-        expect(result.scopeInfo?.type).toBe('project');
+        if (result.valid) {
+          expect(result.scopeInfo.type).toBe('project');
+        }
       });
 
       it('accepts personal scope', async () => {
@@ -168,7 +184,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', packagePath, options);
 
         expect(result.valid).toBe(true);
-        expect(result.scopeInfo?.type).toBe('personal');
+        if (result.valid) {
+          expect(result.scopeInfo.type).toBe('personal');
+        }
       });
 
       it('rejects invalid scope', async () => {
@@ -177,8 +195,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', packagePath, options);
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
-        expect((result.error as { field: string }).field).toBe('scope');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+          expect((result.error as { field: string }).field).toBe('scope');
+        }
       });
     });
 
@@ -188,7 +208,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', packagePath, getDefaultOptions());
 
         expect(result.valid).toBe(true);
-        expect(result.packagePath).toBe(packagePath);
+        if (result.valid) {
+          expect(result.packagePath).toBe(packagePath);
+        }
       });
 
       it('rejects non-existent package', async () => {
@@ -199,8 +221,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         );
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
-        expect((result.error as { field: string }).field).toBe('packagePath');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+          expect((result.error as { field: string }).field).toBe('packagePath');
+        }
       });
 
       it('rejects package with wrong extension', async () => {
@@ -212,8 +236,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', wrongPath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
-        expect((result.error as { field: string }).field).toBe('packagePath');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+          expect((result.error as { field: string }).field).toBe('packagePath');
+        }
       });
 
       it('rejects invalid ZIP file', async () => {
@@ -223,7 +249,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         const result = await validateInputs('test-skill', invalidPath, getDefaultOptions());
 
         expect(result.valid).toBe(false);
-        expect(result.error?.type).toBe('validation-error');
+        if (!result.valid) {
+          expect(result.error.type).toBe('validation-error');
+        }
       });
     });
   });
@@ -236,8 +264,10 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await discoverInstalledSkill('existing-skill', scopeInfo);
 
       expect(result.valid).toBe(true);
-      expect(result.skillPath).toContain('existing-skill');
-      expect(result.hasSkillMd).toBe(true);
+      if (result.valid) {
+        expect(result.skillPath).toContain('existing-skill');
+        expect(result.hasSkillMd).toBe(true);
+      }
     });
 
     it('returns not-found for non-existent skill', async () => {
@@ -246,7 +276,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await discoverInstalledSkill('nonexistent-skill', scopeInfo);
 
       expect(result.valid).toBe(false);
-      expect(result.error?.type).toBe('skill-not-found');
+      if (!result.valid) {
+        expect(result.error.type).toBe('skill-not-found');
+      }
     });
 
     it('finds skill without SKILL.md', async () => {
@@ -258,7 +290,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await discoverInstalledSkill('no-skillmd', scopeInfo);
 
       expect(result.valid).toBe(true);
-      expect(result.hasSkillMd).toBe(false);
+      if (result.valid) {
+        expect(result.hasSkillMd).toBe(false);
+      }
     });
   });
 
@@ -305,9 +339,11 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await validatePackage(packagePath, 'test-skill');
 
       expect(result.valid).toBe(true);
-      expect(result.skillNameFromPackage).toBe('test-skill');
-      expect(result.files).toBeDefined();
-      expect(result.files?.length).toBeGreaterThan(0);
+      if (result.valid) {
+        expect(result.skillNameFromPackage).toBe('test-skill');
+        expect(result.files).toBeDefined();
+        expect(result.files.length).toBeGreaterThan(0);
+      }
     });
 
     it('rejects package with different skill name', async () => {
@@ -316,7 +352,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await validatePackage(packagePath, 'installed-skill');
 
       expect(result.valid).toBe(false);
-      expect(result.error?.type).toBe('package-mismatch');
+      if (!result.valid) {
+        expect(result.error.type).toBe('package-mismatch');
+      }
     });
 
     it('rejects package without SKILL.md', async () => {
@@ -328,7 +366,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await validatePackage(packagePath, 'no-skillmd');
 
       expect(result.valid).toBe(false);
-      expect(result.error?.type).toBe('validation-error');
+      if (!result.valid) {
+        expect(result.error.type).toBe('validation-error');
+      }
     });
 
     it('rejects package with no root directory', async () => {
@@ -340,7 +380,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await validatePackage(packagePath, 'flat');
 
       expect(result.valid).toBe(false);
-      expect(result.error?.type).toBe('validation-error');
+      if (!result.valid) {
+        expect(result.error.type).toBe('validation-error');
+      }
     });
 
     it('rejects package with mismatched frontmatter name', async () => {
@@ -354,7 +396,9 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       const result = await validatePackage(packagePath, 'mismatch');
 
       expect(result.valid).toBe(false);
-      expect(result.error?.type).toBe('validation-error');
+      if (!result.valid) {
+        expect(result.error.type).toBe('validation-error');
+      }
     });
 
     it('cleans up temp directory on validation error', async () => {
