@@ -179,7 +179,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 4: Update Formatter
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Consistent UX**: Follows patterns from install/uninstall formatters
@@ -221,12 +221,12 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Quiet mode output
 
 #### Deliverables
-- [ ] `src/formatters/update-formatter.ts` - Complete formatter
-- [ ] `tests/unit/formatters/update-formatter.test.ts` - Unit tests
-- [ ] Output matches requirements document exactly
-- [ ] Progress bar formatting for determinate operations
-- [ ] Progress spinner for indeterminate operations
-- [ ] 2-second threshold before showing progress (NFR-1)
+- [x] `src/formatters/update-formatter.ts` - Complete formatter (31 functions)
+- [x] `tests/unit/formatters/update-formatter.test.ts` - Unit tests (75 tests)
+- [x] Output matches requirements document exactly
+- [x] Progress bar formatting for determinate operations
+- [x] Progress spinner for indeterminate operations
+- [x] 2-second threshold before showing progress (NFR-1)
 
 ---
 
