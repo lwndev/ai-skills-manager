@@ -18,13 +18,22 @@ Execute implementation plan phases with systematic tracking and verification.
 1. Locate implementation plan in `requirements/implementation/`
 2. Identify target phase (user-specified or next pending)
 3. Update plan status to "🔄 In Progress"
-4. Update GitHub issue with phase start (see [github-templates.md](reference/github-templates.md))
-5. Create feature branch (if not already exists): `feat/{Feature ID}-{2-3-word-summary}` 
+   ```markdown
+   **Status:** 🔄 In Progress
+   ```
+4. Update GitHub issue with phase start:
+   ```bash
+   gh issue comment <ISSUE_NUM> --body "🔄 Starting Phase N: <Name>..."
+   ```
+5. Create feature branch (if not already exists): `feat/{Feature ID}-{2-3-word-summary}`
 6. Load implementation steps into todos
 7. Execute each step, marking complete as you go
 8. Verify deliverables (tests pass, build succeeds)
 9. Update plan status to "✅ Complete"
-10. Update GitHub issue with completion comment
+10. Update GitHub issue with completion comment:
+    ```bash
+    gh issue comment <ISSUE_NUM> --body "✅ Completed Phase N: <Name>..."
+    ```
 
 ## Workflow
 
@@ -32,6 +41,8 @@ Copy this checklist and track progress:
 
 ```
 Phase Implementation:
+- [ ] Locate implementation plan
+- [ ] Identify target phase
 - [ ] Update plan status to "🔄 In Progress"
 - [ ] Post GitHub issue start comment
 - [ ] Create/switch to feature branch

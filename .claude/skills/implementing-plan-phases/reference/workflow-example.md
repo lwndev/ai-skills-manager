@@ -2,7 +2,7 @@
 
 This example demonstrates executing Phase 2 (Validation Engine) from the validate skill command implementation plan.
 
-## Contents
+## Table of Contents
 
 - [Context](#context)
 - [Step-by-Step Execution](#step-by-step-execution)
