@@ -232,7 +232,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 5: Updater - Input & Discovery
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Foundation for updater**: Establishes the updater module structure
@@ -276,11 +276,11 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Package validation (valid, invalid structure, name mismatch)
 
 #### Deliverables
-- [ ] `src/generators/updater.ts` - Module structure with input/discovery/package validation
-- [ ] `tests/unit/generators/updater.test.ts` - Unit tests for Phases 5 functionality
-- [ ] Input validation working with appropriate error messages
-- [ ] Skill discovery integrated with error handling
-- [ ] Case sensitivity verification preventing symlink substitution attacks
+- [x] `src/generators/updater.ts` - Module structure with input/discovery/package validation
+- [x] `tests/unit/generators/updater.test.ts` - Unit tests for Phase 5 functionality (38 tests)
+- [x] Input validation working with appropriate error messages
+- [x] Skill discovery integrated with error handling
+- [x] Case sensitivity verification preventing symlink substitution attacks
 
 ---
 
