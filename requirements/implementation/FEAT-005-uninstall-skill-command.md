@@ -326,7 +326,7 @@ This implementation prioritizes security due to the destructive nature of the op
 
 ### Phase 6: Command Integration & Signal Handling
 **Feature:** [FEAT-005](../features/FEAT-005-uninstall-skill-command.md) | [#5](https://github.com/lwndev/ai-skills-manager/issues/5) (CLI Integration)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Final integration layer that ties all components together
@@ -374,12 +374,12 @@ This implementation prioritizes security due to the destructive nature of the op
 5. Update help text and documentation
 
 #### Deliverables
-- [ ] `src/commands/uninstall.ts` - Uninstall command implementation
-- [ ] `src/utils/signal-handler.ts` - Signal handling utilities
-- [ ] Updated `src/cli.ts` with uninstall command registration
-- [ ] `tests/commands/uninstall.test.ts` - Command integration tests
-- [ ] Help text with examples
-- [ ] Exit code handling for all scenarios
+- [x] `src/commands/uninstall.ts` - Uninstall command implementation
+- [x] `src/utils/signal-handler.ts` - Signal handling utilities
+- [x] Updated `src/cli.ts` with uninstall command registration
+- [x] `tests/commands/uninstall.test.ts` - Command integration tests
+- [x] Help text with examples
+- [x] Exit code handling for all scenarios
 
 ---
 
