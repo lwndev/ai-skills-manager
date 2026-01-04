@@ -244,6 +244,43 @@ Content.
   });
 
   describe('name format check', () => {
+    it('skips name format check when name is a number (non-string)', async () => {
+      const skillPath = await createSkill(`---
+name: 12345
+description: Valid description
+---
+
+Content.
+`);
+
+      const result = await validateSkill(skillPath);
+
+      // requiredFields passes because non-string values are considered "present"
+      expect(result.checks.requiredFields.passed).toBe(true);
+      // nameFormat should pass (skipped) since name is not a string
+      expect(result.checks.nameFormat.passed).toBe(true);
+      // skillName should be undefined when name is not a string
+      expect(result.skillName).toBeUndefined();
+    });
+
+    it('skips name format check when name is an empty string', async () => {
+      const skillPath = await createSkill(`---
+name: ""
+description: Valid description
+---
+
+Content.
+`);
+
+      const result = await validateSkill(skillPath);
+
+      expect(result.valid).toBe(false);
+      // requiredFields should fail because name is empty
+      expect(result.checks.requiredFields.passed).toBe(false);
+      // nameFormat should pass (skipped) since name is empty
+      expect(result.checks.nameFormat.passed).toBe(true);
+    });
+
     it('fails when name has invalid format', async () => {
       const skillPath = await createSkill(`---
 name: MySkill
@@ -297,6 +334,41 @@ Content.
   });
 
   describe('description format check', () => {
+    it('skips description format check when description is a number (non-string)', async () => {
+      const skillPath = await createSkill(`---
+name: valid-skill
+description: 12345
+---
+
+Content.
+`);
+
+      const result = await validateSkill(skillPath);
+
+      // requiredFields passes because non-string values are considered "present"
+      expect(result.checks.requiredFields.passed).toBe(true);
+      // descriptionFormat should pass (skipped) since description is not a string
+      expect(result.checks.descriptionFormat.passed).toBe(true);
+    });
+
+    it('skips description format check when description is an empty string', async () => {
+      const skillPath = await createSkill(`---
+name: valid-skill
+description: ""
+---
+
+Content.
+`);
+
+      const result = await validateSkill(skillPath);
+
+      expect(result.valid).toBe(false);
+      // requiredFields should fail because description is empty
+      expect(result.checks.requiredFields.passed).toBe(false);
+      // descriptionFormat should pass (skipped) since description is empty
+      expect(result.checks.descriptionFormat.passed).toBe(true);
+    });
+
     it('fails when description has angle brackets', async () => {
       const skillPath = await createSkill(`---
 name: my-skill

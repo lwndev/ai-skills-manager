@@ -54,6 +54,19 @@ import {
   getPackageVersionInfo,
 } from '../services/version-comparator';
 import { enumerateSkillFiles } from './file-enumerator';
+import {
+  validateBackupWritability,
+  createBackup,
+  cleanupBackup,
+  generateUniqueBackupPath,
+  type BackupOptions,
+} from '../services/backup-manager';
+import {
+  formatConfirmationPrompt,
+  formatDowngradeWarning,
+  formatNoBackupWarning,
+  formatBackupCreated,
+} from '../formatters/update-formatter';
 
 /**
  * Result of input validation phase (discriminated union)
@@ -95,6 +108,39 @@ export type VersionAnalysisResult =
       downgradeInfo: DowngradeInfo | null;
     }
   | { valid: false; error: UpdateErrorType };
+
+/**
+ * Result of lock acquisition (discriminated union)
+ */
+export type LockAcquisitionPhaseResult =
+  | { acquired: true; lockPath: string }
+  | { acquired: false; error: UpdateErrorType };
+
+/**
+ * Result of backup creation (discriminated union)
+ */
+export type BackupCreationPhaseResult =
+  | { created: true; backupPath: string; fileCount: number; size: number }
+  | { skipped: true; reason: 'no-backup-flag' }
+  | { created: false; error: UpdateErrorType };
+
+/**
+ * Result of user confirmation (discriminated union)
+ */
+export type ConfirmationPhaseResult =
+  | { confirmed: true }
+  | { confirmed: false; reason: 'user-cancelled' | 'force-flag' };
+
+/**
+ * Result of the preparation phase (Phase 7)
+ */
+export type PreparationPhaseResult =
+  | {
+      success: true;
+      context: UpdateContext;
+    }
+  | { success: false; error: UpdateErrorType }
+  | { success: false; cancelled: true };
 
 /**
  * Resource limits for update operations (NFR-8)
@@ -148,6 +194,18 @@ export interface UpdateContext {
   packageInfo?: VersionInfo;
   /** Downgrade detection info */
   downgradeInfo?: DowngradeInfo | null;
+
+  // Phase 7 fields - preparation
+  /** Path to the lock file (if acquired) */
+  lockPath?: string;
+  /** Path to the backup file (if created) */
+  backupPath?: string;
+  /** Number of files in the backup */
+  backupFileCount?: number;
+  /** Size of the backup in bytes */
+  backupSize?: number;
+  /** Whether backup was skipped (--no-backup flag) */
+  backupSkipped?: boolean;
 }
 
 /**
@@ -917,6 +975,455 @@ export async function runSecurityAndAnalysisPhase(
   return { success: true, context: updatedContext };
 }
 
+// ============================================================================
+// Phase 7: Preparation (Lock, Backup, Confirmation)
+// ============================================================================
+
+/** Lock file extension for update operations */
+const UPDATE_LOCK_EXTENSION = '.asm-update.lock';
+
+/** Maximum age of a lock file before it's considered stale (5 minutes) */
+const MAX_UPDATE_LOCK_AGE_MS = 5 * 60 * 1000;
+
+/**
+ * Helper: Check if an error has a specific error code
+ */
+function hasErrorCode(error: unknown, code: string): boolean {
+  if (error && typeof error === 'object' && 'code' in error) {
+    return (error as { code: unknown }).code === code;
+  }
+  return false;
+}
+
+/**
+ * Acquire a lock for the update operation (FR-17)
+ *
+ * Creates a lock file in the skill's parent directory to prevent concurrent
+ * update operations on the same skill. The lock file contains process info.
+ *
+ * @param skillPath - Path to the skill directory being updated
+ * @param packagePath - Path to the new package
+ * @returns Lock acquisition result with lock path or error
+ */
+export async function acquireUpdateLock(
+  skillPath: string,
+  packagePath: string
+): Promise<LockAcquisitionPhaseResult> {
+  const skillName = path.basename(skillPath);
+  const parentDir = path.dirname(skillPath);
+  const lockPath = path.join(parentDir, `${skillName}${UPDATE_LOCK_EXTENSION}`);
+
+  try {
+    // Check if lock already exists
+    try {
+      const stats = await fs.stat(lockPath);
+      const age = Date.now() - stats.mtimeMs;
+
+      // If lock is stale (older than MAX_UPDATE_LOCK_AGE_MS), remove it
+      if (age > MAX_UPDATE_LOCK_AGE_MS) {
+        await fs.unlink(lockPath);
+      } else {
+        // Lock exists and is not stale - read lock info for error message
+        const lockContent = await fs.readFile(lockPath, 'utf-8');
+        let lockInfo: { pid?: number; timestamp?: string } = {};
+        try {
+          lockInfo = JSON.parse(lockContent);
+        } catch {
+          // Ignore parse errors
+        }
+
+        return {
+          acquired: false,
+          error: {
+            type: 'validation-error',
+            field: 'skillName',
+            message: `Skill "${skillName}" is currently being updated by another process (PID: ${lockInfo.pid ?? 'unknown'})`,
+            details: [
+              `Lock acquired: ${lockInfo.timestamp ?? 'unknown'}`,
+              'If the previous update was interrupted, remove the lock file:',
+              `  rm "${lockPath}"`,
+            ],
+          },
+        };
+      }
+    } catch (error) {
+      // Lock file doesn't exist, which is fine
+      if (!hasErrorCode(error, 'ENOENT')) {
+        throw error;
+      }
+    }
+
+    // Create the lock file with update-specific content
+    const lockContent = JSON.stringify({
+      pid: process.pid,
+      timestamp: new Date().toISOString(),
+      operationType: 'update',
+      skillPath,
+      packagePath,
+    });
+
+    // Use exclusive flag to prevent race conditions
+    await fs.writeFile(lockPath, lockContent, { flag: 'wx' });
+
+    return {
+      acquired: true,
+      lockPath,
+    };
+  } catch (error) {
+    // If the file was created by another process between our check and write
+    if (hasErrorCode(error, 'EEXIST')) {
+      return {
+        acquired: false,
+        error: {
+          type: 'validation-error',
+          field: 'skillName',
+          message: `Skill "${skillName}" is currently being updated by another process`,
+        },
+      };
+    }
+
+    // Other filesystem errors
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      acquired: false,
+      error: {
+        type: 'filesystem-error',
+        operation: 'write',
+        path: lockPath,
+        message: `Failed to acquire update lock: ${message}`,
+      },
+    };
+  }
+}
+
+/**
+ * Release an update lock
+ *
+ * Removes the lock file. This should be called after the update operation
+ * completes, regardless of success or failure.
+ *
+ * @param lockPath - Path to the lock file to release
+ */
+export async function releaseUpdateLock(lockPath: string): Promise<void> {
+  try {
+    await fs.unlink(lockPath);
+  } catch {
+    // Ignore errors when releasing lock - file may have already been removed
+  }
+}
+
+/**
+ * Check if an update lock exists for a skill
+ *
+ * @param skillPath - Path to the skill directory
+ * @returns True if a lock exists and is not stale
+ */
+export async function hasUpdateLock(skillPath: string): Promise<boolean> {
+  const skillName = path.basename(skillPath);
+  const parentDir = path.dirname(skillPath);
+  const lockPath = path.join(parentDir, `${skillName}${UPDATE_LOCK_EXTENSION}`);
+
+  try {
+    const stats = await fs.stat(lockPath);
+    const age = Date.now() - stats.mtimeMs;
+
+    // Lock is considered active if it's not stale
+    return age <= MAX_UPDATE_LOCK_AGE_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create a backup of the skill before updating (FR-4)
+ *
+ * Creates a backup archive of the installed skill. The backup can be used
+ * for rollback if the update fails.
+ *
+ * @param context - Update context with skill info
+ * @param options - Update options
+ * @param backupOptions - Optional backup-specific options
+ * @returns Backup creation result
+ */
+export async function createUpdateBackup(
+  context: UpdateContext,
+  options: UpdateOptions,
+  backupOptions?: BackupOptions
+): Promise<BackupCreationPhaseResult> {
+  // Skip backup if --no-backup flag is set
+  if (options.noBackup) {
+    return { skipped: true, reason: 'no-backup-flag' };
+  }
+
+  // First validate backup writability (Edge case 20)
+  const writabilityResult = await validateBackupWritability({
+    homedir: options.homedir,
+  });
+
+  if (!writabilityResult.writable) {
+    return {
+      created: false,
+      error: {
+        type: 'backup-creation-error',
+        backupPath: '~/.asm/backups/',
+        reason: writabilityResult.error ?? 'Backup directory is not writable',
+      },
+    };
+  }
+
+  // Create the backup
+  const backupResult = await createBackup(context.skillPath, context.skillName, {
+    homedir: options.homedir,
+    ...backupOptions,
+  });
+
+  if (!backupResult.success) {
+    return {
+      created: false,
+      error: {
+        type: 'backup-creation-error',
+        backupPath: backupResult.path || '~/.asm/backups/',
+        reason: backupResult.error ?? 'Backup creation failed',
+      },
+    };
+  }
+
+  return {
+    created: true,
+    backupPath: backupResult.path,
+    fileCount: backupResult.fileCount,
+    size: backupResult.size,
+  };
+}
+
+/**
+ * Show confirmation prompt for update (FR-5)
+ *
+ * Displays update summary and asks for user confirmation unless --force is set.
+ *
+ * @param context - Update context with version comparison
+ * @param options - Update options
+ * @param backupPath - Path where backup was created (or will be)
+ * @param confirmFn - Confirmation function (for testing)
+ * @returns Confirmation result
+ */
+export async function confirmUpdate(
+  context: UpdateContext,
+  options: UpdateOptions,
+  backupPath: string,
+  confirmFn?: (prompt: string) => Promise<boolean>
+): Promise<ConfirmationPhaseResult> {
+  // Skip confirmation if --force is set
+  if (options.force) {
+    return { confirmed: false, reason: 'force-flag' };
+  }
+
+  // Build confirmation prompt
+  const currentVersion = context.installedInfo ?? {
+    path: context.skillPath,
+    fileCount: 0,
+    size: 0,
+  };
+
+  const newVersion = context.packageInfo ?? {
+    path: context.packagePath,
+    fileCount: context.packageFiles.length,
+    size: 0,
+  };
+
+  const comparison = context.comparison ?? {
+    filesAdded: [],
+    filesRemoved: [],
+    filesModified: [],
+    addedCount: 0,
+    removedCount: 0,
+    modifiedCount: 0,
+    sizeChange: 0,
+  };
+
+  let promptMessage = formatConfirmationPrompt(
+    context.skillName,
+    currentVersion,
+    newVersion,
+    comparison,
+    backupPath
+  );
+
+  // Add downgrade warning if applicable
+  if (context.downgradeInfo?.isDowngrade) {
+    promptMessage = formatDowngradeWarning(context.downgradeInfo) + promptMessage;
+  }
+
+  // Show the prompt
+  console.log(promptMessage);
+
+  // Get confirmation from user
+  const confirmFunction = confirmFn ?? defaultConfirm;
+  const confirmed = await confirmFunction(`Proceed with update?`);
+
+  if (!confirmed) {
+    return { confirmed: false, reason: 'user-cancelled' };
+  }
+
+  return { confirmed: true };
+}
+
+/**
+ * Default confirmation function using readline
+ */
+async function defaultConfirm(question: string): Promise<boolean> {
+  // Import readline dynamically to avoid issues in tests
+  const readline = await import('readline');
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(`${question} [y/N] `, (answer) => {
+      rl.close();
+      const normalizedAnswer = answer.trim().toLowerCase();
+      resolve(normalizedAnswer === 'y' || normalizedAnswer === 'yes');
+    });
+  });
+}
+
+/**
+ * Run Phase 7 of the update process: Preparation
+ *
+ * This runs all Phase 7 steps:
+ * 1. Acquire lock to prevent concurrent updates
+ * 2. Create backup (unless --no-backup)
+ * 3. Show confirmation prompt (unless --force)
+ *
+ * @param context - Update context from Phase 6
+ * @param options - Update options
+ * @param confirmFn - Optional confirmation function (for testing)
+ * @returns Updated context with preparation info, or error/cancellation
+ */
+export async function runPreparationPhase(
+  context: UpdateContext,
+  options: UpdateOptions,
+  confirmFn?: (prompt: string) => Promise<boolean>
+): Promise<PreparationPhaseResult> {
+  // Step 1: Acquire lock
+  const lockResult = await acquireUpdateLock(context.skillPath, context.packagePath);
+  if (!lockResult.acquired) {
+    return { success: false, error: lockResult.error };
+  }
+
+  const lockPath = lockResult.lockPath;
+  let backupPath: string | undefined;
+  let backupFileCount: number | undefined;
+  let backupSize: number | undefined;
+  let backupSkipped = false;
+
+  try {
+    // Step 2: Create backup (unless --no-backup)
+    // First validate writability if not using --no-backup
+    if (!options.noBackup) {
+      const writabilityResult = await validateBackupWritability({
+        homedir: options.homedir,
+      });
+
+      if (!writabilityResult.writable) {
+        return {
+          success: false,
+          error: {
+            type: 'backup-creation-error',
+            backupPath: '~/.asm/backups/',
+            reason: writabilityResult.error ?? 'Backup directory is not writable',
+          },
+        };
+      }
+    }
+
+    const backupResult = await createUpdateBackup(context, options);
+
+    if ('error' in backupResult) {
+      // Release lock before returning error
+      await releaseUpdateLock(lockPath);
+      return { success: false, error: backupResult.error };
+    }
+
+    if ('skipped' in backupResult) {
+      backupSkipped = true;
+      // Show warning about no backup
+      if (!options.quiet) {
+        console.log(formatNoBackupWarning());
+      }
+      // Generate a backup path anyway for confirmation display
+      backupPath = await generateUniqueBackupPath(context.skillName, {
+        homedir: options.homedir,
+      });
+    } else {
+      backupPath = backupResult.backupPath;
+      backupFileCount = backupResult.fileCount;
+      backupSize = backupResult.size;
+
+      // Show backup created message
+      if (!options.quiet) {
+        console.log(formatBackupCreated(backupPath));
+      }
+    }
+
+    // Step 3: Show confirmation prompt (unless --force)
+    const confirmResult = await confirmUpdate(context, options, backupPath, confirmFn);
+
+    if (!confirmResult.confirmed && confirmResult.reason === 'user-cancelled') {
+      // User cancelled - clean up lock and backup
+      await releaseUpdateLock(lockPath);
+
+      // Remove backup if it was created
+      if (!backupSkipped && backupPath) {
+        try {
+          await cleanupBackup(backupPath, { homedir: options.homedir });
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+
+      return { success: false, cancelled: true };
+    }
+
+    // Update context with Phase 7 results
+    const updatedContext: UpdateContext = {
+      ...context,
+      lockPath,
+      backupPath: backupSkipped ? undefined : backupPath,
+      backupFileCount,
+      backupSize,
+      backupSkipped,
+    };
+
+    return { success: true, context: updatedContext };
+  } catch (error) {
+    // Clean up lock on unexpected error
+    await releaseUpdateLock(lockPath);
+
+    // Clean up backup if it was created
+    if (!backupSkipped && backupPath) {
+      try {
+        await cleanupBackup(backupPath, { homedir: options.homedir });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: {
+        type: 'filesystem-error',
+        operation: 'write',
+        path: context.skillPath,
+        message: `Preparation phase failed: ${message}`,
+      },
+    };
+  }
+}
+
 /**
  * Wrap an operation with a timeout
  *
@@ -1022,21 +1529,18 @@ export async function updateSkill(
 
     context = phase6Result.context;
 
-    // TODO: Phase 7 - Preparation (lock, backup, confirmation)
-    state.phase = 'backup';
-
-    // TODO: Phase 8 - Execution
-    state.phase = 'execution';
-
-    // TODO: Phase 9 - Recovery paths and cleanup
-    state.phase = 'cleanup';
-
     // Return dry-run preview with actual version info from Phase 6
+    // (dry-run skips phases 7-9)
     if (options.dryRun) {
       // Clean up temp directory
       if (context.tempDir) {
         await cleanupTempDirectory(context.tempDir);
       }
+
+      // Generate a preview backup path
+      const previewBackupPath = await generateUniqueBackupPath(context.skillName, {
+        homedir: options.homedir,
+      });
 
       return {
         type: 'update-dry-run-preview',
@@ -1061,12 +1565,66 @@ export async function updateSkill(
           modifiedCount: 0,
           sizeChange: 0,
         },
-        backupPath: '~/.asm/backups/', // Will be actual path in Phase 7
+        backupPath: previewBackupPath,
       };
     }
 
+    // Run Phase 7: Preparation (lock, backup, confirmation)
+    state.phase = 'backup';
+    const phase7Result = await runPreparationPhase(context, options);
+
+    if (!phase7Result.success) {
+      // Clean up temp directory
+      if (context.tempDir) {
+        await cleanupTempDirectory(context.tempDir);
+      }
+
+      // Check if user cancelled
+      if ('cancelled' in phase7Result && phase7Result.cancelled) {
+        // Return a special result for user cancellation
+        // For now, we return a success-like result with cancelled flag
+        // This will be handled properly in Phase 9
+        return {
+          type: 'update-success',
+          skillName: context.skillName,
+          path: context.skillPath,
+          previousFileCount: 0,
+          currentFileCount: 0,
+          previousSize: 0,
+          currentSize: 0,
+          backupPath: undefined,
+          backupWillBeRemoved: true,
+        };
+      }
+
+      // Must be error case
+      if ('error' in phase7Result) {
+        throw new UpdateError(phase7Result.error);
+      }
+
+      // Should never reach here, but TypeScript needs this
+      throw new Error('Unexpected preparation phase result');
+    }
+
+    context = phase7Result.context;
+    state.lockAcquired = true;
+    state.lockPath = context.lockPath;
+    state.backupPath = context.backupPath;
+
+    // TODO: Phase 8 - Execution
+    state.phase = 'execution';
+
+    // TODO: Phase 9 - Recovery paths and cleanup
+    state.phase = 'cleanup';
+
+    // Release lock after successful operation
+    if (context.lockPath) {
+      await releaseUpdateLock(context.lockPath);
+      state.lockAcquired = false;
+    }
+
     // Placeholder: Return success for non-dry-run
-    // This will be replaced with full implementation in later phases
+    // This will be replaced with full implementation in Phase 8
     // Clean up temp directory
     if (context.tempDir) {
       await cleanupTempDirectory(context.tempDir);
@@ -1080,10 +1638,15 @@ export async function updateSkill(
       currentFileCount: context.packageInfo?.fileCount ?? context.packageFiles.length,
       previousSize: context.installedInfo?.size ?? 0,
       currentSize: context.packageInfo?.size ?? 0,
-      backupPath: undefined, // Will be set in Phase 7
-      backupWillBeRemoved: !options.keepBackup,
+      backupPath: context.backupPath,
+      backupWillBeRemoved: !options.keepBackup && !context.backupSkipped,
     };
   } catch (error) {
+    // Clean up lock if acquired
+    if (state.lockAcquired && state.lockPath) {
+      await releaseUpdateLock(state.lockPath);
+    }
+
     // Handle errors - will be expanded in Phase 9
     if (error instanceof UpdateError) {
       // Convert to appropriate result type based on error

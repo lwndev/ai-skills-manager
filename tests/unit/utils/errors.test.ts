@@ -7,6 +7,19 @@ import {
   ValidationError,
   FileSystemError,
   UserCancelledError,
+  PackageNotFoundError,
+  SkillNotFoundError,
+  SecurityError,
+  UpdateRollbackError,
+  UpdateCriticalError,
+  BackupCreationError,
+  PackageMismatchError,
+  OperationTimeoutError,
+  PartialRemovalError,
+  ValidationFailedError,
+  PackageValidationError,
+  InvalidPackageError,
+  PathValidationError,
 } from '../../../src/utils/errors';
 
 describe('ASMError', () => {
@@ -159,5 +172,211 @@ describe('error type checking', () => {
     for (const error of errors) {
       expect(error).toBeInstanceOf(ASMError);
     }
+  });
+});
+
+describe('PackageNotFoundError', () => {
+  it('creates an error with package path', () => {
+    const error = new PackageNotFoundError('/path/to/skill.skill');
+    expect(error.message).toContain('/path/to/skill.skill');
+    expect(error.packagePath).toBe('/path/to/skill.skill');
+    expect(error.name).toBe('PackageNotFoundError');
+  });
+});
+
+describe('SkillNotFoundError', () => {
+  it('creates an error with skill name and path', () => {
+    const error = new SkillNotFoundError('my-skill', '/skills/my-skill');
+    expect(error.message).toContain('my-skill');
+    expect(error.message).toContain('/skills/my-skill');
+    expect(error.skillName).toBe('my-skill');
+    expect(error.searchedPath).toBe('/skills/my-skill');
+    expect(error.name).toBe('SkillNotFoundError');
+  });
+});
+
+describe('SecurityError', () => {
+  it('creates an error with reason and details', () => {
+    const error = new SecurityError('symlink-escape', 'Symlink points outside scope');
+    expect(error.message).toContain('symlink-escape');
+    expect(error.reason).toBe('symlink-escape');
+    expect(error.details).toBe('Symlink points outside scope');
+    expect(error.name).toBe('SecurityError');
+  });
+
+  it('handles all security reason types', () => {
+    const reasons: Array<
+      | 'path-traversal'
+      | 'symlink-escape'
+      | 'hard-link-detected'
+      | 'containment-violation'
+      | 'case-mismatch'
+    > = [
+      'path-traversal',
+      'symlink-escape',
+      'hard-link-detected',
+      'containment-violation',
+      'case-mismatch',
+    ];
+    for (const reason of reasons) {
+      const error = new SecurityError(reason, 'test');
+      expect(error.reason).toBe(reason);
+    }
+  });
+});
+
+describe('PartialRemovalError', () => {
+  it('creates an error with all details', () => {
+    const error = new PartialRemovalError('my-skill', '/skills/my-skill', 5, 3, 'EBUSY');
+    expect(error.message).toContain('my-skill');
+    expect(error.message).toContain('5');
+    expect(error.message).toContain('3');
+    expect(error.skillName).toBe('my-skill');
+    expect(error.skillPath).toBe('/skills/my-skill');
+    expect(error.filesRemoved).toBe(5);
+    expect(error.filesRemaining).toBe(3);
+    expect(error.lastError).toBe('EBUSY');
+    expect(error.name).toBe('PartialRemovalError');
+  });
+});
+
+describe('OperationTimeoutError', () => {
+  it('creates an error with operation and timeout', () => {
+    const error = new OperationTimeoutError('backup', 30000);
+    expect(error.message).toContain('backup');
+    expect(error.message).toContain('30000');
+    expect(error.operationName).toBe('backup');
+    expect(error.timeoutMs).toBe(30000);
+    expect(error.name).toBe('OperationTimeoutError');
+  });
+});
+
+describe('UpdateRollbackError', () => {
+  it('creates an error without backup path', () => {
+    const error = new UpdateRollbackError('my-skill', 'extraction failed');
+    expect(error.message).toContain('my-skill');
+    expect(error.message).toContain('extraction failed');
+    expect(error.skillName).toBe('my-skill');
+    expect(error.updateFailureReason).toBe('extraction failed');
+    expect(error.backupPath).toBeUndefined();
+    expect(error.name).toBe('UpdateRollbackError');
+  });
+
+  it('creates an error with backup path', () => {
+    const error = new UpdateRollbackError(
+      'my-skill',
+      'extraction failed',
+      '/backups/my-skill.skill'
+    );
+    expect(error.skillName).toBe('my-skill');
+    expect(error.backupPath).toBe('/backups/my-skill.skill');
+  });
+});
+
+describe('UpdateCriticalError', () => {
+  it('creates an error without backup path', () => {
+    const error = new UpdateCriticalError(
+      'my-skill',
+      '/skills/my-skill',
+      'extraction failed',
+      'rollback also failed'
+    );
+    expect(error.message).toContain('CRITICAL');
+    expect(error.message).toContain('my-skill');
+    expect(error.message).toContain('extraction failed');
+    expect(error.message).toContain('rollback also failed');
+    expect(error.message).toContain('No backup available');
+    expect(error.skillName).toBe('my-skill');
+    expect(error.skillPath).toBe('/skills/my-skill');
+    expect(error.updateFailureReason).toBe('extraction failed');
+    expect(error.rollbackFailureReason).toBe('rollback also failed');
+    expect(error.backupPath).toBeUndefined();
+    expect(error.name).toBe('UpdateCriticalError');
+  });
+
+  it('creates an error with backup path', () => {
+    const error = new UpdateCriticalError(
+      'my-skill',
+      '/skills/my-skill',
+      'extraction failed',
+      'rollback also failed',
+      '/backups/my-skill.skill'
+    );
+    expect(error.message).toContain('/backups/my-skill.skill');
+    expect(error.message).toContain('asm install');
+    expect(error.backupPath).toBe('/backups/my-skill.skill');
+  });
+});
+
+describe('BackupCreationError', () => {
+  it('creates an error with path and reason', () => {
+    const error = new BackupCreationError('/backups/my-skill.skill', 'disk full');
+    expect(error.message).toContain('/backups/my-skill.skill');
+    expect(error.message).toContain('disk full');
+    expect(error.backupPath).toBe('/backups/my-skill.skill');
+    expect(error.reason).toBe('disk full');
+    expect(error.name).toBe('BackupCreationError');
+  });
+});
+
+describe('PackageMismatchError', () => {
+  it('creates an error with both skill names', () => {
+    const error = new PackageMismatchError('installed-skill', 'package-skill');
+    expect(error.message).toContain('installed-skill');
+    expect(error.message).toContain('package-skill');
+    expect(error.installedSkillName).toBe('installed-skill');
+    expect(error.packageSkillName).toBe('package-skill');
+    expect(error.name).toBe('PackageMismatchError');
+  });
+});
+
+describe('PathValidationError', () => {
+  it('creates an error with message', () => {
+    const error = new PathValidationError('Path is invalid');
+    expect(error.message).toBe('Path is invalid');
+    expect(error.name).toBe('PathValidationError');
+    expect(error).toBeInstanceOf(ASMError);
+  });
+});
+
+describe('ValidationFailedError', () => {
+  it('creates an error without validation errors', () => {
+    const error = new ValidationFailedError('Validation failed');
+    expect(error.message).toBe('Validation failed');
+    expect(error.validationErrors).toEqual([]);
+    expect(error.name).toBe('ValidationFailedError');
+  });
+
+  it('creates an error with validation errors', () => {
+    const errors = ['Error 1', 'Error 2'];
+    const error = new ValidationFailedError('Validation failed', errors);
+    expect(error.message).toBe('Validation failed');
+    expect(error.validationErrors).toEqual(errors);
+  });
+});
+
+describe('PackageValidationError', () => {
+  it('creates an error without validation errors', () => {
+    const error = new PackageValidationError('Package invalid');
+    expect(error.message).toBe('Package invalid');
+    expect(error.validationErrors).toEqual([]);
+    expect(error.name).toBe('PackageValidationError');
+  });
+
+  it('creates an error with validation errors', () => {
+    const errors = ['Missing SKILL.md', 'Invalid frontmatter'];
+    const error = new PackageValidationError('Package invalid', errors);
+    expect(error.message).toBe('Package invalid');
+    expect(error.validationErrors).toEqual(errors);
+  });
+});
+
+describe('InvalidPackageError', () => {
+  it('creates an error with path and reason', () => {
+    const error = new InvalidPackageError('/path/to/skill.skill', 'Not a ZIP file');
+    expect(error.message).toContain('Not a ZIP file');
+    expect(error.packagePath).toBe('/path/to/skill.skill');
+    expect(error.reason).toBe('Not a ZIP file');
+    expect(error.name).toBe('InvalidPackageError');
   });
 });

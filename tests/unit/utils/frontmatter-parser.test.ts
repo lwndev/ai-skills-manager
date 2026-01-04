@@ -161,6 +161,43 @@ Content.
       expect(result.error).toContain('empty');
     });
 
+    it('returns error for consecutive delimiters on same line', () => {
+      // Test case: "------" or "--- ---" - opening delimiter immediately followed by closing
+      const content = `------
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('empty');
+    });
+
+    it('returns error when frontmatter parses to null', () => {
+      // In YAML, the word "null" or "~" parses to JavaScript null
+      const content = `---
+null
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('empty');
+    });
+
+    it('returns error when frontmatter parses to undefined using tilde', () => {
+      // In YAML, ~ is an alias for null
+      const content = `---
+~
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('empty');
+    });
+
     it('returns error for frontmatter with only whitespace', () => {
       const content = `---
 

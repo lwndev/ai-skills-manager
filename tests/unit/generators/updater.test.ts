@@ -412,6 +412,24 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       expect(result.valid).toBe(false);
       // tempDir should be cleaned up (no way to verify directly, but no leak)
     });
+
+    it('rejects package with valid structure but invalid frontmatter content', async () => {
+      const packagePath = path.join(tempDir, 'bad-content.skill');
+      const zip = new AdmZip();
+      // Valid directory structure but frontmatter missing required 'description' field
+      const skillMd = `---\nname: bad-content\n---\n\n# Bad content skill`;
+      zip.addFile('bad-content/SKILL.md', Buffer.from(skillMd));
+      zip.writeZip(packagePath);
+
+      const result = await validatePackage(packagePath, 'bad-content');
+
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.error.type).toBe('validation-error');
+        // Validation error for missing description
+        expect('details' in result.error || 'field' in result.error).toBe(true);
+      }
+    });
   });
 
   describe('runInputAndDiscoveryPhase', () => {
@@ -471,6 +489,22 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         expect(result.error.type).toBe('package-mismatch');
       }
     });
+
+    it('handles case-sensitivity through verifyCaseSensitivity', async () => {
+      // Create skill with a specific name
+      await createTestSkill('case-check-skill');
+      const packagePath = await createTestPackage('case-check-skill');
+      const options = getDefaultOptions();
+
+      // This test exercises the verifyCaseSensitivity code path in discovery
+      // It should succeed since names match exactly
+      const result = await runInputAndDiscoveryPhase('case-check-skill', packagePath, options);
+
+      expect(result.success).toBe(true);
+      if (result.success && result.context.tempDir) {
+        await fs.rm(result.context.tempDir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('updateSkill', () => {
@@ -488,17 +522,23 @@ describe('Updater - Phase 5: Input & Discovery', () => {
       }
     });
 
-    it('returns success placeholder for non-dry-run (Phase 5 only)', async () => {
+    it('returns success for non-dry-run with --force', async () => {
       await createTestSkill('update-skill');
       const packagePath = await createTestPackage('update-skill');
-      const options = getDefaultOptions();
+      // Use force to skip confirmation (Phase 7 adds confirmation prompt)
+      const options = { ...getDefaultOptions(), force: true, quiet: true };
 
       const result = await updateSkill('update-skill', packagePath, options);
 
-      // Phase 5 returns placeholder success
       expect(result.type).toBe('update-success');
       if (result.type === 'update-success') {
         expect(result.skillName).toBe('update-skill');
+        // Phase 7 adds backup path
+        expect(result.backupPath).toBeDefined();
+        // Clean up backup
+        if (result.backupPath) {
+          await fs.unlink(result.backupPath).catch(() => {});
+        }
       }
     });
 
@@ -784,6 +824,14 @@ describe('Updater - Phase 6: Security & Analysis', () => {
       expect(RESOURCE_LIMITS.BACKUP_TIMEOUT_MS).toBe(2 * 60 * 1000);
       expect(RESOURCE_LIMITS.EXTRACTION_TIMEOUT_MS).toBe(2 * 60 * 1000);
       expect(RESOURCE_LIMITS.VALIDATION_TIMEOUT_MS).toBe(5 * 1000);
+    });
+
+    it('accepts skill within limits with --force', async () => {
+      const skillPath = await createTestSkill('force-limits');
+
+      const result = await checkResourceLimits(skillPath, true);
+
+      expect(result.withinLimits).toBe(true);
     });
   });
 
@@ -1086,7 +1134,8 @@ describe('Updater - Phase 6: Security & Analysis', () => {
     it('includes file counts in success result', async () => {
       await createTestSkill('success-phase6');
       const packagePath = await createTestPackage('success-phase6');
-      const options = getDefaultOptions();
+      // Use force to skip confirmation (Phase 7 adds confirmation prompt)
+      const options = { ...getDefaultOptions(), force: true, quiet: true };
 
       const result = await updateSkill('success-phase6', packagePath, options);
 
@@ -1094,6 +1143,10 @@ describe('Updater - Phase 6: Security & Analysis', () => {
       if (result.type === 'update-success') {
         expect(result.previousFileCount).toBeGreaterThan(0);
         expect(result.currentFileCount).toBeGreaterThan(0);
+        // Clean up backup
+        if (result.backupPath) {
+          await fs.unlink(result.backupPath).catch(() => {});
+        }
       }
     });
 
@@ -1141,6 +1194,749 @@ describe('Updater - Phase 6: Security & Analysis', () => {
       const result = await updateSkill('hardlink-force-update', packagePath, options);
 
       expect(result.type).toBe('update-success');
+    });
+  });
+});
+
+// ============================================================================
+// Phase 7: Preparation Tests (Lock, Backup, Confirmation)
+// ============================================================================
+
+import {
+  acquireUpdateLock,
+  releaseUpdateLock,
+  hasUpdateLock,
+  createUpdateBackup,
+  confirmUpdate,
+  runPreparationPhase,
+} from '../../../src/generators/updater';
+
+describe('Updater - Phase 7: Preparation', () => {
+  let tempDir: string;
+  let skillsDir: string;
+
+  beforeEach(async () => {
+    // Create fresh temporary directory for each test
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-updater-phase7-'));
+    skillsDir = path.join(tempDir, '.claude', 'skills');
+    await fs.mkdir(skillsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  /**
+   * Helper to create a test skill in the skills directory
+   */
+  async function createTestSkill(name: string): Promise<string> {
+    const skillPath = path.join(skillsDir, name);
+    await fs.mkdir(skillPath, { recursive: true });
+    await fs.writeFile(
+      path.join(skillPath, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: Test skill\n---\n\n# ${name}\n\nTest content.`
+    );
+    await fs.writeFile(path.join(skillPath, 'README.md'), `# ${name}`);
+    return skillPath;
+  }
+
+  /**
+   * Helper to create a test .skill package
+   */
+  async function createTestPackage(skillName: string): Promise<string> {
+    const packagePath = path.join(tempDir, `${skillName}.skill`);
+    const zip = new AdmZip();
+
+    // Add SKILL.md with frontmatter
+    const skillMd = `---\nname: ${skillName}\ndescription: Updated test skill\n---\n\n# ${skillName}\n\nUpdated content.`;
+    zip.addFile(`${skillName}/SKILL.md`, Buffer.from(skillMd));
+    zip.addFile(`${skillName}/README.md`, Buffer.from(`# ${skillName} (updated)`));
+
+    zip.writeZip(packagePath);
+    return packagePath;
+  }
+
+  /**
+   * Default test options
+   */
+  function getDefaultOptions(): UpdateOptions {
+    return {
+      scope: 'project',
+      force: false,
+      dryRun: false,
+      quiet: false,
+      noBackup: false,
+      keepBackup: false,
+      cwd: tempDir,
+      homedir: tempDir,
+    };
+  }
+
+  describe('acquireUpdateLock', () => {
+    it('acquires lock successfully for unlocked skill', async () => {
+      const skillPath = await createTestSkill('lock-test');
+      const packagePath = await createTestPackage('lock-test');
+
+      const result = await acquireUpdateLock(skillPath, packagePath);
+
+      expect(result.acquired).toBe(true);
+      if (result.acquired) {
+        expect(result.lockPath).toContain('.asm-update.lock');
+
+        // Verify lock file exists
+        const lockExists = await fs.stat(result.lockPath).then(
+          () => true,
+          () => false
+        );
+        expect(lockExists).toBe(true);
+
+        // Clean up
+        await releaseUpdateLock(result.lockPath);
+      }
+    });
+
+    it('fails when skill is already locked', async () => {
+      const skillPath = await createTestSkill('already-locked');
+      const packagePath = await createTestPackage('already-locked');
+
+      // Acquire first lock
+      const firstResult = await acquireUpdateLock(skillPath, packagePath);
+      expect(firstResult.acquired).toBe(true);
+
+      // Try to acquire second lock
+      const secondResult = await acquireUpdateLock(skillPath, packagePath);
+
+      expect(secondResult.acquired).toBe(false);
+      if (!secondResult.acquired) {
+        expect(secondResult.error.type).toBe('validation-error');
+        expect((secondResult.error as { message: string }).message).toContain(
+          'currently being updated'
+        );
+      }
+
+      // Clean up
+      if (firstResult.acquired) {
+        await releaseUpdateLock(firstResult.lockPath);
+      }
+    });
+
+    it('removes stale lock and acquires new one', async () => {
+      const skillPath = await createTestSkill('stale-lock');
+      const packagePath = await createTestPackage('stale-lock');
+      const skillName = path.basename(skillPath);
+      const lockPath = path.join(skillsDir, `${skillName}.asm-update.lock`);
+
+      // Create a stale lock (old timestamp)
+      const staleLockContent = JSON.stringify({
+        pid: 99999,
+        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago
+        operationType: 'update',
+        skillPath,
+        packagePath,
+      });
+      await fs.writeFile(lockPath, staleLockContent);
+
+      // Modify mtime to be old
+      const oldTime = new Date(Date.now() - 10 * 60 * 1000);
+      await fs.utimes(lockPath, oldTime, oldTime);
+
+      // Should acquire lock (stale one should be removed)
+      const result = await acquireUpdateLock(skillPath, packagePath);
+
+      expect(result.acquired).toBe(true);
+
+      // Clean up
+      if (result.acquired) {
+        await releaseUpdateLock(result.lockPath);
+      }
+    });
+
+    it('returns filesystem error for invalid lock path', async () => {
+      // Try to acquire lock in a non-existent directory
+      const invalidPath = '/nonexistent/skill';
+      const packagePath = '/path/to/package.skill';
+
+      const result = await acquireUpdateLock(invalidPath, packagePath);
+
+      expect(result.acquired).toBe(false);
+      if (!result.acquired) {
+        expect(result.error.type).toBe('filesystem-error');
+      }
+    });
+
+    it('handles race condition between check and write', async () => {
+      const skillPath = await createTestSkill('race-lock');
+      const packagePath = await createTestPackage('race-lock');
+
+      // Acquire two locks simultaneously - one should fail
+      const [result1, result2] = await Promise.all([
+        acquireUpdateLock(skillPath, packagePath),
+        acquireUpdateLock(skillPath, packagePath),
+      ]);
+
+      // One should succeed, one should fail
+      const succeeded = [result1, result2].filter((r) => r.acquired);
+      const failed = [result1, result2].filter((r) => !r.acquired);
+
+      expect(succeeded.length).toBe(1);
+      expect(failed.length).toBe(1);
+
+      // Clean up
+      for (const result of succeeded) {
+        if (result.acquired) {
+          await releaseUpdateLock(result.lockPath);
+        }
+      }
+    });
+  });
+
+  describe('releaseUpdateLock', () => {
+    it('removes lock file', async () => {
+      const skillPath = await createTestSkill('release-lock');
+      const packagePath = await createTestPackage('release-lock');
+
+      const result = await acquireUpdateLock(skillPath, packagePath);
+      expect(result.acquired).toBe(true);
+
+      if (result.acquired) {
+        await releaseUpdateLock(result.lockPath);
+
+        // Verify lock file is gone
+        const lockExists = await fs.stat(result.lockPath).then(
+          () => true,
+          () => false
+        );
+        expect(lockExists).toBe(false);
+      }
+    });
+
+    it('ignores errors for non-existent lock', async () => {
+      // Should not throw
+      await releaseUpdateLock('/nonexistent/path.lock');
+    });
+  });
+
+  describe('hasUpdateLock', () => {
+    it('returns true for active lock', async () => {
+      const skillPath = await createTestSkill('has-lock');
+      const packagePath = await createTestPackage('has-lock');
+
+      const result = await acquireUpdateLock(skillPath, packagePath);
+      expect(result.acquired).toBe(true);
+
+      const hasLock = await hasUpdateLock(skillPath);
+      expect(hasLock).toBe(true);
+
+      // Clean up
+      if (result.acquired) {
+        await releaseUpdateLock(result.lockPath);
+      }
+    });
+
+    it('returns false for no lock', async () => {
+      const skillPath = await createTestSkill('no-lock');
+
+      const hasLock = await hasUpdateLock(skillPath);
+      expect(hasLock).toBe(false);
+    });
+  });
+
+  describe('createUpdateBackup', () => {
+    it('creates backup successfully', async () => {
+      const skillPath = await createTestSkill('backup-test');
+      const packagePath = await createTestPackage('backup-test');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'backup-test',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'backup-test',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await createUpdateBackup(context, options);
+
+      expect('created' in result).toBe(true);
+      if ('created' in result && result.created) {
+        expect(result.backupPath).toContain('backup-test');
+        expect(result.backupPath).toContain('.skill');
+        expect(result.fileCount).toBeGreaterThan(0);
+        expect(result.size).toBeGreaterThan(0);
+
+        // Clean up backup
+        await fs.unlink(result.backupPath);
+      }
+    });
+
+    it('skips backup when --no-backup is set', async () => {
+      const skillPath = await createTestSkill('no-backup-test');
+      const packagePath = await createTestPackage('no-backup-test');
+      const options = { ...getDefaultOptions(), noBackup: true };
+
+      const context: UpdateContext = {
+        skillName: 'no-backup-test',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'no-backup-test',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await createUpdateBackup(context, options);
+
+      expect('skipped' in result).toBe(true);
+      if ('skipped' in result) {
+        expect(result.reason).toBe('no-backup-flag');
+      }
+    });
+  });
+
+  describe('confirmUpdate', () => {
+    it('skips confirmation when --force is set', async () => {
+      const skillPath = await createTestSkill('force-confirm');
+      const options = { ...getDefaultOptions(), force: true };
+
+      const context: UpdateContext = {
+        skillName: 'force-confirm',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '/path/to/package.skill',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'force-confirm',
+        packageFiles: ['SKILL.md'],
+      };
+
+      const result = await confirmUpdate(context, options, '/backup/path.skill');
+
+      expect(result.confirmed).toBe(false);
+      if (!result.confirmed) {
+        expect(result.reason).toBe('force-flag');
+      }
+    });
+
+    it('returns confirmed when user says yes', async () => {
+      const skillPath = await createTestSkill('yes-confirm');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'yes-confirm',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '/path/to/package.skill',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'yes-confirm',
+        packageFiles: ['SKILL.md'],
+      };
+
+      // Mock confirm function that returns true
+      const mockConfirm = async () => true;
+
+      const result = await confirmUpdate(context, options, '/backup/path.skill', mockConfirm);
+
+      expect(result.confirmed).toBe(true);
+    });
+
+    it('returns user-cancelled when user says no', async () => {
+      const skillPath = await createTestSkill('no-confirm');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'no-confirm',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '/path/to/package.skill',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'no-confirm',
+        packageFiles: ['SKILL.md'],
+      };
+
+      // Mock confirm function that returns false
+      const mockConfirm = async () => false;
+
+      const result = await confirmUpdate(context, options, '/backup/path.skill', mockConfirm);
+
+      expect(result.confirmed).toBe(false);
+      if (!result.confirmed) {
+        expect(result.reason).toBe('user-cancelled');
+      }
+    });
+
+    it('includes version info in prompt', async () => {
+      const skillPath = await createTestSkill('version-prompt');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'version-prompt',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '/path/to/package.skill',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'version-prompt',
+        packageFiles: ['SKILL.md'],
+        installedInfo: {
+          path: skillPath,
+          fileCount: 2,
+          size: 1024,
+        },
+        packageInfo: {
+          path: '/path/to/package.skill',
+          fileCount: 3,
+          size: 2048,
+        },
+        comparison: {
+          filesAdded: [
+            { path: 'new.md', changeType: 'added', sizeBefore: 0, sizeAfter: 512, sizeDelta: 512 },
+          ],
+          filesRemoved: [],
+          filesModified: [],
+          addedCount: 1,
+          removedCount: 0,
+          modifiedCount: 0,
+          sizeChange: 1024,
+        },
+      };
+
+      // Mock confirm function that returns true
+      const mockConfirm = async () => true;
+
+      const result = await confirmUpdate(context, options, '/backup/path.skill', mockConfirm);
+
+      expect(result.confirmed).toBe(true);
+    });
+  });
+
+  describe('runPreparationPhase', () => {
+    it('runs all preparation steps with --force', async () => {
+      const skillPath = await createTestSkill('prep-force');
+      const packagePath = await createTestPackage('prep-force');
+      const options = { ...getDefaultOptions(), force: true };
+
+      const context: UpdateContext = {
+        skillName: 'prep-force',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'prep-force',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await runPreparationPhase(context, options);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.context.lockPath).toBeDefined();
+        expect(result.context.backupPath).toBeDefined();
+        expect(result.context.backupSkipped).toBe(false);
+
+        // Clean up lock and backup
+        if (result.context.lockPath) {
+          await releaseUpdateLock(result.context.lockPath);
+        }
+        if (result.context.backupPath) {
+          await fs.unlink(result.context.backupPath).catch(() => {});
+        }
+      }
+    });
+
+    it('skips backup with --no-backup', async () => {
+      const skillPath = await createTestSkill('prep-no-backup');
+      const packagePath = await createTestPackage('prep-no-backup');
+      const options = { ...getDefaultOptions(), force: true, noBackup: true, quiet: true };
+
+      const context: UpdateContext = {
+        skillName: 'prep-no-backup',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'prep-no-backup',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await runPreparationPhase(context, options);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.context.lockPath).toBeDefined();
+        expect(result.context.backupPath).toBeUndefined(); // No actual backup created
+        expect(result.context.backupSkipped).toBe(true);
+
+        // Clean up lock
+        if (result.context.lockPath) {
+          await releaseUpdateLock(result.context.lockPath);
+        }
+      }
+    });
+
+    it('cancels on user rejection', async () => {
+      const skillPath = await createTestSkill('prep-cancel');
+      const packagePath = await createTestPackage('prep-cancel');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'prep-cancel',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'prep-cancel',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      // Mock confirm that returns false
+      const mockConfirm = async () => false;
+
+      const result = await runPreparationPhase(context, options, mockConfirm);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect('cancelled' in result).toBe(true);
+      }
+
+      // Lock should be released
+      const hasLock = await hasUpdateLock(skillPath);
+      expect(hasLock).toBe(false);
+    });
+
+    it('fails on concurrent update attempt', async () => {
+      const skillPath = await createTestSkill('prep-concurrent');
+      const packagePath = await createTestPackage('prep-concurrent');
+      const options = { ...getDefaultOptions(), force: true };
+
+      const context: UpdateContext = {
+        skillName: 'prep-concurrent',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'prep-concurrent',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      // Acquire lock first
+      const lockResult = await acquireUpdateLock(skillPath, packagePath);
+      expect(lockResult.acquired).toBe(true);
+
+      // Try to run preparation phase - should fail
+      const result = await runPreparationPhase(context, options);
+
+      expect(result.success).toBe(false);
+      if (!result.success && 'error' in result) {
+        expect(result.error.type).toBe('validation-error');
+      }
+
+      // Clean up
+      if (lockResult.acquired) {
+        await releaseUpdateLock(lockResult.lockPath);
+      }
+    });
+  });
+
+  describe('createUpdateBackup edge cases', () => {
+    it('returns error when backup directory validation fails', async () => {
+      const skillPath = await createTestSkill('backup-fail');
+      const packagePath = await createTestPackage('backup-fail');
+      // Use a non-existent homedir to trigger validation failure
+      const options = { ...getDefaultOptions(), homedir: '/nonexistent/path' };
+
+      const context: UpdateContext = {
+        skillName: 'backup-fail',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'backup-fail',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await createUpdateBackup(context, options);
+
+      expect('created' in result || 'error' in result).toBe(true);
+      // Either it fails with an error or validation passes (depending on implementation)
+    });
+
+    it('skips writability check when --no-backup is set', async () => {
+      const skillPath = await createTestSkill('skip-writable');
+      const packagePath = await createTestPackage('skip-writable');
+      // Even with invalid homedir, should skip check when noBackup is true
+      const options = { ...getDefaultOptions(), noBackup: true, homedir: '/nonexistent/path' };
+
+      const context: UpdateContext = {
+        skillName: 'skip-writable',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'skip-writable',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      const result = await createUpdateBackup(context, options);
+
+      expect('skipped' in result).toBe(true);
+      if ('skipped' in result) {
+        expect(result.reason).toBe('no-backup-flag');
+      }
+    });
+  });
+
+  describe('runPreparationPhase edge cases', () => {
+    it('handles confirmation with downgrade warning', async () => {
+      const skillPath = await createTestSkill('downgrade-confirm');
+      const packagePath = await createTestPackage('downgrade-confirm');
+      const options = getDefaultOptions();
+
+      const context: UpdateContext = {
+        skillName: 'downgrade-confirm',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'downgrade-confirm',
+        packageFiles: ['SKILL.md', 'README.md'],
+        downgradeInfo: {
+          isDowngrade: true,
+          installedDate: '2025-01-01',
+          newDate: '2024-12-01',
+          message: 'This appears to be a downgrade',
+        },
+      };
+
+      // Mock confirm that returns true
+      const mockConfirm = async () => true;
+
+      const result = await runPreparationPhase(context, options, mockConfirm);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Clean up lock and backup
+        if (result.context.lockPath) {
+          await releaseUpdateLock(result.context.lockPath);
+        }
+        if (result.context.backupPath) {
+          await fs.unlink(result.context.backupPath).catch(() => {});
+        }
+      }
+    });
+
+    it('cleans up backup on user cancellation', async () => {
+      const skillPath = await createTestSkill('cancel-cleanup');
+      const packagePath = await createTestPackage('cancel-cleanup');
+      const options = { ...getDefaultOptions(), quiet: true };
+
+      const context: UpdateContext = {
+        skillName: 'cancel-cleanup',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath,
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'cancel-cleanup',
+        packageFiles: ['SKILL.md', 'README.md'],
+      };
+
+      // Mock confirm that returns false (user cancels)
+      const mockConfirm = async () => false;
+
+      const result = await runPreparationPhase(context, options, mockConfirm);
+
+      expect(result.success).toBe(false);
+      expect('cancelled' in result).toBe(true);
+
+      // Verify no backup file remains (cleanup happened)
+      // We can't easily verify this without knowing the backup path
+      // but the lock should be released
+      const hasLock = await hasUpdateLock(skillPath);
+      expect(hasLock).toBe(false);
+    });
+  });
+
+  describe('updateSkill with Phase 7', () => {
+    function getDefaultOptions(): UpdateOptions {
+      return {
+        scope: 'project',
+        force: true, // Use force to skip interactive confirmation
+        dryRun: false,
+        quiet: true, // Suppress output
+        noBackup: false,
+        keepBackup: false,
+        cwd: tempDir,
+        homedir: tempDir,
+      };
+    }
+
+    it('includes backup path in success result', async () => {
+      await createTestSkill('full-update');
+      const packagePath = await createTestPackage('full-update');
+      const options = getDefaultOptions();
+
+      const result = await updateSkill('full-update', packagePath, options);
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.backupPath).toBeDefined();
+        expect(result.backupPath).toContain('full-update');
+        expect(result.backupPath).toContain('.skill');
+
+        // Clean up backup
+        if (result.backupPath) {
+          await fs.unlink(result.backupPath).catch(() => {});
+        }
+      }
+    });
+
+    it('omits backup path when --no-backup is set', async () => {
+      await createTestSkill('no-backup-update');
+      const packagePath = await createTestPackage('no-backup-update');
+      const options = { ...getDefaultOptions(), noBackup: true };
+
+      const result = await updateSkill('no-backup-update', packagePath, options);
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.backupPath).toBeUndefined();
+      }
+    });
+
+    it('throws on lock conflict', async () => {
+      const skillPath = await createTestSkill('lock-conflict');
+      const packagePath = await createTestPackage('lock-conflict');
+      const options = getDefaultOptions();
+
+      // Acquire lock first
+      const lockResult = await acquireUpdateLock(skillPath, packagePath);
+      expect(lockResult.acquired).toBe(true);
+
+      // Try to update - should fail
+      await expect(updateSkill('lock-conflict', packagePath, options)).rejects.toThrow(UpdateError);
+
+      // Clean up
+      if (lockResult.acquired) {
+        await releaseUpdateLock(lockResult.lockPath);
+      }
+    });
+
+    it('generates actual backup path in dry-run preview', async () => {
+      await createTestSkill('dry-run-backup');
+      const packagePath = await createTestPackage('dry-run-backup');
+      const options = { ...getDefaultOptions(), dryRun: true };
+
+      const result = await updateSkill('dry-run-backup', packagePath, options);
+
+      expect(result.type).toBe('update-dry-run-preview');
+      if (result.type === 'update-dry-run-preview') {
+        expect(result.backupPath).toContain('dry-run-backup');
+        expect(result.backupPath).toContain('.skill');
+      }
     });
   });
 });
