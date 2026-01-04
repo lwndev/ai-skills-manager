@@ -291,7 +291,145 @@ Skills can execute code and access files. Only install packages from trusted sou
 
 ### Update a Skill
 
-*Coming soon*
+Use the `update` command to update an installed skill to a newer version from a `.skill` package:
+
+```bash
+# Update a skill in project scope (default)
+asm update my-skill ./my-skill-v2.skill
+
+# Update a skill in personal scope
+asm update my-skill ./my-skill-v2.skill --scope personal
+
+# Preview update without making changes
+asm update my-skill ./my-skill-v2.skill --dry-run
+
+# Force update without confirmation
+asm update my-skill ./my-skill-v2.skill --force
+
+# Update without creating backup (not recommended)
+asm update my-skill ./my-skill-v2.skill --no-backup
+
+# Keep backup after successful update
+asm update my-skill ./my-skill-v2.skill --keep-backup
+
+# Quiet mode for CI/CD
+asm update my-skill ./my-skill-v2.skill --quiet --force
+```
+
+#### Update Options
+
+| Option | Description |
+|--------|-------------|
+| `-s, --scope <scope>` | Target scope: "project" or "personal" (default: project) |
+| `-f, --force` | Skip confirmation prompt |
+| `-n, --dry-run` | Preview update without making changes |
+| `-q, --quiet` | Quiet mode - minimal output |
+| `--no-backup` | Skip backup creation (not recommended) |
+| `--keep-backup` | Keep backup after successful update |
+
+#### Update Process
+
+1. Validates the skill name and locates the installed skill
+2. Validates the new `.skill` package (structure, contents, security)
+3. Compares versions and shows diff summary (files added/removed/modified)
+4. Creates a backup in `~/.asm/backups/` (unless `--no-backup`)
+5. Prompts for confirmation (unless `--force`)
+6. Replaces the installed skill with the new version atomically
+7. Validates the updated skill
+8. Removes backup on success (unless `--keep-backup`)
+9. Rolls back automatically if any step fails
+
+#### Backup and Restore
+
+Backups are stored in `~/.asm/backups/` with the format `<skill-name>-<timestamp>-<random>.skill`. By default, backups are automatically deleted after a successful update. Use `--keep-backup` to preserve them.
+
+To manually restore from a backup:
+
+```bash
+# Uninstall the current version
+asm uninstall my-skill
+
+# Reinstall from backup
+asm install ~/.asm/backups/my-skill-20250103-143022-a1b2c3d4.skill
+```
+
+#### Rollback Behavior
+
+If an update fails at any point, ASM automatically rolls back to the previous version:
+
+- **Before extraction**: No changes made, backup deleted
+- **During extraction**: Partial extraction removed, original restored
+- **After validation failure**: New version removed, original restored
+
+If rollback also fails (exit code 7), the backup file is preserved for manual recovery.
+
+#### Exit Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Skill updated successfully |
+| 1 | Skill not found |
+| 2 | File system error (permission denied, disk full, etc.) |
+| 3 | User cancelled update |
+| 4 | Invalid new package |
+| 5 | Security error (path traversal, invalid name, etc.) |
+| 6 | Rollback performed (update failed but rollback succeeded) |
+| 7 | Rollback failed (critical error - check backup) |
+
+#### Output Examples
+
+**Normal output:**
+```
+Updating skill 'my-skill' in .claude/skills/
+
+Current version:
+  Name: my-skill
+  Files: 3 (2.1 KB)
+
+New version:
+  Package: ./my-skill-v2.skill
+  Files: 4 (2.8 KB)
+
+Changes:
+  + scripts/new-helper.sh (added)
+  ~ SKILL.md (modified, +200 bytes)
+
+Backup created: ~/.asm/backups/my-skill-20250103-143022-a1b2c3d4.skill
+
+Proceed with update? [y/N] y
+
+Updating skill...
+✓ Skill 'my-skill' updated successfully
+  Added: 1 file
+  Modified: 1 file
+  Backup removed
+```
+
+**Dry run output:**
+```
+[DRY RUN] Would update skill 'my-skill' in .claude/skills/
+
+Current version:
+  Name: my-skill
+  Files: 3 (2.1 KB)
+
+New version:
+  Package: ./my-skill-v2.skill
+  Files: 4 (2.8 KB)
+
+Changes:
+  + scripts/new-helper.sh (added)
+  ~ SKILL.md (modified, +200 bytes)
+
+Backup would be created: ~/.asm/backups/my-skill-<timestamp>.skill
+
+No changes were made.
+```
+
+**Quiet output:**
+```
+✓ my-skill updated in project (4 files, 2.8 KB)
+```
 
 ### Uninstall a Skill
 
@@ -490,6 +628,15 @@ A: List the contents of `.claude/skills/` (project scope) or `~/.claude/skills/`
 **Q: What happens if I install a skill that already exists?**
 A: ASM will prompt for confirmation before overwriting. Use `--force` to skip the prompt, or `--dry-run` to preview what would be installed without making changes.
 
+**Q: How do I update a skill to a newer version?**
+A: Use `asm update <skill-name> <new-package.skill>`. This safely replaces the installed skill with automatic backup and rollback capabilities.
+
+**Q: Where are skill backups stored?**
+A: Backups are stored in `~/.asm/backups/`. By default, they're removed after a successful update. Use `--keep-backup` to preserve them.
+
+**Q: What happens if an update fails?**
+A: ASM automatically rolls back to the previous version. The backup file is preserved for manual recovery if the rollback also fails.
+
 **Q: How do I test my skill?**
 A: After creating a skill, invoke it in Claude Code by name. Claude will discover skills in the standard locations.
 
@@ -545,6 +692,21 @@ The directory exists but doesn't contain a SKILL.md file, suggesting it may not 
 
 **Error: Hard links detected (use --force)**
 Files in the skill directory have hard links to other locations. Deleting them will leave the data accessible elsewhere. Use `--force` if this is acceptable.
+
+**Error: Update failed - rolled back to previous version**
+The update encountered an error after backup was created. ASM automatically restored the previous version. Check the specific error message for details on what failed.
+
+**Error: Rollback failed - skill may be in inconsistent state**
+Both the update and the automatic rollback failed. Your skill may be in an inconsistent state. The backup file has been preserved for manual recovery. Use `asm install <backup-path>` to restore from the backup.
+
+**Error: Package skill name mismatch**
+The skill name in the new package does not match the installed skill. You cannot update a skill with a package containing a different skill. Use `asm uninstall` and `asm install` instead.
+
+**Error: Cannot create backup directory**
+ASM could not create the backup directory at `~/.asm/backups/`. Check permissions on your home directory. Use `--no-backup` to skip backup creation (not recommended).
+
+**Error: Skill is currently being updated**
+Another update operation is in progress for this skill. Wait for it to complete or check if a stale lock file exists.
 
 ### Debug Mode
 
