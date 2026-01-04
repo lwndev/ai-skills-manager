@@ -626,7 +626,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 13: Performance & Snapshot Tests
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **NFR-1 compliance**: Performance thresholds must be met
@@ -654,11 +654,10 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 4. Run benchmarks and snapshot tests
 
 #### Deliverables
-- [ ] `tests/fixtures/packages/` - Test packages of varying sizes
-- [ ] `tests/performance/update-benchmark.test.ts` - Performance benchmark tests
-- [ ] `tests/unit/formatters/update-formatter.snapshot.test.ts` - Snapshot tests
-- [ ] `tests/fixtures/snapshots/update-output/` - Snapshot fixtures
-- [ ] Performance benchmarks within thresholds (5s validation, 30s update, 2m backup)
+- [x] `tests/performance/update-benchmark.test.ts` - Performance benchmark tests (14 tests, generates fixtures dynamically)
+- [x] `tests/unit/formatters/update-formatter.snapshot.test.ts` - Snapshot tests (35 tests)
+- [x] `tests/unit/formatters/__snapshots__/update-formatter.snapshot.test.ts.snap` - Snapshot fixtures (standard Jest location)
+- [x] Performance benchmarks within thresholds (5s validation, 30s update, 2m backup)
 
 ---
 

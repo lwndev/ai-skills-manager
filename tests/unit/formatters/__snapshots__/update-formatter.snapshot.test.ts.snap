@@ -1,0 +1,404 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Update Formatter Snapshots Backup Messages matches backup created format: backup-created 1`] = `
+Creating backup...
+   Backup saved to: ~/.asm/backups/my-skill-20250115.skill
+`;
+
+exports[`Update Formatter Snapshots Backup Messages matches no backup warning format: no-backup-warning 1`] = `⚠ Warning: Proceeding without backup. If the update fails, the previous version cannot be automatically restored.`;
+
+exports[`Update Formatter Snapshots Cancelled Update matches interrupted format: cancelled-interrupted 1`] = `
+
+⚠ Update of 'my-skill' was interrupted
+
+No changes were made.
+
+`;
+
+exports[`Update Formatter Snapshots Cancelled Update matches user cancelled format: cancelled-user 1`] = `
+
+ℹ Update of 'my-skill' was cancelled
+
+Cleanup completed. No changes were made.
+
+`;
+
+exports[`Update Formatter Snapshots Change Summary matches change summary with all types: change-summary-all-types 1`] = `
+Changes:
+   + new-file.md (added, 1000 B)
+   + another.md (added, 500 B)
+   ~ SKILL.md (modified, +100 B)
+   - old.md (removed)
+`;
+
+exports[`Update Formatter Snapshots Change Summary matches change summary with truncation: change-summary-truncated 1`] = `
+Changes:
+   + file0.md (added, 100 B)
+   + file1.md (added, 100 B)
+   + file2.md (added, 100 B)
+   + file3.md (added, 100 B)
+   + file4.md (added, 100 B)
+   ... and 10 more added files
+`;
+
+exports[`Update Formatter Snapshots Confirmation Prompt matches confirmation prompt format: confirmation-prompt 1`] = `
+Updating skill: my-skill
+
+Current version:
+   Location: .claude/skills/my-skill
+   Files: 4 (7.6 KB)
+   Modified: 2025-01-10 14:30:00
+   Description: A useful skill
+
+New version:
+   Package: ./my-skill-v2.skill
+   Files: 5 (9.0 KB)
+   Description: Updated skill with new features
+
+Changes:
+   + new.md (added, 1.4 KB)
+   ~ SKILL.md (modified, +100 B)
+
+Backup location: ~/.asm/backups/my-skill-20250115.skill
+
+This will replace the installed skill with the new version.
+`;
+
+exports[`Update Formatter Snapshots Downgrade Warning (requirements lines 369-381) matches downgrade warning format with dates: downgrade-warning-with-dates 1`] = `
+
+⚠ This appears to be a downgrade
+   Current version date: 2025-01-15
+   New package date: 2025-01-10
+
+`;
+
+exports[`Update Formatter Snapshots Downgrade Warning (requirements lines 369-381) matches downgrade warning format without dates: downgrade-warning-no-dates 1`] = `
+
+⚠ This appears to be a downgrade
+
+`;
+
+exports[`Update Formatter Snapshots Dry-run Output (requirements lines 336-362) matches dry-run preview format with changes: dry-run-with-changes 1`] = `
+Dry run: my-skill
+
+Update preview:
+   Skill: my-skill
+   Location: .claude/skills/my-skill
+
+Current version:
+   Files: 4 (7.6 KB)
+   Modified: 2025-01-10 14:30:00
+
+New version:
+   Package: ./my-skill-v2.skill
+   Files: 5 (9.0 KB)
+
+Changes that would be made:
+   + templates/advanced.md (added, 1.4 KB)
+   ~ SKILL.md (modified, +50 B)
+   - old-template.md (removed)
+
+Backup would be created at:
+   ~/.asm/backups/my-skill-20250115.skill
+
+ℹ No changes made (dry run mode)
+
+`;
+
+exports[`Update Formatter Snapshots Dry-run Output (requirements lines 336-362) matches dry-run preview format without changes: dry-run-no-changes 1`] = `
+Dry run: my-skill
+
+Update preview:
+   Skill: my-skill
+   Location: .claude/skills/my-skill
+
+Current version:
+   Files: 4 (7.6 KB)
+
+New version:
+   Package: ./my-skill.skill
+   Files: 4 (7.6 KB)
+
+Changes that would be made:
+   No file changes detected
+
+Backup would be created at:
+   ~/.asm/backups/my-skill.skill
+
+ℹ No changes made (dry run mode)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches backup creation error format: error-backup-creation 1`] = `
+
+✗ Error: Failed to create backup
+   Path: ~/.asm/backups/my-skill.skill
+   Reason: Disk full
+
+Suggestions:
+  - Check disk space: df -h ~/.asm
+  - Check permissions: ls -la ~/.asm/backups/
+  - Use --no-backup to skip backup (not recommended)
+
+✗ Error: Update failed (no changes made)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches filesystem error format: error-filesystem 1`] = `
+
+✗ Error: File system error during write: Permission denied
+   Path: /path/to/file
+
+✗ Error: Update failed (no changes made)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches package mismatch error format: error-package-mismatch 1`] = `
+
+✗ Error: Package skill name does not match installed skill
+   Installed skill: my-skill
+   Package skill: other-skill
+
+Use the correct package for this skill, or install as a new skill:
+   asm install <package> --scope <scope>
+
+✗ Error: Update failed (no changes made)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - case mismatch: error-security-case-mismatch 1`] = `
+
+✗ Error: Security Error: Skill name case mismatch
+
+   Input: my-skill, Actual: MY-SKILL
+
+On case-insensitive filesystems, this could indicate a
+symlink substitution attack.
+
+✗ Error: Update aborted (exit code 5)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - path traversal: error-security-path-traversal 1`] = `
+
+✗ Error: Security Error: Path traversal detected
+
+   Attempted to access ../../../etc/passwd
+
+✗ Error: Update aborted (exit code 5)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - symlink escape: error-security-symlink 1`] = `
+
+✗ Error: Security Error: Symlink points outside allowed scope
+
+   Symlink points to /etc/passwd
+
+This could indicate a malicious skill or misconfiguration.
+
+✗ Error: Update aborted (exit code 5)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - zip bomb: error-security-zip-bomb 1`] = `
+
+✗ Error: Security Error: Potential ZIP bomb detected
+
+   Compression ratio exceeds 100:1
+
+The package has an unusually high compression ratio.
+
+✗ Error: Update aborted (exit code 5)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches skill not found error format: error-skill-not-found 1`] = `
+
+✗ Error: Skill 'missing-skill' not found in .claude/skills
+
+Suggestions:
+  - Check the skill name spelling
+  - Verify the skill is installed: ls .claude/skills
+  - Try a different scope: asm update <skill> <package> --scope personal
+
+✗ Error: Update failed
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches timeout error format: error-timeout 1`] = `
+
+✗ Error: Operation timed out: backup
+   Timeout: 120000ms
+
+Suggestions:
+  - The skill or package may be too large
+  - Check file system performance
+  - Try again when system is less busy
+
+✗ Error: Update failed (no changes made)
+
+`;
+
+exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches validation error format: error-validation 1`] = `
+
+✗ Error: Invalid package structure
+
+   - Missing SKILL.md
+   - No files found
+
+✗ Error: Update failed
+
+`;
+
+exports[`Update Formatter Snapshots Hard Link Warning matches hard link warning format: hard-link-warning 1`] = `
+
+Updating skill: my-skill
+
+⚠ Warning: Skill contains files with multiple hard links
+
+The following files exist in other locations on this filesystem:
+   - shared-utils/common.js (2 hard links)
+   - shared-utils/helpers.js (3 hard links)
+
+Updating these files will affect all linked locations.
+Use --force to proceed anyway.
+
+✗ Error: Update requires --force
+
+`;
+
+exports[`Update Formatter Snapshots Invalid Package Error matches invalid package error format: invalid-package-error 1`] = `
+
+✗ Error: Invalid package './bad.skill'
+   - Missing required file: SKILL.md
+   - Package appears to be corrupted
+
+✗ Error: Update failed (no changes made)
+
+`;
+
+exports[`Update Formatter Snapshots Lock Conflict matches lock conflict format: lock-conflict 1`] = `
+
+✗ Error: Update already in progress
+
+   Process ID: 12345
+   Started: 2025-01-15T14:30:00.000Z
+   Package: ./new-version.skill
+
+If the previous update was interrupted, remove the lock file:
+   rm <skill-dir>/.asm-update.lock
+
+✗ Error: Update failed
+
+`;
+
+exports[`Update Formatter Snapshots Progress Bar matches progress bar at 0%: progress-bar-0 1`] = `[░░░░░░░░░░░░░░░░░░░░] 0% Backing up files...`;
+
+exports[`Update Formatter Snapshots Progress Bar matches progress bar at 50%: progress-bar-50 1`] = `[██████████░░░░░░░░░░] 50% Extracting...`;
+
+exports[`Update Formatter Snapshots Progress Bar matches progress bar at 100%: progress-bar-100 1`] = `[████████████████████] 100% Complete`;
+
+exports[`Update Formatter Snapshots Quiet Output (requirements lines 365-367) matches quiet mode single-line format: quiet-output 1`] = `my-skill updated (4 -> 5 files, 7.6 KB -> 9.0 KB)`;
+
+exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback failed (critical error) format: rollback-failed-critical 1`] = `
+
+✗ Error: CRITICAL: Rollback failed - manual intervention required
+
+Update failed:
+   Extraction failed midway
+
+Rollback failed:
+   Backup file corrupted
+
+Skill state:
+   Name: my-skill
+   Path: .claude/skills/my-skill
+   Backup: ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill
+
+Recovery instructions:
+   Manually restore from backup or reinstall skill using: asm install <package>
+
+✗ Error: Update failed (exit code 7)
+
+`;
+
+exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback success format without backup: rollback-success-no-backup 1`] = `
+
+Post-update validation failed:
+   Validation failed
+
+Rolling back...
+   Removing failed installation...
+   Restoring previous version...
+   Verifying restoration...
+
+⚠ Rollback successful: my-skill restored to previous version
+
+✗ Error: Update failed (exit code 6)
+
+`;
+
+exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback success format: rollback-success 1`] = `
+
+Post-update validation failed:
+   SKILL.md: Invalid format at line 15
+
+Rolling back...
+   Removing failed installation...
+   Restoring previous version...
+   Verifying restoration...
+
+⚠ Rollback successful: my-skill restored to previous version
+   Backup kept at: ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill
+
+✗ Error: Update failed (exit code 6)
+
+`;
+
+exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches expected success output format: success-output 1`] = `
+
+✓ Successfully updated skill: my-skill
+   Previous: 4 files, 7.6 KB
+   Current: 5 files, 9.0 KB
+   Backup: ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill (will be removed)
+
+To restore the previous version, use:
+   asm install ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill --scope project --force
+
+`;
+
+exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output for personal scope: success-output-personal-scope 1`] = `
+
+✓ Successfully updated skill: my-skill
+   Previous: 4 files, 7.6 KB
+   Current: 5 files, 9.0 KB
+   Backup: ~/.asm/backups/my-skill-20250115.skill (will be removed)
+
+To restore the previous version, use:
+   asm install ~/.asm/backups/my-skill-20250115.skill --scope personal --force
+
+`;
+
+exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output with backup kept: success-output-backup-kept 1`] = `
+
+✓ Successfully updated skill: my-skill
+   Previous: 4 files, 7.6 KB
+   Current: 5 files, 9.0 KB
+   Backup: ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill (kept)
+
+To restore the previous version, use:
+   asm install ~/.asm/backups/my-skill-20250115-143000-a1b2c3d4.skill --scope project --force
+
+`;
+
+exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output without backup: success-output-no-backup 1`] = `
+
+✓ Successfully updated skill: my-skill
+   Previous: 4 files, 7.6 KB
+   Current: 5 files, 9.0 KB
+
+To restore the previous version, use:
+   (no backup available - previous version cannot be restored)
+
+`;
