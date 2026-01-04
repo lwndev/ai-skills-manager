@@ -587,7 +587,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 12: Edge Cases & Integration Tests
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Real-world scenarios**: Tests actual user workflows
@@ -617,10 +617,10 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 4. Run integration tests and verify all pass
 
 #### Deliverables
-- [ ] `tests/integration/update-edge-cases.test.ts` - Edge case tests
-- [ ] `--no-backup` failure scenario fully tested
-- [ ] All integration tests passing
-- [ ] Coverage > 80% for edge case code paths
+- [x] `tests/integration/update-edge-cases.test.ts` - Edge case tests (26 tests)
+- [x] `--no-backup` failure scenario fully tested
+- [x] All integration tests passing (44 total update integration tests)
+- [x] Coverage > 80% for edge case code paths
 
 ---
 
