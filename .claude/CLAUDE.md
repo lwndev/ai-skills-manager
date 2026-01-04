@@ -14,6 +14,24 @@ npm install
 
 # Build the project (compiles TypeScript to dist/)
 npm run build
+
+# Run tests
+npm test
+
+# Run tests for a specific file
+npm test -- tests/path/to/file.test.ts
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run linter
+npm run lint
+
+# Run linter with auto-fix
+npm run lint:fix
+
+# Full quality check (lint + test:coverage + audit)
+npm run quality
 ```
 
 ## Project Structure
@@ -47,4 +65,32 @@ npm run build
   - "Learn how to write effective Skills that Claude can discover and use successfully."
   - Local copy: `docs/anthropic/skills/documentation/agent-skills-best-practices-20251229.md`
   - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 
-- Add to memory. Run `npm run quality` to run linter and tests
+
+## Code Style Guidelines
+
+### Use Discriminated Unions for Result Types
+
+When creating result types that have success/failure branches, use **discriminated unions** instead of interfaces with optional properties. This enables TypeScript to narrow types automatically and eliminates the need for non-null assertions (`!`).
+
+**Avoid this pattern:**
+```typescript
+interface Result {
+  valid: boolean;
+  error?: Error;
+  data?: Data;
+}
+// Requires non-null assertions: result.data!
+```
+
+**Use this pattern:**
+```typescript
+type Result =
+  | { valid: true; data: Data }
+  | { valid: false; error: Error };
+// TypeScript narrows automatically after: if (!result.valid) { ... }
+```
+
+This approach:
+- Is type-safe with no runtime assertions needed
+- Catches bugs at compile time if you forget to handle a case
+- Follows the pattern used throughout this codebase (e.g., `UpdateResultUnion`, `SkillDiscoveryResult`)

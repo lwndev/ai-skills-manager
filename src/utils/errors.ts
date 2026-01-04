@@ -201,3 +201,103 @@ export class OperationTimeoutError extends ASMError {
     this.timeoutMs = timeoutMs;
   }
 }
+
+/**
+ * Update rollback error - thrown when update fails but rollback succeeds
+ * The skill has been restored to its previous state
+ */
+export class UpdateRollbackError extends ASMError {
+  /** Name of the skill that was rolled back */
+  public readonly skillName: string;
+  /** Reason the update failed */
+  public readonly updateFailureReason: string;
+  /** Path to the backup file (if available for manual recovery) */
+  public readonly backupPath?: string;
+
+  constructor(skillName: string, updateFailureReason: string, backupPath?: string) {
+    super(
+      `Update of skill "${skillName}" failed: ${updateFailureReason}. ` +
+        `Rollback successful - skill restored to previous state.`
+    );
+    this.skillName = skillName;
+    this.updateFailureReason = updateFailureReason;
+    this.backupPath = backupPath;
+  }
+}
+
+/**
+ * Update critical error - thrown when both update and rollback fail
+ * The skill may be in an inconsistent state and requires manual intervention
+ */
+export class UpdateCriticalError extends ASMError {
+  /** Name of the skill in broken state */
+  public readonly skillName: string;
+  /** Path to the skill directory */
+  public readonly skillPath: string;
+  /** Reason the update failed */
+  public readonly updateFailureReason: string;
+  /** Reason the rollback failed */
+  public readonly rollbackFailureReason: string;
+  /** Path to the backup file (if available for manual recovery) */
+  public readonly backupPath?: string;
+
+  constructor(
+    skillName: string,
+    skillPath: string,
+    updateFailureReason: string,
+    rollbackFailureReason: string,
+    backupPath?: string
+  ) {
+    const backupMsg = backupPath
+      ? `\nBackup available at: ${backupPath}\nTo restore manually: asm install "${backupPath}" --force`
+      : '\nNo backup available for manual recovery.';
+
+    super(
+      `CRITICAL: Update of skill "${skillName}" failed and rollback also failed.\n` +
+        `Update error: ${updateFailureReason}\n` +
+        `Rollback error: ${rollbackFailureReason}\n` +
+        `Skill may be in inconsistent state at: ${skillPath}` +
+        backupMsg
+    );
+    this.skillName = skillName;
+    this.skillPath = skillPath;
+    this.updateFailureReason = updateFailureReason;
+    this.rollbackFailureReason = rollbackFailureReason;
+    this.backupPath = backupPath;
+  }
+}
+
+/**
+ * Backup creation error - thrown when backup cannot be created
+ */
+export class BackupCreationError extends ASMError {
+  /** Path where backup was attempted */
+  public readonly backupPath: string;
+  /** Reason backup creation failed */
+  public readonly reason: string;
+
+  constructor(backupPath: string, reason: string) {
+    super(`Failed to create backup at "${backupPath}": ${reason}`);
+    this.backupPath = backupPath;
+    this.reason = reason;
+  }
+}
+
+/**
+ * Package mismatch error - thrown when new package has different skill name
+ */
+export class PackageMismatchError extends ASMError {
+  /** Name of the installed skill */
+  public readonly installedSkillName: string;
+  /** Name found in the new package */
+  public readonly packageSkillName: string;
+
+  constructor(installedSkillName: string, packageSkillName: string) {
+    super(
+      `Package skill name "${packageSkillName}" does not match installed skill "${installedSkillName}". ` +
+        `Use 'asm uninstall ${installedSkillName}' then 'asm install <package>' for a different skill.`
+    );
+    this.installedSkillName = installedSkillName;
+    this.packageSkillName = packageSkillName;
+  }
+}

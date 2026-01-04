@@ -135,3 +135,38 @@ export async function confirmUninstallWithWarning(
   console.log(promptMessage);
   return confirm(`Remove skill '${skillName}'?`);
 }
+
+/**
+ * Prompt user for update confirmation
+ *
+ * Shows the update summary (version comparison, changes, backup location)
+ * before asking for confirmation.
+ *
+ * @param skillName - Name of the skill being updated
+ * @param promptMessage - Pre-formatted prompt message (from formatConfirmationPrompt)
+ * @returns Promise resolving to true if user confirms update
+ */
+export async function confirmUpdate(skillName: string, promptMessage: string): Promise<boolean> {
+  console.log(promptMessage);
+  return confirm(`Proceed with update of '${skillName}'?`);
+}
+
+/**
+ * Prompt user for update confirmation with downgrade warning
+ *
+ * Shows a warning about potential downgrade before the update summary.
+ *
+ * @param skillName - Name of the skill being updated
+ * @param downgradeWarning - Warning message about the apparent downgrade
+ * @param promptMessage - Pre-formatted prompt message
+ * @returns Promise resolving to true if user confirms
+ */
+export async function confirmUpdateWithDowngradeWarning(
+  skillName: string,
+  downgradeWarning: string,
+  promptMessage: string
+): Promise<boolean> {
+  console.log(downgradeWarning);
+  console.log(promptMessage);
+  return confirm(`Proceed with update of '${skillName}' (potential downgrade)?`);
+}

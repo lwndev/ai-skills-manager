@@ -110,12 +110,21 @@ export async function checkSymlinkSafety(
     // It's a symlink - resolve the target and check containment
     const targetPath = await fs.realpath(skillPath);
 
+    // Resolve scope path too (handles macOS /private/var vs /var)
+    let realScopePath: string;
+    try {
+      realScopePath = await fs.realpath(scopePath);
+    } catch {
+      // Scope path doesn't exist or can't be resolved, use original
+      realScopePath = scopePath;
+    }
+
     // Verify the resolved path is within the scope
-    if (!isPathWithin(targetPath, scopePath)) {
+    if (!isPathWithin(targetPath, realScopePath)) {
       return {
         type: 'escape',
         targetPath,
-        scopeBoundary: scopePath,
+        scopeBoundary: realScopePath,
       };
     }
 
