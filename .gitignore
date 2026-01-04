@@ -13,3 +13,6 @@ yarn-error.log*
 
 .vscode/*
 .DS_Store
+
+# Omit Local Claude Files
+/.claude
