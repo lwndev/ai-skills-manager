@@ -21,6 +21,7 @@ import type {
   UpdateDryRunPreview,
   UpdateRolledBack,
   UpdateRollbackFailed,
+  UpdateCancelled,
   UpdateError,
   VersionInfo,
   VersionComparison,
@@ -826,7 +827,12 @@ export function formatChangeSummaryStats(summary: ChangeSummary): string {
  * @returns Formatted output string
  */
 export function formatUpdateOutput(
-  result: UpdateSuccess | UpdateDryRunPreview | UpdateRolledBack | UpdateRollbackFailed,
+  result:
+    | UpdateSuccess
+    | UpdateDryRunPreview
+    | UpdateRolledBack
+    | UpdateRollbackFailed
+    | UpdateCancelled,
   options: { quiet?: boolean; scope?: string } = {}
 ): string {
   switch (result.type) {
@@ -845,9 +851,42 @@ export function formatUpdateOutput(
     case 'update-rollback-failed':
       return formatRollbackFailed(result);
 
+    case 'update-cancelled':
+      return formatCancelledUpdate(result);
+
     default:
       return error('Unknown result type');
   }
+}
+
+/**
+ * Format cancelled update message
+ *
+ * @param result - Cancelled update result
+ * @returns Formatted cancellation message
+ */
+export function formatCancelledUpdate(result: UpdateCancelled): string {
+  const lines: string[] = [];
+
+  lines.push('');
+
+  if (result.reason === 'interrupted') {
+    lines.push(warning(`Update of '${result.skillName}' was interrupted`));
+  } else {
+    lines.push(info(`Update of '${result.skillName}' was cancelled`));
+  }
+
+  lines.push('');
+
+  if (result.cleanupPerformed) {
+    lines.push('Cleanup completed. No changes were made.');
+  } else {
+    lines.push('No changes were made.');
+  }
+
+  lines.push('');
+
+  return lines.join('\n');
 }
 
 /**

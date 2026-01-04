@@ -40,6 +40,7 @@ export type UpdateSuccessType = 'update-success';
 export type UpdateDryRunPreviewType = 'update-dry-run-preview';
 export type UpdateRolledBackType = 'update-rolled-back';
 export type UpdateRollbackFailedType = 'update-rollback-failed';
+export type UpdateCancelledType = 'update-cancelled';
 
 /**
  * Result of a successful update operation
@@ -122,13 +123,28 @@ export interface UpdateRollbackFailed {
 }
 
 /**
+ * Result when update was cancelled by user or signal
+ */
+export interface UpdateCancelled {
+  /** Type discriminant for reliable type narrowing */
+  type: UpdateCancelledType;
+  /** Name of the skill that was being updated */
+  skillName: string;
+  /** Reason for cancellation */
+  reason: 'user-cancelled' | 'interrupted';
+  /** Whether any cleanup was performed */
+  cleanupPerformed: boolean;
+}
+
+/**
  * Union type of all possible update operation results
  */
 export type UpdateResultUnion =
   | UpdateSuccess
   | UpdateDryRunPreview
   | UpdateRolledBack
-  | UpdateRollbackFailed;
+  | UpdateRollbackFailed
+  | UpdateCancelled;
 
 /**
  * Information about a skill version (current or new)

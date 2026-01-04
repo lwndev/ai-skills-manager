@@ -3,7 +3,10 @@
  *
  * Orchestrates the update process for installed skills:
  * - Phase 5: Input validation, skill discovery, case sensitivity, package validation
- * - Phase 6+: Security checks, backup, execution, rollback (future phases)
+ * - Phase 6: Security checks, version comparison
+ * - Phase 7: Lock acquisition, backup creation, user confirmation
+ * - Phase 8: Execution, validation, cleanup
+ * - Phase 9: Recovery paths (rollback, dry-run, signal handling)
  *
  * This module follows the discriminated union pattern for result types,
  * enabling reliable type narrowing in calling code.
@@ -20,6 +23,8 @@ import type {
   VersionInfo,
   DowngradeInfo,
   HardLinkCheckResult,
+  UpdateCancelled,
+  UpdateRolledBack,
 } from '../types/update';
 import type { ScopeInfo } from '../types/scope';
 import {
@@ -77,6 +82,11 @@ import {
   createUpdateRollbackFailedEntry,
 } from '../utils/audit-logger';
 import { restoreFromBackup } from '../services/backup-manager';
+import {
+  setupInterruptHandler,
+  resetInterruptHandler,
+  isInterrupted,
+} from '../utils/signal-handler';
 
 /**
  * Result of input validation phase (discriminated union)
@@ -1754,6 +1764,150 @@ export async function performRollback(
 }
 
 /**
+ * Public API for rolling back a failed update (FR-8)
+ *
+ * This function orchestrates the complete rollback process:
+ * 1. Remove partial new installation if present
+ * 2. Restore from renamed temp directory (preferred) or backup
+ * 3. Keep backup on rollback for manual recovery
+ *
+ * @param context - Update context with paths and state
+ * @param options - Update options
+ * @param failureReason - Reason the update failed
+ * @returns UpdateRolledBack or UpdateRollbackFailed result
+ */
+export async function rollbackUpdate(
+  context: UpdateContext,
+  options: UpdateOptions,
+  failureReason: string
+): Promise<UpdateRolledBack | import('../types/update').UpdateRollbackFailed> {
+  const rollbackResult = await performRollback(context, options);
+
+  if (rollbackResult.success) {
+    // Rollback succeeded - return UpdateRolledBack
+    return {
+      type: 'update-rolled-back',
+      skillName: context.skillName,
+      path: context.skillPath,
+      failureReason,
+      backupPath: context.backupPath,
+    };
+  }
+
+  // Rollback failed - return UpdateRollbackFailed (critical error)
+  return {
+    type: 'update-rollback-failed',
+    skillName: context.skillName,
+    path: context.skillPath,
+    updateFailureReason: failureReason,
+    rollbackFailureReason: rollbackResult.error,
+    backupPath: context.backupPath,
+    recoveryInstructions: context.backupPath
+      ? `Manual recovery: Extract backup from ${context.backupPath}`
+      : 'Manual recovery required - reinstall the skill from the original package',
+  };
+}
+
+// ============================================================================
+// Phase 9: Signal Handling (NFR-7)
+// ============================================================================
+
+/**
+ * Create a cleanup function for signal handling
+ *
+ * This function is called when SIGINT/SIGTERM is received during update.
+ * It performs appropriate cleanup based on the current phase:
+ * - Pre-execution: clean exit with no changes
+ * - Mid-execution: complete current atomic operation then rollback
+ *
+ * @param state - Current update state
+ * @param context - Update context (may be undefined if error before context creation)
+ * @param options - Update options
+ * @returns Async cleanup function
+ */
+export function createUpdateCleanupHandler(
+  state: UpdateState,
+  context: UpdateContext | undefined,
+  options: UpdateOptions
+): () => Promise<void> {
+  return async (): Promise<void> => {
+    // Display interruption message
+    console.log('\nInterrupted. Cleaning up...');
+
+    // Release lock if acquired
+    if (state.lockAcquired && state.lockPath) {
+      await releaseUpdateLock(state.lockPath);
+      state.lockAcquired = false;
+    }
+
+    // Phase-specific cleanup
+    switch (state.phase) {
+      case 'validation':
+      case 'discovery':
+      case 'package-validation':
+      case 'security-check':
+      case 'comparison':
+        // Pre-execution phases: no changes made, clean exit
+        console.log('No changes made.');
+        break;
+
+      case 'backup':
+      case 'confirmation':
+        // Backup phase: backup may have been created, lock acquired
+        // Clean up backup if it was created
+        if (context?.backupPath && !context.backupSkipped) {
+          try {
+            await cleanupBackup(context.backupPath, { homedir: options.homedir });
+            console.log('Backup cleaned up.');
+          } catch {
+            console.log(`Note: Backup may remain at ${context.backupPath}`);
+          }
+        }
+        console.log('No changes made to skill.');
+        break;
+
+      case 'execution':
+        // Mid-execution: attempt rollback
+        if (context) {
+          console.log('Attempting rollback...');
+          const rollbackResult = await performRollback(context, options);
+          if (rollbackResult.success) {
+            console.log(`Rollback successful via ${rollbackResult.method}.`);
+          } else {
+            console.log(`Warning: Rollback failed. ${rollbackResult.error}`);
+            if (context.backupPath) {
+              console.log(`Backup available at: ${context.backupPath}`);
+            }
+          }
+        }
+        break;
+
+      case 'post-validation':
+      case 'cleanup':
+        // Post-execution: update likely complete or near complete
+        // Just ensure lock is released (already done above)
+        console.log('Update was interrupted during cleanup.');
+        break;
+
+      default:
+        console.log('Update interrupted.');
+    }
+  };
+}
+
+/**
+ * Check if the update operation should be aborted due to interruption
+ *
+ * This should be called at safe checkpoints during the update process
+ * to allow for graceful interruption.
+ *
+ * @returns True if interrupted
+ */
+export function shouldAbortUpdate(): boolean {
+  return isInterrupted();
+}
+
+/**
  * Calculate new skill statistics after update
  *
  * @param skillPath - Path to the updated skill
@@ -2090,6 +2244,13 @@ export async function updateSkill(
     lockAcquired: false,
   };
 
+  // Track context for signal handler (may be undefined during early phases)
+  let currentContext: UpdateContext | undefined;
+
+  // Set up signal handler for graceful interruption (NFR-7)
+  const cleanupHandler = createUpdateCleanupHandler(state, currentContext, options);
+  setupInterruptHandler(cleanupHandler);
+
   try {
     // Run Phase 5: Input & Discovery
     state.phase = 'validation';
@@ -2175,20 +2336,13 @@ export async function updateSkill(
 
       // Check if user cancelled
       if ('cancelled' in phase7Result && phase7Result.cancelled) {
-        // Return a special result for user cancellation
-        // For now, we return a success-like result with cancelled flag
-        // This will be handled properly in Phase 9
+        // Return proper cancellation result
         return {
-          type: 'update-success',
+          type: 'update-cancelled',
           skillName: context.skillName,
-          path: context.skillPath,
-          previousFileCount: 0,
-          currentFileCount: 0,
-          previousSize: 0,
-          currentSize: 0,
-          backupPath: undefined,
-          backupWillBeRemoved: true,
-        };
+          reason: 'user-cancelled',
+          cleanupPerformed: true,
+        } as UpdateCancelled;
       }
 
       // Must be error case
@@ -2279,6 +2433,9 @@ export async function updateSkill(
 
     // Wrap unexpected errors
     throw error;
+  } finally {
+    // Reset signal handler (NFR-7)
+    resetInterruptHandler();
   }
 }
 

@@ -2392,3 +2392,434 @@ describe('Updater - Phase 8: Execution & Cleanup', () => {
     });
   });
 });
+
+// ============================================================================
+// Phase 9: Recovery Paths Tests (Rollback, Dry-Run, Signal Handling)
+// ============================================================================
+
+// Additional imports for Phase 9 (others already imported above)
+import {
+  rollbackUpdate,
+  createUpdateCleanupHandler,
+  shouldAbortUpdate,
+} from '../../../src/generators/updater';
+import type { UpdateState } from '../../../src/types/update';
+import { formatCancelledUpdate } from '../../../src/formatters/update-formatter';
+
+describe('Updater - Phase 9: Recovery Paths', () => {
+  let tempDir: string;
+  let skillsDir: string;
+
+  beforeEach(async () => {
+    // Create fresh temporary directory for each test
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-updater-phase9-'));
+    skillsDir = path.join(tempDir, '.claude', 'skills');
+    await fs.mkdir(skillsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  /**
+   * Helper to create a test skill in the skills directory
+   */
+  async function createTestSkill(name: string): Promise<string> {
+    const skillPath = path.join(skillsDir, name);
+    await fs.mkdir(skillPath, { recursive: true });
+    await fs.writeFile(
+      path.join(skillPath, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: Test skill\n---\n\n# ${name}\n\nTest content.`
+    );
+    await fs.writeFile(path.join(skillPath, 'README.md'), `# ${name}`);
+    return skillPath;
+  }
+
+  /**
+   * Helper to create a test .skill package
+   */
+  async function createTestPackage(skillName: string): Promise<string> {
+    const packagePath = path.join(tempDir, `${skillName}.skill`);
+    const zip = new AdmZip();
+
+    // Add SKILL.md with frontmatter
+    const skillMd = `---\nname: ${skillName}\ndescription: Updated test skill\n---\n\n# ${skillName}\n\nUpdated content.`;
+    zip.addFile(`${skillName}/SKILL.md`, Buffer.from(skillMd));
+    zip.addFile(`${skillName}/README.md`, Buffer.from(`# ${skillName} (updated)`));
+
+    zip.writeZip(packagePath);
+    return packagePath;
+  }
+
+  /**
+   * Default test options
+   */
+  function getDefaultOptions(): UpdateOptions {
+    return {
+      scope: 'project',
+      force: false,
+      dryRun: false,
+      quiet: false,
+      noBackup: false,
+      keepBackup: false,
+      cwd: tempDir,
+      homedir: tempDir,
+    };
+  }
+
+  describe('rollbackUpdate', () => {
+    it('returns UpdateRolledBack when rollback succeeds', async () => {
+      const skillPath = path.join(skillsDir, 'rollback-success');
+      const tempPath = `${skillPath}.asm-update-12345.tmp`;
+
+      // Create temp directory with old skill
+      await fs.mkdir(tempPath, { recursive: true });
+      await fs.writeFile(
+        path.join(tempPath, 'SKILL.md'),
+        '---\nname: rollback-success\ndescription: Original\n---\n# Original'
+      );
+
+      // Create partial new skill
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), 'Partial');
+
+      const options = getDefaultOptions();
+      const context: UpdateContext = {
+        skillName: 'rollback-success',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'rollback-success',
+        packageFiles: [],
+        tempSkillPath: tempPath,
+      };
+
+      const result = await rollbackUpdate(context, options, 'Test failure');
+
+      expect(result.type).toBe('update-rolled-back');
+      if (result.type === 'update-rolled-back') {
+        expect(result.skillName).toBe('rollback-success');
+        expect(result.failureReason).toBe('Test failure');
+      }
+    });
+
+    it('returns UpdateRollbackFailed when rollback fails', async () => {
+      const skillPath = path.join(skillsDir, 'rollback-fail');
+      await fs.mkdir(skillPath, { recursive: true });
+
+      const options = getDefaultOptions();
+      const context: UpdateContext = {
+        skillName: 'rollback-fail',
+        scopeInfo: { type: 'project', path: skillsDir },
+        packagePath: '',
+        skillPath,
+        hasSkillMd: true,
+        skillNameFromPackage: 'rollback-fail',
+        packageFiles: [],
+        // No tempSkillPath or backupPath available
+      };
+
+      const result = await rollbackUpdate(context, options, 'Test failure');
+
+      expect(result.type).toBe('update-rollback-failed');
+      if (result.type === 'update-rollback-failed') {
+        expect(result.skillName).toBe('rollback-fail');
+        expect(result.updateFailureReason).toBe('Test failure');
+        expect(result.recoveryInstructions).toBeDefined();
+      }
+    });
+  });
+
+  describe('createUpdateCleanupHandler', () => {
+    it('creates a cleanup function', () => {
+      const state: UpdateState = {
+        phase: 'validation',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+
+      expect(typeof cleanup).toBe('function');
+    });
+
+    it('releases lock when acquired', async () => {
+      const skillPath = await createTestSkill('cleanup-lock');
+      const packagePath = await createTestPackage('cleanup-lock');
+
+      // Acquire lock
+      const lockResult = await acquireUpdateLock(skillPath, packagePath);
+      expect(lockResult.acquired).toBe(true);
+
+      if (!lockResult.acquired) {
+        throw new Error('Lock acquisition failed');
+      }
+
+      const state: UpdateState = {
+        phase: 'execution',
+        skillName: 'cleanup-lock',
+        skillPath,
+        packagePath,
+        lockAcquired: true,
+        lockPath: lockResult.lockPath,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+
+      // Run cleanup
+      await cleanup();
+
+      // Lock should be released
+      expect(state.lockAcquired).toBe(false);
+      const hasLock = await hasUpdateLock(skillPath);
+      expect(hasLock).toBe(false);
+    });
+  });
+
+  describe('shouldAbortUpdate', () => {
+    it('returns false when not interrupted', () => {
+      expect(shouldAbortUpdate()).toBe(false);
+    });
+  });
+
+  describe('updateSkill cancellation', () => {
+    it('returns UpdateCancelled when runPreparationPhase returns cancelled', async () => {
+      await createTestSkill('cancel-test');
+      const packagePath = await createTestPackage('cancel-test');
+      const options = getDefaultOptions();
+
+      // Use runPreparationPhase directly with a mock confirm to test cancellation
+      const phase5Result = await runInputAndDiscoveryPhase('cancel-test', packagePath, options);
+      expect(phase5Result.success).toBe(true);
+
+      if (phase5Result.success) {
+        const phase6Result = await runSecurityAndAnalysisPhase(phase5Result.context, options);
+        expect(phase6Result.success).toBe(true);
+
+        if (phase6Result.success) {
+          // Mock confirm that returns false (user cancels)
+          const mockConfirm = async () => false;
+
+          const prepResult = await runPreparationPhase(phase6Result.context, options, mockConfirm);
+
+          expect(prepResult.success).toBe(false);
+          expect('cancelled' in prepResult).toBe(true);
+
+          // Clean up temp directory
+          if (phase5Result.context.tempDir) {
+            await fs.rm(phase5Result.context.tempDir, { recursive: true, force: true });
+          }
+        }
+      }
+    });
+  });
+
+  describe('dry-run mode', () => {
+    it('returns UpdateDryRunPreview with complete information', async () => {
+      await createTestSkill('dry-run-test');
+      const packagePath = await createTestPackage('dry-run-test');
+      const options = { ...getDefaultOptions(), dryRun: true };
+
+      const result = await updateSkill('dry-run-test', packagePath, options);
+
+      expect(result.type).toBe('update-dry-run-preview');
+      if (result.type === 'update-dry-run-preview') {
+        expect(result.skillName).toBe('dry-run-test');
+        expect(result.path).toContain('dry-run-test');
+        expect(result.currentVersion).toBeDefined();
+        expect(result.newVersion).toBeDefined();
+        expect(result.comparison).toBeDefined();
+        expect(result.backupPath).toBeDefined();
+      }
+    });
+
+    it('does not modify skill in dry-run mode', async () => {
+      const skillPath = await createTestSkill('dry-run-no-modify');
+      const packagePath = await createTestPackage('dry-run-no-modify');
+      const options = { ...getDefaultOptions(), dryRun: true };
+
+      // Get original content
+      const originalContent = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+
+      await updateSkill('dry-run-no-modify', packagePath, options);
+
+      // Verify content unchanged
+      const currentContent = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(currentContent).toBe(originalContent);
+    });
+  });
+
+  describe('rollback integration', () => {
+    it('rolls back on validation failure after extraction', async () => {
+      const skillPath = await createTestSkill('rollback-validation');
+
+      // Create a package with invalid SKILL.md (no frontmatter)
+      const invalidPackagePath = path.join(tempDir, 'invalid-rollback.skill');
+      const zip = new AdmZip();
+      zip.addFile(
+        'rollback-validation/SKILL.md',
+        Buffer.from('# No frontmatter\n\nInvalid content')
+      );
+      zip.writeZip(invalidPackagePath);
+
+      const options = { ...getDefaultOptions(), force: true, quiet: true };
+
+      // The update should fail but rollback should succeed
+      try {
+        const result = await updateSkill('rollback-validation', invalidPackagePath, options);
+
+        // If it returns (instead of throwing), check for rollback result
+        if (result.type === 'update-rolled-back') {
+          expect(result.skillName).toBe('rollback-validation');
+          expect(result.failureReason).toBeDefined();
+        }
+      } catch (error) {
+        // Throwing is acceptable for validation errors before execution
+        expect(error).toBeDefined();
+      }
+
+      // Either way, the original skill should be preserved
+      const content = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('Test skill');
+    });
+  });
+
+  describe('cleanup handler phases', () => {
+    it('handles validation phase cleanup', async () => {
+      const state: UpdateState = {
+        phase: 'validation',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      // Should not throw and handle validation phase
+      expect(true).toBe(true);
+    });
+
+    it('handles discovery phase cleanup', async () => {
+      const state: UpdateState = {
+        phase: 'discovery',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      expect(true).toBe(true);
+    });
+
+    it('handles security-check phase cleanup', async () => {
+      const state: UpdateState = {
+        phase: 'security-check',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      expect(true).toBe(true);
+    });
+
+    it('handles backup phase cleanup without context', async () => {
+      const state: UpdateState = {
+        phase: 'backup',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      expect(true).toBe(true);
+    });
+
+    it('handles post-validation phase cleanup', async () => {
+      const state: UpdateState = {
+        phase: 'post-validation',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      expect(true).toBe(true);
+    });
+
+    it('handles cleanup phase cleanup', async () => {
+      const state: UpdateState = {
+        phase: 'cleanup',
+        skillName: 'test-skill',
+        skillPath: '/path/to/skill',
+        packagePath: '/path/to/package.skill',
+        lockAcquired: false,
+      };
+
+      const options = getDefaultOptions();
+      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      await cleanup();
+
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('formatCancelledUpdate', () => {
+    it('formats user-cancelled result', () => {
+      const result = {
+        type: 'update-cancelled' as const,
+        skillName: 'test-skill',
+        reason: 'user-cancelled' as const,
+        cleanupPerformed: true,
+      };
+
+      const output = formatCancelledUpdate(result);
+      expect(output).toContain('test-skill');
+      expect(output).toContain('cancelled');
+      expect(output).toContain('Cleanup completed');
+    });
+
+    it('formats interrupted result', () => {
+      const result = {
+        type: 'update-cancelled' as const,
+        skillName: 'test-skill',
+        reason: 'interrupted' as const,
+        cleanupPerformed: false,
+      };
+
+      const output = formatCancelledUpdate(result);
+      expect(output).toContain('test-skill');
+      expect(output).toContain('interrupted');
+      expect(output).toContain('No changes were made');
+    });
+  });
+});

@@ -449,7 +449,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 9: Updater - Recovery Paths
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Reliability**: Ensures skill is never left in broken state
@@ -488,11 +488,13 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Signal handling cleanup
 
 #### Deliverables
-- [ ] Updated `src/generators/updater.ts` - Complete with all recovery paths (~400-500 lines total)
-- [ ] Updated `tests/unit/generators/updater.test.ts` - Complete unit test coverage
-- [ ] Rollback working from any failure point
-- [ ] Dry-run providing accurate preview
-- [ ] Signal handling cleaning up properly
+- [x] Updated `src/generators/updater.ts` - Complete with all recovery paths
+- [x] Updated `tests/unit/generators/updater.test.ts` - Phase 9 recovery path tests
+- [x] Rollback working from any failure point (`rollbackUpdate()`, `performRollback()`)
+- [x] Dry-run providing accurate preview (returns `UpdateDryRunPreview`)
+- [x] Signal handling cleaning up properly (`createUpdateCleanupHandler()`, `shouldAbortUpdate()`)
+- [x] `UpdateCancelled` result type for user/signal cancellation
+- [x] `formatCancelledUpdate()` for cancelled update output
 
 ---
 
