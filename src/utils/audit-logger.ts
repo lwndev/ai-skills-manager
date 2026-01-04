@@ -25,7 +25,12 @@ export type AuditStatus =
 /**
  * Operation type for audit entries
  */
-export type AuditOperation = 'UNINSTALL';
+export type AuditOperation = 'UNINSTALL' | 'UPDATE';
+
+/**
+ * Update-specific status that extends the base status
+ */
+export type UpdateAuditStatus = 'SUCCESS' | 'FAILED' | 'ROLLED_BACK' | 'ROLLBACK_FAILED';
 
 /**
  * Audit log entry for uninstall operations
@@ -47,6 +52,33 @@ export interface AuditLogEntry {
   errorDetails?: string;
   /** Full path to the skill directory */
   skillPath?: string;
+}
+
+/**
+ * Audit log entry for update operations (NFR-6)
+ * Format: [ISO-8601 timestamp] UPDATE <skill-name> <scope> <status> <details>
+ */
+export interface UpdateAuditLogEntry {
+  /** Type of operation */
+  operation: 'UPDATE';
+  /** Skill name that was updated */
+  skillName: string;
+  /** Scope where the operation occurred */
+  scope: 'project' | 'personal';
+  /** Status of the operation */
+  status: UpdateAuditStatus;
+  /** Path to the source package file */
+  packagePath: string;
+  /** Path to the backup file (if created) */
+  backupPath?: string;
+  /** Number of files before update */
+  previousFiles?: number;
+  /** Number of files after update (on success) */
+  currentFiles?: number;
+  /** Error message (on failure) */
+  error?: string;
+  /** Whether --no-backup flag was used */
+  noBackup?: boolean;
 }
 
 /**
@@ -348,5 +380,232 @@ export function createPartialEntry(
     filesRemoved,
     errorDetails: `${filesRemaining} files remaining: ${errorDetails}`,
     skillPath,
+  };
+}
+
+// ============================================================================
+// UPDATE Operation Audit Logging (NFR-6)
+// ============================================================================
+
+/**
+ * Format an update audit log entry as a single log line
+ *
+ * Format: [ISO-8601 timestamp] UPDATE <skill-name> <scope> <status> <JSON-details>
+ *
+ * @param entry - Update audit log entry to format
+ * @returns Formatted log line (without trailing newline)
+ *
+ * @example
+ * ```
+ * [2026-01-01T12:34:56.789Z] UPDATE my-skill project SUCCESS {"packagePath":"/path/to/pkg.skill","backupPath":"/path/to/backup.skill","previousFiles":4,"currentFiles":5}
+ * [2026-01-01T12:35:00.000Z] UPDATE my-skill personal ROLLED_BACK {"packagePath":"/path/to/pkg.skill","error":"Extraction failed"}
+ * ```
+ */
+export function formatUpdateAuditEntry(entry: UpdateAuditLogEntry): string {
+  const timestamp = new Date().toISOString();
+
+  // Build the details JSON object
+  const details: Record<string, unknown> = {
+    packagePath: entry.packagePath,
+  };
+
+  if (entry.backupPath) {
+    details.backupPath = entry.backupPath;
+  }
+
+  if (entry.previousFiles !== undefined) {
+    details.previousFiles = entry.previousFiles;
+  }
+
+  if (entry.currentFiles !== undefined) {
+    details.currentFiles = entry.currentFiles;
+  }
+
+  if (entry.error) {
+    details.error = entry.error;
+  }
+
+  if (entry.noBackup) {
+    details.noBackup = true;
+  }
+
+  const parts: string[] = [
+    `[${timestamp}]`,
+    entry.operation,
+    entry.skillName,
+    entry.scope,
+    entry.status,
+    JSON.stringify(details),
+  ];
+
+  return parts.join(' ');
+}
+
+/**
+ * Log an update operation to the audit log
+ *
+ * Creates the audit log file if it doesn't exist.
+ * Uses append mode for atomic writes.
+ *
+ * @param entry - Update audit log entry to record
+ */
+export async function logUpdateOperation(entry: UpdateAuditLogEntry): Promise<void> {
+  try {
+    // Ensure data directory exists
+    await ensureAsmDataDir();
+
+    const logPath = getAuditLogPath();
+    const logLine = formatUpdateAuditEntry(entry) + '\n';
+
+    // Append to log file (creates if doesn't exist)
+    let fileHandle: fs.FileHandle | undefined;
+
+    try {
+      // Try to open existing file for append
+      fileHandle = await fs.open(logPath, 'a');
+    } catch {
+      // File doesn't exist - create with restricted permissions
+      fileHandle = await fs.open(logPath, 'a', AUDIT_LOG_PERMISSIONS);
+    }
+
+    try {
+      await fileHandle.write(logLine);
+    } finally {
+      await fileHandle.close();
+    }
+  } catch (error) {
+    // Audit logging failures should not block the operation
+    // Log to stderr for visibility but don't throw
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Warning: Failed to write audit log: ${message}`);
+  }
+}
+
+/**
+ * Create an update audit entry for a successful update
+ *
+ * @param skillName - Name of the updated skill
+ * @param scope - Scope where update occurred
+ * @param packagePath - Path to the source package
+ * @param backupPath - Path to the backup file (if created)
+ * @param previousFiles - File count before update
+ * @param currentFiles - File count after update
+ * @param noBackup - Whether --no-backup was used
+ * @returns Update audit log entry
+ */
+export function createUpdateSuccessEntry(
+  skillName: string,
+  scope: 'project' | 'personal',
+  packagePath: string,
+  backupPath: string | undefined,
+  previousFiles: number,
+  currentFiles: number,
+  noBackup: boolean = false
+): UpdateAuditLogEntry {
+  return {
+    operation: 'UPDATE',
+    skillName,
+    scope,
+    status: 'SUCCESS',
+    packagePath,
+    backupPath,
+    previousFiles,
+    currentFiles,
+    noBackup: noBackup || undefined,
+  };
+}
+
+/**
+ * Create an update audit entry for a failed update
+ *
+ * @param skillName - Name of the skill
+ * @param scope - Scope where update was attempted
+ * @param packagePath - Path to the source package
+ * @param error - Error message
+ * @param backupPath - Path to the backup file (if created)
+ * @param noBackup - Whether --no-backup was used
+ * @returns Update audit log entry
+ */
+export function createUpdateFailedEntry(
+  skillName: string,
+  scope: 'project' | 'personal',
+  packagePath: string,
+  error: string,
+  backupPath?: string,
+  noBackup: boolean = false
+): UpdateAuditLogEntry {
+  return {
+    operation: 'UPDATE',
+    skillName,
+    scope,
+    status: 'FAILED',
+    packagePath,
+    backupPath,
+    error,
+    noBackup: noBackup || undefined,
+  };
+}
+
+/**
+ * Create an update audit entry for a rolled-back update
+ *
+ * @param skillName - Name of the skill
+ * @param scope - Scope where update was attempted
+ * @param packagePath - Path to the source package
+ * @param error - Error that caused the rollback
+ * @param backupPath - Path to the backup file (kept for recovery)
+ * @param noBackup - Whether --no-backup was used
+ * @returns Update audit log entry
+ */
+export function createUpdateRolledBackEntry(
+  skillName: string,
+  scope: 'project' | 'personal',
+  packagePath: string,
+  error: string,
+  backupPath?: string,
+  noBackup: boolean = false
+): UpdateAuditLogEntry {
+  return {
+    operation: 'UPDATE',
+    skillName,
+    scope,
+    status: 'ROLLED_BACK',
+    packagePath,
+    backupPath,
+    error,
+    noBackup: noBackup || undefined,
+  };
+}
+
+/**
+ * Create an update audit entry for a failed rollback (critical error)
+ *
+ * @param skillName - Name of the skill
+ * @param scope - Scope where update was attempted
+ * @param packagePath - Path to the source package
+ * @param updateError - Error that caused the update to fail
+ * @param rollbackError - Error that caused the rollback to fail
+ * @param backupPath - Path to the backup file (for manual recovery)
+ * @param noBackup - Whether --no-backup was used
+ * @returns Update audit log entry
+ */
+export function createUpdateRollbackFailedEntry(
+  skillName: string,
+  scope: 'project' | 'personal',
+  packagePath: string,
+  updateError: string,
+  rollbackError: string,
+  backupPath?: string,
+  noBackup: boolean = false
+): UpdateAuditLogEntry {
+  return {
+    operation: 'UPDATE',
+    skillName,
+    scope,
+    status: 'ROLLBACK_FAILED',
+    packagePath,
+    backupPath,
+    error: `Update failed: ${updateError}. Rollback failed: ${rollbackError}`,
+    noBackup: noBackup || undefined,
   };
 }

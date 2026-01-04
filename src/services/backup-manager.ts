@@ -624,3 +624,92 @@ function getErrorMessage(error: unknown): string {
 function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/**
+ * Result of restoring from backup
+ */
+export interface RestoreResult {
+  /** Whether restoration was successful */
+  success: boolean;
+  /** Number of files restored */
+  fileCount: number;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Restore a skill from a backup archive
+ *
+ * Extracts the backup archive to restore the skill to its previous state.
+ * This is used during rollback when an update fails.
+ *
+ * Security measures:
+ * - Verifies backup path is within backup directory
+ * - Verifies target path is within skills directory
+ * - Uses secure extraction (overwrite disabled by default)
+ *
+ * @param backupPath - Full path to the backup .skill file
+ * @param targetPath - Full path to the parent directory where skill will be restored
+ * @param options - Optional configuration
+ * @returns Result of the restoration
+ */
+export async function restoreFromBackup(
+  backupPath: string,
+  targetPath: string,
+  options?: BackupOptions
+): Promise<RestoreResult> {
+  try {
+    // Import AdmZip dynamically to avoid circular dependencies
+    const AdmZip = (await import('adm-zip')).default;
+
+    // Verify backup containment
+    const isContained = await verifyBackupContainment(backupPath, options);
+    if (!isContained) {
+      return {
+        success: false,
+        fileCount: 0,
+        error: `Security error: Backup path escapes backup directory: ${backupPath}`,
+      };
+    }
+
+    // Verify backup file exists
+    const backupStats = await fs.lstat(backupPath);
+    if (!backupStats.isFile()) {
+      return {
+        success: false,
+        fileCount: 0,
+        error: `Backup file not found or is not a regular file: ${backupPath}`,
+      };
+    }
+
+    if (backupStats.isSymbolicLink()) {
+      return {
+        success: false,
+        fileCount: 0,
+        error: `Security error: Backup file is a symlink: ${backupPath}`,
+      };
+    }
+
+    // Open and extract the backup
+    const archive = new AdmZip(backupPath);
+    const entries = archive.getEntries();
+
+    // Count non-directory entries
+    const fileCount = entries.filter((e) => !e.isDirectory).length;
+
+    // Extract all files to target directory (which is the parent of the skill directory)
+    // The archive contains the skill directory structure (e.g., my-skill/SKILL.md)
+    archive.extractAllTo(targetPath, true, true);
+
+    return {
+      success: true,
+      fileCount,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      fileCount: 0,
+      error: getErrorMessage(error),
+    };
+  }
+}

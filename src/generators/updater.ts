@@ -67,6 +67,16 @@ import {
   formatNoBackupWarning,
   formatBackupCreated,
 } from '../formatters/update-formatter';
+import { validateSkill } from './validate';
+import { executeSkillDeletion } from '../utils/safe-delete';
+import { extractToDirectory } from '../utils/extractor';
+import {
+  logUpdateOperation,
+  createUpdateSuccessEntry,
+  createUpdateRolledBackEntry,
+  createUpdateRollbackFailedEntry,
+} from '../utils/audit-logger';
+import { restoreFromBackup } from '../services/backup-manager';
 
 /**
  * Result of input validation phase (discriminated union)
@@ -143,6 +153,30 @@ export type PreparationPhaseResult =
   | { success: false; cancelled: true };
 
 /**
+ * Result of the execution phase (Phase 8)
+ */
+export type ExecutionPhaseResult =
+  | {
+      success: true;
+      context: UpdateContext;
+      newFileCount: number;
+      newSize: number;
+    }
+  | { success: false; error: UpdateErrorType; rollbackAttempted: boolean };
+
+/**
+ * Result of post-update validation (Phase 8)
+ */
+export type PostValidationResult = { valid: true } | { valid: false; error: UpdateErrorType };
+
+/**
+ * Result of a rollback operation
+ */
+export type RollbackResult =
+  | { success: true; method: 'temp-directory' | 'backup' }
+  | { success: false; error: string };
+
+/**
  * Resource limits for update operations (NFR-8)
  */
 export const RESOURCE_LIMITS = {
@@ -206,6 +240,14 @@ export interface UpdateContext {
   backupSize?: number;
   /** Whether backup was skipped (--no-backup flag) */
   backupSkipped?: boolean;
+
+  // Phase 8 fields - execution
+  /** Path to the temporary renamed directory (for rollback) */
+  tempSkillPath?: string;
+  /** Number of files after update */
+  newFileCount?: number;
+  /** Size in bytes after update */
+  newSize?: number;
 }
 
 /**
@@ -1424,6 +1466,558 @@ export async function runPreparationPhase(
   }
 }
 
+// ============================================================================
+// Phase 8: Execution & Cleanup
+// ============================================================================
+
+/**
+ * Get a human-readable message from an UpdateErrorType
+ * (Used for critical error messages)
+ */
+function getUpdateErrorMessage(error: UpdateErrorType): string {
+  switch (error.type) {
+    case 'skill-not-found':
+      return `Skill not found: ${error.skillName}`;
+    case 'security-error':
+      return error.details;
+    case 'filesystem-error':
+      return error.message;
+    case 'validation-error':
+      return error.message;
+    case 'package-mismatch':
+      return error.message;
+    case 'backup-creation-error':
+      return error.reason;
+    case 'rollback-error':
+      return error.updateFailureReason;
+    case 'critical-error':
+      return error.updateFailureReason;
+    case 'timeout':
+      return `Operation timed out after ${error.timeoutMs}ms`;
+    default:
+      return 'Unknown error';
+  }
+}
+
+/**
+ * Generate a temporary path for the old skill during update
+ *
+ * @param skillPath - Current skill path
+ * @returns Temporary path with timestamp suffix
+ */
+function generateTempSkillPath(skillPath: string): string {
+  const timestamp = Date.now();
+  return `${skillPath}.asm-update-${timestamp}.tmp`;
+}
+
+/**
+ * Rename skill directory to temporary location (atomic operation)
+ *
+ * This is the first step of the update execution. By renaming the old
+ * skill to a temp location first, we can restore it if extraction fails.
+ *
+ * @param skillPath - Current skill path
+ * @param tempPath - Temporary path to rename to
+ * @returns Error if rename fails, null on success
+ */
+async function moveSkillToTemp(
+  skillPath: string,
+  tempPath: string
+): Promise<UpdateErrorType | null> {
+  try {
+    await fs.rename(skillPath, tempPath);
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      type: 'filesystem-error',
+      operation: 'rename',
+      path: skillPath,
+      message: `Failed to move skill to temporary location: ${message}`,
+    };
+  }
+}
+
+/**
+ * Restore skill from temporary location
+ *
+ * Used when extraction fails and we need to restore the old skill.
+ *
+ * @param tempPath - Temporary path where old skill is stored
+ * @param skillPath - Original skill path to restore to
+ * @returns Error if restore fails, null on success
+ */
+async function restoreFromTemp(
+  tempPath: string,
+  skillPath: string
+): Promise<UpdateErrorType | null> {
+  try {
+    // First, try to remove any partial extraction at skillPath
+    try {
+      const stats = await fs.lstat(skillPath);
+      if (stats.isDirectory()) {
+        // Remove the partial extraction
+        await executeSkillDeletion(skillPath);
+      }
+    } catch {
+      // skillPath doesn't exist, which is fine
+    }
+
+    // Restore the original
+    await fs.rename(tempPath, skillPath);
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      type: 'filesystem-error',
+      operation: 'rename',
+      path: tempPath,
+      message: `Failed to restore skill from temporary location: ${message}`,
+    };
+  }
+}
+
+/**
+ * Extract new package to skill location
+ *
+ * Extracts the new .skill package to the skills directory.
+ * The package contains a root directory with the skill name.
+ *
+ * @param packagePath - Path to the .skill package
+ * @param skillsDir - Parent directory where skill will be extracted
+ * @returns Error if extraction fails, null on success
+ */
+async function extractNewPackage(
+  packagePath: string,
+  skillsDir: string
+): Promise<UpdateErrorType | null> {
+  try {
+    const archive = openZipArchive(packagePath);
+    await extractToDirectory(archive, skillsDir, true);
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      type: 'filesystem-error',
+      operation: 'extract',
+      path: packagePath,
+      message: `Failed to extract new package: ${message}`,
+    };
+  }
+}
+
+/**
+ * Verify extraction success
+ *
+ * Checks that the skill directory was created and contains SKILL.md.
+ *
+ * @param skillPath - Expected skill path after extraction
+ * @returns Error if verification fails, null on success
+ */
+async function verifyExtraction(skillPath: string): Promise<UpdateErrorType | null> {
+  try {
+    // Check skill directory exists
+    const stats = await fs.lstat(skillPath);
+    if (!stats.isDirectory()) {
+      return {
+        type: 'validation-error',
+        field: 'packageContent',
+        message: 'Extracted path is not a directory',
+      };
+    }
+
+    // Check SKILL.md exists
+    const skillMdPath = path.join(skillPath, 'SKILL.md');
+    try {
+      await fs.access(skillMdPath);
+    } catch {
+      return {
+        type: 'validation-error',
+        field: 'packageContent',
+        message: 'SKILL.md not found after extraction',
+      };
+    }
+
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      type: 'filesystem-error',
+      operation: 'stat',
+      path: skillPath,
+      message: `Failed to verify extraction: ${message}`,
+    };
+  }
+}
+
+/**
+ * Validate the updated skill (FR-7)
+ *
+ * Runs the full skill validation to ensure the updated skill is valid.
+ *
+ * @param skillPath - Path to the updated skill
+ * @returns Validation result
+ */
+export async function validateUpdatedSkill(skillPath: string): Promise<PostValidationResult> {
+  try {
+    const result = await validateSkill(skillPath);
+
+    if (!result.valid) {
+      return {
+        valid: false,
+        error: {
+          type: 'validation-error',
+          field: 'packageContent',
+          message: 'Updated skill failed validation',
+          details: result.errors,
+        },
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      valid: false,
+      error: {
+        type: 'filesystem-error',
+        operation: 'read',
+        path: skillPath,
+        message: `Validation failed: ${message}`,
+      },
+    };
+  }
+}
+
+/**
+ * Perform rollback after failed update
+ *
+ * Attempts to restore the skill in this order:
+ * 1. From the renamed temp directory (preferred, faster)
+ * 2. From the backup archive (if temp directory not available)
+ *
+ * @param context - Update context with paths
+ * @param options - Update options
+ * @returns Rollback result
+ */
+export async function performRollback(
+  context: UpdateContext,
+  options: UpdateOptions
+): Promise<RollbackResult> {
+  // First, try to restore from temp directory (faster, more reliable)
+  if (context.tempSkillPath) {
+    try {
+      const tempStats = await fs.lstat(context.tempSkillPath);
+      if (tempStats.isDirectory()) {
+        const error = await restoreFromTemp(context.tempSkillPath, context.skillPath);
+        if (!error) {
+          return { success: true, method: 'temp-directory' };
+        }
+        // Fall through to try backup
+      }
+    } catch {
+      // Temp directory doesn't exist, try backup
+    }
+  }
+
+  // Try to restore from backup
+  if (context.backupPath && !context.backupSkipped) {
+    // First, clean up any partial extraction
+    try {
+      await executeSkillDeletion(context.skillPath);
+    } catch {
+      // Skill path might not exist, which is fine
+    }
+
+    // Restore from backup
+    const skillsDir = path.dirname(context.skillPath);
+    const restoreResult = await restoreFromBackup(context.backupPath, skillsDir, {
+      homedir: options.homedir,
+    });
+
+    if (restoreResult.success) {
+      return { success: true, method: 'backup' };
+    }
+
+    return { success: false, error: restoreResult.error ?? 'Unknown restore error' };
+  }
+
+  // No backup available (--no-backup was used)
+  if (context.backupSkipped) {
+    return {
+      success: false,
+      error: 'No backup available for rollback (--no-backup was used)',
+    };
+  }
+
+  return { success: false, error: 'No rollback method available' };
+}
+
+/**
+ * Calculate new skill statistics after update
+ *
+ * @param skillPath - Path to the updated skill
+ * @returns File count and total size
+ */
+async function calculateNewSkillStats(
+  skillPath: string
+): Promise<{ fileCount: number; size: number }> {
+  let fileCount = 0;
+  let size = 0;
+
+  for await (const file of enumerateSkillFiles(skillPath)) {
+    if (!file.isDirectory && !file.isSymlink) {
+      fileCount++;
+      size += file.size;
+    }
+  }
+
+  return { fileCount, size };
+}
+
+/**
+ * Run Phase 8 of the update process: Execution & Cleanup
+ *
+ * This phase performs the actual update:
+ * 1. Move old skill to temp location (atomic rename)
+ * 2. Extract new package to skill location
+ * 3. Verify extraction succeeded
+ * 4. Validate the updated skill
+ * 5. On success: clean up temp directory
+ * 6. On failure: rollback and restore old skill
+ *
+ * @param context - Update context from Phase 7
+ * @param options - Update options
+ * @returns Execution result with updated context or error
+ */
+export async function runExecutionPhase(
+  context: UpdateContext,
+  _options: UpdateOptions
+): Promise<ExecutionPhaseResult> {
+  const skillsDir = path.dirname(context.skillPath);
+  const tempSkillPath = generateTempSkillPath(context.skillPath);
+
+  // Update context with temp path for rollback
+  context.tempSkillPath = tempSkillPath;
+
+  // Step 1: Re-verify containment before destructive operation (TOCTOU protection)
+  const containmentError = await verifyPathContainment(context.skillPath, context.scopeInfo.path);
+  if (containmentError) {
+    return { success: false, error: containmentError, rollbackAttempted: false };
+  }
+
+  // Step 2: Move current skill to temp location (atomic operation)
+  const moveError = await moveSkillToTemp(context.skillPath, tempSkillPath);
+  if (moveError) {
+    return { success: false, error: moveError, rollbackAttempted: false };
+  }
+
+  // Step 3: Extract new package
+  const extractError = await extractNewPackage(context.packagePath, skillsDir);
+  if (extractError) {
+    // Immediately restore from temp
+    const restoreError = await restoreFromTemp(tempSkillPath, context.skillPath);
+    if (restoreError) {
+      // Both extract and restore failed - critical error
+      return {
+        success: false,
+        error: {
+          type: 'critical-error',
+          skillName: context.skillName,
+          skillPath: context.skillPath,
+          updateFailureReason: getUpdateErrorMessage(extractError),
+          rollbackFailureReason: getUpdateErrorMessage(restoreError),
+          backupPath: context.backupPath,
+          recoveryInstructions: context.backupPath
+            ? `Manual recovery: Extract backup from ${context.backupPath}`
+            : 'Manual recovery required - no backup available',
+        },
+        rollbackAttempted: true,
+      };
+    }
+    return { success: false, error: extractError, rollbackAttempted: true };
+  }
+
+  // Step 4: Verify extraction succeeded
+  const verifyError = await verifyExtraction(context.skillPath);
+  if (verifyError) {
+    // Restore from temp
+    const restoreError = await restoreFromTemp(tempSkillPath, context.skillPath);
+    if (restoreError) {
+      return {
+        success: false,
+        error: {
+          type: 'critical-error',
+          skillName: context.skillName,
+          skillPath: context.skillPath,
+          updateFailureReason: 'Extraction verification failed',
+          rollbackFailureReason: getUpdateErrorMessage(restoreError),
+          backupPath: context.backupPath,
+          recoveryInstructions: context.backupPath
+            ? `Manual recovery: Extract backup from ${context.backupPath}`
+            : 'Manual recovery required - no backup available',
+        },
+        rollbackAttempted: true,
+      };
+    }
+    return { success: false, error: verifyError, rollbackAttempted: true };
+  }
+
+  // Step 5: Validate the updated skill (FR-7)
+  const validationResult = await validateUpdatedSkill(context.skillPath);
+  if (!validationResult.valid) {
+    // Restore from temp
+    const restoreError = await restoreFromTemp(tempSkillPath, context.skillPath);
+    if (restoreError) {
+      return {
+        success: false,
+        error: {
+          type: 'critical-error',
+          skillName: context.skillName,
+          skillPath: context.skillPath,
+          updateFailureReason: 'Updated skill failed validation',
+          rollbackFailureReason: getUpdateErrorMessage(restoreError),
+          backupPath: context.backupPath,
+          recoveryInstructions: context.backupPath
+            ? `Manual recovery: Extract backup from ${context.backupPath}`
+            : 'Manual recovery required - no backup available',
+        },
+        rollbackAttempted: true,
+      };
+    }
+    return { success: false, error: validationResult.error, rollbackAttempted: true };
+  }
+
+  // Step 6: Success! Clean up temp directory
+  try {
+    await executeSkillDeletion(tempSkillPath);
+  } catch {
+    // Non-fatal - temp directory cleanup failed but update succeeded
+    console.warn(`Warning: Failed to clean up temporary directory: ${tempSkillPath}`);
+  }
+
+  // Calculate new skill stats
+  const newStats = await calculateNewSkillStats(context.skillPath);
+
+  // Update context with new stats
+  context.newFileCount = newStats.fileCount;
+  context.newSize = newStats.size;
+
+  return {
+    success: true,
+    context,
+    newFileCount: newStats.fileCount,
+    newSize: newStats.size,
+  };
+}
+
+/**
+ * Run cleanup after successful update (FR-9)
+ *
+ * - Remove backup unless --keep-backup
+ * - Release lock file
+ * - Log to audit log
+ *
+ * @param context - Update context
+ * @param options - Update options
+ */
+export async function runCleanupPhase(
+  context: UpdateContext,
+  options: UpdateOptions
+): Promise<void> {
+  // Clean up backup unless --keep-backup
+  if (!options.keepBackup && context.backupPath && !context.backupSkipped) {
+    try {
+      await cleanupBackup(context.backupPath, { homedir: options.homedir });
+    } catch (error) {
+      // Non-fatal - backup cleanup failed but update succeeded
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Warning: Failed to remove backup: ${message}`);
+    }
+  }
+
+  // Release lock file (if still held)
+  if (context.lockPath) {
+    await releaseUpdateLock(context.lockPath);
+  }
+
+  // Log to audit log (NFR-6)
+  const scope = context.scopeInfo.type as 'project' | 'personal';
+  const auditEntry = createUpdateSuccessEntry(
+    context.skillName,
+    scope,
+    context.packagePath,
+    options.keepBackup ? context.backupPath : undefined, // Only log if kept
+    context.installedInfo?.fileCount ?? 0,
+    context.newFileCount ?? 0,
+    context.backupSkipped ?? false
+  );
+
+  await logUpdateOperation(auditEntry);
+}
+
+/**
+ * Run cleanup after failed update
+ *
+ * - Keep backup for manual recovery
+ * - Release lock file
+ * - Log to audit log
+ *
+ * @param context - Update context
+ * @param options - Update options
+ * @param error - Error that caused the failure
+ * @param rollbackSucceeded - Whether rollback was successful
+ */
+export async function runFailureCleanup(
+  context: UpdateContext,
+  options: UpdateOptions,
+  error: UpdateErrorType,
+  rollbackSucceeded: boolean
+): Promise<void> {
+  // Release lock file (if still held)
+  if (context.lockPath) {
+    await releaseUpdateLock(context.lockPath);
+  }
+
+  // Log to audit log (NFR-6)
+  const scope = context.scopeInfo.type as 'project' | 'personal';
+  const errorMessage = getErrorMessage(error);
+
+  let auditEntry;
+  if (rollbackSucceeded) {
+    auditEntry = createUpdateRolledBackEntry(
+      context.skillName,
+      scope,
+      context.packagePath,
+      errorMessage,
+      context.backupPath,
+      context.backupSkipped ?? false
+    );
+  } else if (error.type === 'critical-error') {
+    auditEntry = createUpdateRollbackFailedEntry(
+      context.skillName,
+      scope,
+      context.packagePath,
+      error.updateFailureReason,
+      error.rollbackFailureReason,
+      context.backupPath,
+      context.backupSkipped ?? false
+    );
+  } else {
+    // Generic failure (no rollback attempted)
+    auditEntry = createUpdateRolledBackEntry(
+      context.skillName,
+      scope,
+      context.packagePath,
+      errorMessage,
+      context.backupPath,
+      context.backupSkipped ?? false
+    );
+  }
+
+  await logUpdateOperation(auditEntry);
+}
+
 /**
  * Wrap an operation with a timeout
  *
@@ -1611,34 +2205,65 @@ export async function updateSkill(
     state.lockPath = context.lockPath;
     state.backupPath = context.backupPath;
 
-    // TODO: Phase 8 - Execution
+    // Run Phase 8: Execution & Cleanup
     state.phase = 'execution';
+    const phase8Result = await runExecutionPhase(context, options);
 
-    // TODO: Phase 9 - Recovery paths and cleanup
-    state.phase = 'cleanup';
-
-    // Release lock after successful operation
-    if (context.lockPath) {
-      await releaseUpdateLock(context.lockPath);
-      state.lockAcquired = false;
-    }
-
-    // Placeholder: Return success for non-dry-run
-    // This will be replaced with full implementation in Phase 8
-    // Clean up temp directory
+    // Clean up temp directory from package extraction (always do this)
     if (context.tempDir) {
       await cleanupTempDirectory(context.tempDir);
     }
 
+    if (!phase8Result.success) {
+      // Update failed - run failure cleanup
+      await runFailureCleanup(context, options, phase8Result.error, phase8Result.rollbackAttempted);
+      state.lockAcquired = false;
+
+      // Return appropriate result based on error type
+      if (phase8Result.error.type === 'critical-error') {
+        return {
+          type: 'update-rollback-failed',
+          skillName: context.skillName,
+          path: context.skillPath,
+          updateFailureReason: phase8Result.error.updateFailureReason,
+          rollbackFailureReason: phase8Result.error.rollbackFailureReason,
+          backupPath: phase8Result.error.backupPath,
+          recoveryInstructions: phase8Result.error.recoveryInstructions,
+        };
+      }
+
+      // Rollback succeeded
+      if (phase8Result.rollbackAttempted) {
+        return {
+          type: 'update-rolled-back',
+          skillName: context.skillName,
+          path: context.skillPath,
+          failureReason: getErrorMessage(phase8Result.error),
+          backupPath: context.backupPath,
+        };
+      }
+
+      // Error before rollback was needed
+      throw new UpdateError(phase8Result.error);
+    }
+
+    context = phase8Result.context;
+
+    // Run cleanup after successful update
+    state.phase = 'cleanup';
+    await runCleanupPhase(context, options);
+    state.lockAcquired = false;
+
+    // Return success
     return {
       type: 'update-success',
       skillName: context.skillName,
       path: context.skillPath,
       previousFileCount: context.installedInfo?.fileCount ?? 0,
-      currentFileCount: context.packageInfo?.fileCount ?? context.packageFiles.length,
+      currentFileCount: phase8Result.newFileCount,
       previousSize: context.installedInfo?.size ?? 0,
-      currentSize: context.packageInfo?.size ?? 0,
-      backupPath: context.backupPath,
+      currentSize: phase8Result.newSize,
+      backupPath: options.keepBackup ? context.backupPath : undefined,
       backupWillBeRemoved: !options.keepBackup && !context.backupSkipped,
     };
   } catch (error) {
@@ -1647,13 +2272,12 @@ export async function updateSkill(
       await releaseUpdateLock(state.lockPath);
     }
 
-    // Handle errors - will be expanded in Phase 9
+    // Re-throw UpdateError as-is for proper error handling
     if (error instanceof UpdateError) {
-      // Convert to appropriate result type based on error
-      // This will be expanded in later phases
+      throw error;
     }
 
-    // For now, throw to surface unexpected errors
+    // Wrap unexpected errors
     throw error;
   }
 }
