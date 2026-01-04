@@ -1821,18 +1821,21 @@ export async function rollbackUpdate(
  * - Mid-execution: complete current atomic operation then rollback
  *
  * @param state - Current update state
- * @param context - Update context (may be undefined if error before context creation)
+ * @param contextRef - Reference to update context (allows handler to see context updates)
  * @param options - Update options
  * @returns Async cleanup function
  */
 export function createUpdateCleanupHandler(
   state: UpdateState,
-  context: UpdateContext | undefined,
+  contextRef: { current: UpdateContext | undefined },
   options: UpdateOptions
 ): () => Promise<void> {
   return async (): Promise<void> => {
     // Display interruption message
     console.log('\nInterrupted. Cleaning up...');
+
+    // Get current context from reference (may have been updated since handler creation)
+    const context = contextRef.current;
 
     // Release lock if acquired
     if (state.lockAcquired && state.lockPath) {
@@ -2244,11 +2247,12 @@ export async function updateSkill(
     lockAcquired: false,
   };
 
-  // Track context for signal handler (may be undefined during early phases)
-  let currentContext: UpdateContext | undefined;
+  // Track context for signal handler using reference pattern
+  // This allows the cleanup handler to see context updates during the update process
+  const contextRef: { current: UpdateContext | undefined } = { current: undefined };
 
   // Set up signal handler for graceful interruption (NFR-7)
-  const cleanupHandler = createUpdateCleanupHandler(state, currentContext, options);
+  const cleanupHandler = createUpdateCleanupHandler(state, contextRef, options);
   setupInterruptHandler(cleanupHandler);
 
   try {
@@ -2268,6 +2272,7 @@ export async function updateSkill(
     }
 
     let context = phase5Result.context;
+    contextRef.current = context; // Update reference for signal handler
     state.skillPath = context.skillPath;
 
     // Run Phase 6: Security & Analysis
@@ -2283,6 +2288,7 @@ export async function updateSkill(
     }
 
     context = phase6Result.context;
+    contextRef.current = context; // Update reference for signal handler
 
     // Return dry-run preview with actual version info from Phase 6
     // (dry-run skips phases 7-9)
@@ -2355,6 +2361,7 @@ export async function updateSkill(
     }
 
     context = phase7Result.context;
+    contextRef.current = context; // Update reference for signal handler
     state.lockAcquired = true;
     state.lockPath = context.lockPath;
     state.backupPath = context.backupPath;
@@ -2402,6 +2409,7 @@ export async function updateSkill(
     }
 
     context = phase8Result.context;
+    contextRef.current = context; // Update reference for signal handler
 
     // Run cleanup after successful update
     state.phase = 'cleanup';

@@ -1067,7 +1067,7 @@ describe('Update Security', () => {
         };
 
         // Test that the function signature is correct
-        const handler = createUpdateCleanupHandler(state, undefined, options);
+        const handler = createUpdateCleanupHandler(state, { current: undefined }, options);
         expect(typeof handler).toBe('function');
       });
 
@@ -1091,7 +1091,7 @@ describe('Update Security', () => {
           homedir: tempDir,
         };
 
-        const handler = createUpdateCleanupHandler(state, undefined, options);
+        const handler = createUpdateCleanupHandler(state, { current: undefined }, options);
         // Should not throw even in validation phase
         await expect(handler()).resolves.not.toThrow();
       });
@@ -1128,7 +1128,7 @@ describe('Update Security', () => {
           homedir: tempDir,
         };
 
-        const handler = createUpdateCleanupHandler(state, undefined, options);
+        const handler = createUpdateCleanupHandler(state, { current: undefined }, options);
         await handler();
 
         // Lock should be released

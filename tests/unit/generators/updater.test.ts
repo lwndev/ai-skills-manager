@@ -2547,7 +2547,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
 
       expect(typeof cleanup).toBe('function');
     });
@@ -2574,7 +2574,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
 
       // Run cleanup
       await cleanup();
@@ -2705,7 +2705,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       // Should not throw and handle validation phase
@@ -2722,7 +2722,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       expect(true).toBe(true);
@@ -2738,7 +2738,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       expect(true).toBe(true);
@@ -2754,7 +2754,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       expect(true).toBe(true);
@@ -2770,7 +2770,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       expect(true).toBe(true);
@@ -2786,7 +2786,7 @@ describe('Updater - Phase 9: Recovery Paths', () => {
       };
 
       const options = getDefaultOptions();
-      const cleanup = createUpdateCleanupHandler(state, undefined, options);
+      const cleanup = createUpdateCleanupHandler(state, { current: undefined }, options);
       await cleanup();
 
       expect(true).toBe(true);
