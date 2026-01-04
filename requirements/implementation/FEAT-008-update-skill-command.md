@@ -500,7 +500,7 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
 
 ### Phase 10: CLI Command Integration
 **Feature:** [FEAT-008](../features/FEAT-008-update-skill-command.md) | [#16](https://github.com/lwndev/ai-skills-manager/issues/16)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Final assembly**: Connects generator to CLI
@@ -543,11 +543,11 @@ This implementation uses 14 phases, splitting the complex updater logic and comp
    - Error cases: skill not found, invalid package
 
 #### Deliverables
-- [ ] `src/commands/update.ts` - CLI command implementation
-- [ ] Updated `src/cli.ts` - Command registration
-- [ ] Updated `src/utils/prompts.ts` - Update confirmation prompt
-- [ ] `tests/integration/commands/update.test.ts` - Integration tests
-- [ ] Help text matches requirements examples
+- [x] `src/commands/update.ts` - CLI command implementation
+- [x] Updated `src/cli.ts` - Command registration
+- [x] Updated `src/utils/prompts.ts` - Update confirmation prompt
+- [x] `tests/integration/update.test.ts` - Integration tests (18 tests passing)
+- [x] Help text matches requirements examples
 
 ---
 
