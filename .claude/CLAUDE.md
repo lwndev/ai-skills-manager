@@ -15,17 +15,24 @@ npm install
 # Build the project (compiles TypeScript to dist/)
 npm run build
 
-# Run tests only
+# Run tests
 npm test
 
 # Run tests for a specific file
 npm test -- tests/path/to/file.test.ts
 
-# Run linter and tests
+# Run tests with coverage
+npm run test:coverage
+
+# Run linter
+npm run lint
+
+# Run linter with auto-fix
+npm run lint:fix
+
+# Full quality check (lint + test:coverage + audit)
 npm run quality
 ```
-
-**Note:** Always use `npm test` for running tests, not `npx jest`. Jest is installed as a project dependency.
 
 ## Project Structure
 
