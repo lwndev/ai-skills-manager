@@ -8,7 +8,7 @@
  */
 
 import { ValidationResult, CheckName } from '../types/validation';
-import { success, error } from '../utils/output';
+import { success, error, warning } from '../utils/output';
 
 /**
  * Human-readable names for each check
@@ -20,6 +20,8 @@ const CHECK_NAMES: Record<CheckName, string> = {
   allowedProperties: 'Allowed properties',
   nameFormat: 'Name format',
   descriptionFormat: 'Description format',
+  compatibilityFormat: 'Compatibility format',
+  nameMatchesDirectory: 'Name matches directory',
 };
 
 /**
@@ -46,6 +48,8 @@ export function formatNormal(result: ValidationResult): string {
     'allowedProperties',
     'nameFormat',
     'descriptionFormat',
+    'compatibilityFormat',
+    'nameMatchesDirectory',
   ];
 
   for (const checkName of checkOrder) {
@@ -63,6 +67,15 @@ export function formatNormal(result: ValidationResult): string {
   }
 
   lines.push('');
+
+  // Display warnings (if any)
+  if (result.warnings && result.warnings.length > 0) {
+    lines.push('Warnings:');
+    for (const warn of result.warnings) {
+      lines.push(warning(warn));
+    }
+    lines.push('');
+  }
 
   // Final status
   if (result.valid) {

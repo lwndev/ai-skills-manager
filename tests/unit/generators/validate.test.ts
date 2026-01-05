@@ -16,11 +16,20 @@ describe('validateSkill', () => {
 
   /**
    * Helper to create a SKILL.md file with given content
+   * Creates the skill in a subdirectory matching the name if found in frontmatter
    */
   async function createSkill(content: string): Promise<string> {
-    const skillPath = path.join(tempDir, 'SKILL.md');
+    // Extract name from frontmatter to create matching directory
+    const nameMatch = content.match(/^name:\s*(.+)$/m);
+    const skillName = nameMatch ? nameMatch[1].trim() : 'test-skill';
+
+    // Create subdirectory with matching name
+    const skillDir = path.join(tempDir, skillName);
+    await fs.mkdir(skillDir, { recursive: true });
+
+    const skillPath = path.join(skillDir, 'SKILL.md');
     await fs.writeFile(skillPath, content);
-    return tempDir;
+    return skillDir;
   }
 
   describe('valid skill', () => {
@@ -46,6 +55,8 @@ Content here.
       expect(result.checks.allowedProperties.passed).toBe(true);
       expect(result.checks.nameFormat.passed).toBe(true);
       expect(result.checks.descriptionFormat.passed).toBe(true);
+      expect(result.checks.compatibilityFormat.passed).toBe(true);
+      expect(result.checks.nameMatchesDirectory.passed).toBe(true);
     });
 
     it('validates a skill with all allowed fields', async () => {
@@ -484,6 +495,8 @@ Content.
         'allowedProperties',
         'nameFormat',
         'descriptionFormat',
+        'compatibilityFormat',
+        'nameMatchesDirectory',
       ]);
     });
 

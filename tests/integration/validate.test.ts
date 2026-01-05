@@ -373,13 +373,16 @@ describe('validate command integration', () => {
 
     it('validates skill with all optional fields', async () => {
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
-      const skillPath = path.join(tempDir, 'SKILL.md');
+      const skillDir = path.join(tempDir, 'full-featured-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
 
       try {
         const skillContent = `---
 name: full-featured-skill
 description: A skill with all optional fields
 license: MIT
+compatibility: Claude Code 1.0+
 allowed-tools:
   - Read
   - Write
@@ -393,11 +396,342 @@ This skill has all allowed fields.
 
         await fs.writeFile(skillPath, skillContent);
 
-        const result = execSync(`node "${cliPath}" validate "${tempDir}"`, {
+        const result = execSync(`node "${cliPath}" validate "${skillDir}"`, {
           encoding: 'utf-8',
         });
 
         expect(result).toContain('✓ Skill is valid!');
+        expect(result).toContain('✓ Compatibility format');
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('validates skill with compatibility field', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'compat-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: compat-skill
+description: A skill with compatibility field
+compatibility: ">= Claude Code 1.0"
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+          encoding: 'utf-8',
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.valid).toBe(true);
+        expect(parsed.checks.compatibilityFormat.passed).toBe(true);
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('detects invalid compatibility field (empty string)', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillPath = path.join(tempDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: compat-skill
+description: A skill with empty compatibility
+compatibility: ""
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        try {
+          execSync(`node "${cliPath}" validate "${tempDir}"`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+          });
+          throw new Error('Should have thrown an error');
+        } catch (error) {
+          const execError = error as { stdout?: string; stderr?: string; status?: number };
+          const output = execError.stdout || execError.stderr || '';
+          expect(output).toContain('✗ Error: Compatibility format');
+          expect(output).toContain('empty');
+          expect(execError.status).toBe(1);
+        }
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('detects compatibility field exceeding max length', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillPath = path.join(tempDir, 'SKILL.md');
+
+      try {
+        const longCompatibility = 'x'.repeat(501);
+        const skillContent = `---
+name: compat-skill
+description: A skill with too-long compatibility
+compatibility: "${longCompatibility}"
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        try {
+          execSync(`node "${cliPath}" validate "${tempDir}" --json`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+          });
+          throw new Error('Should have thrown an error');
+        } catch (error) {
+          const execError = error as { stdout?: string; status?: number };
+          const output = execError.stdout || '';
+          const parsed = JSON.parse(output);
+
+          expect(parsed.valid).toBe(false);
+          expect(parsed.checks.compatibilityFormat.passed).toBe(false);
+          expect(parsed.checks.compatibilityFormat.error).toContain('500 characters');
+          expect(execError.status).toBe(1);
+        }
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('validates skill with matching directory name', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'matching-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: matching-skill
+description: A skill with matching directory name
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+          encoding: 'utf-8',
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.valid).toBe(true);
+        expect(parsed.checks.nameMatchesDirectory.passed).toBe(true);
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('detects name mismatch with directory', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'actual-directory');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: different-name
+description: A skill with mismatched directory name
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        try {
+          execSync(`node "${cliPath}" validate "${skillDir}"`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+          });
+          throw new Error('Should have thrown an error');
+        } catch (error) {
+          const execError = error as { stdout?: string; stderr?: string; status?: number };
+          const output = execError.stdout || execError.stderr || '';
+          expect(output).toContain('✗ Error: Name matches directory');
+          expect(output).toContain('different-name');
+          expect(output).toContain('actual-directory');
+          expect(execError.status).toBe(1);
+        }
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('includes name mismatch in JSON output', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'dir-name');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: skill-name
+description: A skill with mismatched directory name
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        try {
+          execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+          });
+          throw new Error('Should have thrown an error');
+        } catch (error) {
+          const execError = error as { stdout?: string; status?: number };
+          const output = execError.stdout || '';
+          const parsed = JSON.parse(output);
+
+          expect(parsed.valid).toBe(false);
+          expect(parsed.checks.nameMatchesDirectory.passed).toBe(false);
+          expect(parsed.checks.nameMatchesDirectory.error).toContain('skill-name');
+          expect(parsed.checks.nameMatchesDirectory.error).toContain('dir-name');
+          expect(execError.status).toBe(1);
+        }
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('validates skill with space-delimited allowed-tools', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'space-tools-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: space-tools-skill
+description: A skill with space-delimited allowed-tools
+allowed-tools: Read Write Bash
+---
+
+Skill content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+          encoding: 'utf-8',
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.valid).toBe(true);
+        // Note: The JSON output should show the normalized array format
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('shows warning for large skill body (>500 lines)', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'large-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        // Create content with 501 lines
+        const bodyLines = Array(501).fill('This is a line of content.');
+        const skillContent = `---
+name: large-skill
+description: A skill with many lines
+---
+
+${bodyLines.join('\n')}
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}"`, {
+          encoding: 'utf-8',
+        });
+
+        // Should still be valid but have warnings
+        expect(result).toContain('✓ Skill is valid!');
+        expect(result).toContain('Warnings:');
+        expect(result).toContain('lines');
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('includes warnings in JSON output', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'large-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        // Create content with 501 lines
+        const bodyLines = Array(501).fill('Content line.');
+        const skillContent = `---
+name: large-skill
+description: A skill with many lines
+---
+
+${bodyLines.join('\n')}
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+          encoding: 'utf-8',
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.valid).toBe(true);
+        expect(parsed.warnings).toBeDefined();
+        expect(parsed.warnings.length).toBeGreaterThan(0);
+        expect(parsed.warnings.some((w: string) => w.includes('lines'))).toBe(true);
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('returns no warnings for small skill', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-integration-'));
+      const skillDir = path.join(tempDir, 'small-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
+
+      try {
+        const skillContent = `---
+name: small-skill
+description: A small skill
+---
+
+Just a few lines of content.
+`;
+
+        await fs.writeFile(skillPath, skillContent);
+
+        const result = execSync(`node "${cliPath}" validate "${skillDir}" --json`, {
+          encoding: 'utf-8',
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.valid).toBe(true);
+        expect(parsed.warnings).toEqual([]);
       } finally {
         await fs.rm(tempDir, { recursive: true, force: true });
       }

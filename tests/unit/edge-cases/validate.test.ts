@@ -440,7 +440,9 @@ Content here.
   describe('17. Valid skill with all optional fields', () => {
     it('validates skill with license, allowed-tools, and metadata', async () => {
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asm-edge-'));
-      const skillPath = path.join(tempDir, 'SKILL.md');
+      const skillDir = path.join(tempDir, 'full-featured-skill');
+      await fs.mkdir(skillDir);
+      const skillPath = path.join(skillDir, 'SKILL.md');
 
       try {
         await fs.writeFile(
@@ -467,7 +469,7 @@ This skill has all allowed frontmatter fields.
 `
         );
 
-        const result = await validateSkill(tempDir);
+        const result = await validateSkill(skillDir);
         expect(result.valid).toBe(true);
         expect(result.checks.fileExists.passed).toBe(true);
         expect(result.checks.frontmatterValid.passed).toBe(true);
@@ -475,6 +477,7 @@ This skill has all allowed frontmatter fields.
         expect(result.checks.allowedProperties.passed).toBe(true);
         expect(result.checks.nameFormat.passed).toBe(true);
         expect(result.checks.descriptionFormat.passed).toBe(true);
+        expect(result.checks.nameMatchesDirectory.passed).toBe(true);
       } finally {
         await fs.rm(tempDir, { recursive: true, force: true });
       }
