@@ -12,6 +12,9 @@ import { validateRequiredFields } from '../validators/required-fields';
 import { validateFrontmatterKeys } from '../validators/frontmatter';
 import { validateName } from '../validators/name';
 import { validateDescription } from '../validators/description';
+import { validateCompatibility } from '../validators/compatibility';
+import { validateDirectoryName } from '../validators/directory-name';
+import { analyzeFileSize } from '../analyzers/file-size';
 
 /**
  * Initialize empty check results
@@ -24,6 +27,8 @@ function initializeChecks(): Record<CheckName, { passed: boolean; error?: string
     allowedProperties: { passed: false },
     nameFormat: { passed: false },
     descriptionFormat: { passed: false },
+    compatibilityFormat: { passed: false },
+    nameMatchesDirectory: { passed: false },
   };
 }
 
@@ -33,7 +38,8 @@ function initializeChecks(): Record<CheckName, { passed: boolean; error?: string
 function buildResult(
   skillPath: string,
   checks: Record<CheckName, { passed: boolean; error?: string }>,
-  skillName?: string
+  skillName?: string,
+  warnings: string[] = []
 ): ValidationResult {
   const errors = Object.values(checks)
     .filter(
@@ -51,6 +57,7 @@ function buildResult(
     skillName,
     checks,
     errors,
+    warnings,
   };
 }
 
@@ -142,9 +149,41 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     };
   }
 
+  // Step 7: Compatibility format check
+  // Validates the optional compatibility field format
+  const compatResult = validateCompatibility(frontmatter.compatibility);
+  checks.compatibilityFormat = {
+    passed: compatResult.valid,
+    error: compatResult.error,
+  };
+
+  // Step 8: Name matches directory check
+  // Validates that frontmatter name matches parent directory name
+  if (
+    typeof frontmatter.name === 'string' &&
+    frontmatter.name.trim() !== '' &&
+    fileResult.resolvedPath
+  ) {
+    const dirResult = validateDirectoryName(fileResult.resolvedPath, frontmatter.name);
+    checks.nameMatchesDirectory = {
+      passed: dirResult.valid,
+      error: dirResult.error,
+    };
+  } else {
+    // Skip if name is missing/empty (already reported in requiredFields)
+    // or if resolvedPath is not available
+    checks.nameMatchesDirectory = { passed: true };
+  }
+
+  // Step 9: File size analysis (generates warnings, not errors)
+  // Analyze body content for size recommendations
+  const fileSizeAnalysis = analyzeFileSize(parseResult.body || '');
+  const warnings = fileSizeAnalysis.warnings;
+
   return buildResult(
     fileResult.resolvedPath || skillPath,
     checks,
-    typeof frontmatter.name === 'string' ? frontmatter.name : undefined
+    typeof frontmatter.name === 'string' ? frontmatter.name : undefined,
+    warnings
   );
 }

@@ -2,7 +2,7 @@
  * Frontmatter key validation
  *
  * Rules:
- * - Only allowed top-level keys: name, description, license, allowed-tools, metadata
+ * - Only allowed top-level keys: name, description, license, compatibility, allowed-tools, metadata
  * - Reject any unexpected top-level keys
  */
 
@@ -12,6 +12,7 @@ const ALLOWED_KEYS = new Set([
   'name',
   'description',
   'license',
+  'compatibility',
   'allowed-tools',
   'metadata',
 ]);
@@ -20,9 +21,7 @@ export interface FrontmatterData {
   [key: string]: unknown;
 }
 
-export function validateFrontmatterKeys(
-  frontmatter: FrontmatterData
-): ValidationResult {
+export function validateFrontmatterKeys(frontmatter: FrontmatterData): ValidationResult {
   const keys = Object.keys(frontmatter);
 
   // Check for empty frontmatter

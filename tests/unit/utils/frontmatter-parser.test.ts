@@ -314,6 +314,135 @@ Content.
       expect(result.data?.description).toContain('colons');
     });
   });
+
+  describe('allowed-tools normalization', () => {
+    it('converts space-delimited string to array', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: Read Write Bash
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
+
+    it('handles single tool as string', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: Read
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read']);
+    });
+
+    it('handles empty string as empty array', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: ""
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual([]);
+    });
+
+    it('handles whitespace-only string as empty array', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: "   "
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual([]);
+    });
+
+    it('handles multiple spaces between tools', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: Read    Write      Bash
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
+
+    it('handles tabs between tools', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: "Read\tWrite\tBash"
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
+
+    it('handles leading and trailing whitespace in string', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: "  Read Write Bash  "
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
+
+    it('preserves array format', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools:
+  - Read
+  - Write
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write']);
+    });
+
+    it('does not modify if allowed-tools is not present', () => {
+      const content = `---
+name: my-skill
+description: Test
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toBeUndefined();
+    });
+  });
 });
 
 describe('extractRawFrontmatter', () => {

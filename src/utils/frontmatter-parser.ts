@@ -83,10 +83,30 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
       };
     }
 
+    // Normalize allowed-tools: convert space-delimited string to array
+    // Use parsed (unknown type) to check before casting to ParsedFrontmatter
+    const rawParsed = parsed as Record<string, unknown>;
+    if (typeof rawParsed['allowed-tools'] === 'string') {
+      const toolsString = rawParsed['allowed-tools'].trim();
+      if (toolsString === '') {
+        // Empty string becomes empty array
+        rawParsed['allowed-tools'] = [];
+      } else {
+        // Split by whitespace (one or more spaces/tabs)
+        rawParsed['allowed-tools'] = toolsString.split(/\s+/);
+      }
+    }
+    const frontmatter = rawParsed as ParsedFrontmatter;
+
+    // Extract body content (everything after closing delimiter)
+    const bodyStart = closingIndex + `\n${FRONTMATTER_DELIMITER}`.length;
+    const body = afterOpeningDelimiter.slice(bodyStart).trim();
+
     return {
       success: true,
-      data: parsed as ParsedFrontmatter,
+      data: frontmatter,
       raw: rawFrontmatter,
+      body,
     };
   } catch (e) {
     const yamlError = e as yaml.YAMLException;

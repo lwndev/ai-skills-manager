@@ -11,7 +11,9 @@ export type CheckName =
   | 'requiredFields'
   | 'allowedProperties'
   | 'nameFormat'
-  | 'descriptionFormat';
+  | 'descriptionFormat'
+  | 'compatibilityFormat'
+  | 'nameMatchesDirectory';
 
 /**
  * Result of a single validation check
@@ -39,6 +41,8 @@ export interface ValidationResult {
   checks: Record<CheckName, { passed: boolean; error?: string }>;
   /** Array of all error messages (for convenience) */
   errors: string[];
+  /** Array of warning messages (non-blocking issues) */
+  warnings?: string[];
 }
 
 /**
@@ -48,6 +52,7 @@ export interface ParsedFrontmatter {
   name?: string;
   description?: string;
   license?: string;
+  compatibility?: string;
   'allowed-tools'?: string[];
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
@@ -65,4 +70,6 @@ export interface FrontmatterParseResult {
   error?: string;
   /** Raw frontmatter string before parsing (if extracted) */
   raw?: string;
+  /** Body content after frontmatter (if successful) */
+  body?: string;
 }

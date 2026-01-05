@@ -22,8 +22,11 @@ describe('validate formatters', () => {
       allowedProperties: { passed: true },
       nameFormat: { passed: true },
       descriptionFormat: { passed: true },
+      compatibilityFormat: { passed: true },
+      nameMatchesDirectory: { passed: true },
     },
     errors: [],
+    warnings: [],
   };
 
   const invalidResult: ValidationResult = {
@@ -40,11 +43,14 @@ describe('validate formatters', () => {
         error: 'Name must be in hyphen-case format (e.g., my-skill-name)',
       },
       descriptionFormat: { passed: true },
+      compatibilityFormat: { passed: true },
+      nameMatchesDirectory: { passed: true },
     },
     errors: [
       'Unknown property: invalid-prop',
       'Name must be in hyphen-case format (e.g., my-skill-name)',
     ],
+    warnings: [],
   };
 
   const fileNotFoundResult: ValidationResult = {
@@ -57,8 +63,11 @@ describe('validate formatters', () => {
       allowedProperties: { passed: false },
       nameFormat: { passed: false },
       descriptionFormat: { passed: false },
+      compatibilityFormat: { passed: false },
+      nameMatchesDirectory: { passed: false },
     },
     errors: ['SKILL.md not found at /path/to/missing'],
+    warnings: [],
   };
 
   describe('formatNormal', () => {
@@ -118,8 +127,11 @@ describe('validate formatters', () => {
           allowedProperties: { passed: true },
           nameFormat: { passed: true },
           descriptionFormat: { passed: true },
+          compatibilityFormat: { passed: true },
+          nameMatchesDirectory: { passed: true },
         },
         errors: ['Invalid YAML syntax', 'Missing required field: name'],
+        warnings: [],
       };
 
       const output = formatNormal(result);
@@ -200,6 +212,8 @@ describe('validate formatters', () => {
       expect(parsed.checks).toHaveProperty('allowedProperties');
       expect(parsed.checks).toHaveProperty('nameFormat');
       expect(parsed.checks).toHaveProperty('descriptionFormat');
+      expect(parsed.checks).toHaveProperty('compatibilityFormat');
+      expect(parsed.checks).toHaveProperty('nameMatchesDirectory');
     });
   });
 
