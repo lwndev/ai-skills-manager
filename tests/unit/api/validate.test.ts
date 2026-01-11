@@ -512,8 +512,7 @@ ${largeContent}
 
       const result = await validate(skillPath, { detailed: true });
 
-      expect(result.warnings).toBeDefined();
-      expect(result.warnings!.length).toBeGreaterThan(0);
+      expect(result.warnings?.length).toBeGreaterThan(0);
     });
   });
 });

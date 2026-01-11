@@ -85,6 +85,23 @@ describe('Skill Discovery', () => {
 
       expect(result.type).toBe('not-found');
     });
+
+    it('returns "case-mismatch" when case differs on case-insensitive filesystem', async () => {
+      // This test is meaningful on case-insensitive filesystems (macOS, Windows)
+      // On case-sensitive filesystems (Linux), the directory won't be found
+      const result = await discoverSkill('My-Skill', scopeInfo);
+
+      // On case-insensitive systems, we detect the mismatch
+      // (skill was created as 'my-skill' in beforeAll)
+      if (result.type === 'case-mismatch') {
+        expect(result.expectedName).toBe('My-Skill');
+        expect(result.actualName).toBe('my-skill');
+        expect(result.actualPath).toBe(path.join(tempDir, 'my-skill'));
+      } else {
+        // On case-sensitive systems, the directory won't be found at all
+        expect(result.type).toBe('not-found');
+      }
+    });
   });
 
   describe('verifyCaseSensitivity', () => {

@@ -81,6 +81,16 @@ description: ${options.description || `Description for ${name}`}${metadata}
       expect(result).toEqual([]);
     });
 
+    it('returns empty array when target path is a file (not a directory)', async () => {
+      // Create a file instead of a directory
+      const filePath = path.join(tempDir, 'not-a-directory.txt');
+      await fs.writeFile(filePath, 'This is a file, not a directory');
+
+      const result = await list({ targetPath: filePath });
+
+      expect(result).toEqual([]);
+    });
+
     it('returns empty array when directory has only non-skill subdirectories', async () => {
       // Create directory without SKILL.md
       await fs.mkdir(path.join(tempDir, 'not-a-skill'));

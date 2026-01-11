@@ -141,6 +141,33 @@ describe('validate formatters', () => {
       expect(output).toContain('✗ Error: Required fields');
       expect(output).toContain('Missing required field: name');
     });
+
+    it('displays warnings when present', () => {
+      const resultWithWarnings: ValidationResult = {
+        valid: true,
+        skillPath: '/path/to/my-skill',
+        skillName: 'my-skill',
+        checks: {
+          fileExists: { passed: true },
+          frontmatterValid: { passed: true },
+          requiredFields: { passed: true },
+          allowedProperties: { passed: true },
+          nameFormat: { passed: true },
+          descriptionFormat: { passed: true },
+          compatibilityFormat: { passed: true },
+          nameMatchesDirectory: { passed: true },
+        },
+        errors: [],
+        warnings: ['Content size exceeds 50KB', 'Consider splitting into smaller files'],
+      };
+
+      const output = formatNormal(resultWithWarnings);
+
+      expect(output).toContain('Warnings:');
+      expect(output).toContain('Content size exceeds 50KB');
+      expect(output).toContain('Consider splitting into smaller files');
+      expect(output).toContain('✓ Skill is valid!');
+    });
   });
 
   describe('formatQuiet', () => {
