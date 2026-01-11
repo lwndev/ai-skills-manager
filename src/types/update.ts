@@ -5,11 +5,12 @@
 import type { UninstallScope } from '../validators/uninstall-scope.js';
 
 /**
- * Update scope types - alias to existing scope types
+ * Update scope types
  * - 'project': Update skill in .claude/skills/ in current directory
  * - 'personal': Update skill in ~/.claude/skills/
+ * - string: Custom path for update operations (API only)
  */
-export type UpdateScope = UninstallScope;
+export type UpdateScope = UninstallScope | string;
 
 /**
  * Options for update operations

@@ -186,7 +186,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 6: Update API Function
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Most complex operation**: Backup, replace, rollback on failure
@@ -213,9 +213,9 @@ The current codebase already has good separation between commands, generators, v
 5. Test backup/restore behavior
 
 #### Deliverables
-- [ ] `src/api/update.ts` - Update API function
-- [ ] `tests/unit/api/update.test.ts` - Unit tests
-- [ ] `tests/integration/api/update.test.ts` - Integration tests
+- [x] `src/api/update.ts` - Update API function
+- [x] `tests/unit/api/update.test.ts` - Unit tests
+- [x] `tests/integration/api/update.test.ts` - Integration tests
 
 ---
 

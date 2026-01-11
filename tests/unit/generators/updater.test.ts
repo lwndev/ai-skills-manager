@@ -189,15 +189,17 @@ describe('Updater - Phase 5: Input & Discovery', () => {
         }
       });
 
-      it('rejects invalid scope', async () => {
+      it('accepts custom path as scope (for API use)', async () => {
         const packagePath = await createTestPackage('test-skill');
-        const options = { ...getDefaultOptions(), scope: 'invalid' as 'project' };
+        // Custom paths are now accepted for API use (not just 'project' or 'personal')
+        const customPath = '/custom/skills/path';
+        const options = { ...getDefaultOptions(), scope: customPath as 'project' };
         const result = await validateInputs('test-skill', packagePath, options);
 
-        expect(result.valid).toBe(false);
-        if (!result.valid) {
-          expect(result.error.type).toBe('validation-error');
-          expect((result.error as { field: string }).field).toBe('scope');
+        expect(result.valid).toBe(true);
+        if (result.valid) {
+          expect(result.scopeInfo.type).toBe('custom');
+          expect(result.scopeInfo.path).toBe(customPath);
         }
       });
     });
