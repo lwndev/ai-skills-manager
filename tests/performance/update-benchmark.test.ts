@@ -33,8 +33,11 @@ const FIXTURE_SIZES = {
   SMALL: 1024, // 1KB
   MEDIUM: 1024 * 1024, // 1MB
   LARGE: 50 * 1024 * 1024, // 50MB
-  // XLARGE: 500 * 1024 * 1024, // 500MB - run separately
+  XLARGE: 500 * 1024 * 1024, // 500MB - run with RUN_XLARGE_TESTS=true
 };
+
+// Conditional describe for XLarge tests - only run when explicitly enabled
+const describeIfXLarge = process.env.RUN_XLARGE_TESTS === 'true' ? describe : describe.skip;
 
 describe('Update Command Performance Benchmarks', () => {
   let tempDir: string;
@@ -386,16 +389,65 @@ This is a generated skill for performance testing.
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024);
     }, 60000);
   });
-});
 
-// Skip XLarge tests by default - run with: npm test -- --testPathPattern=update-benchmark --testNamePattern=XLarge
-describe.skip('XLarge Package (500MB) - Limit Test', () => {
-  // These tests are skipped by default and run nightly
-  // They verify the system can handle packages near the size limit
+  // XLarge tests - run with: RUN_XLARGE_TESTS=true npm test -- tests/performance/update-benchmark.test.ts
+  describeIfXLarge('XLarge Package (500MB) - Limit Test', () => {
+    // These tests verify the system can handle packages near the size limit
+    // They are skipped by default to avoid CI timeouts and resource issues
 
-  it('should handle 500MB package within limits', async () => {
-    // This test would generate a 500MB package and verify performance
-    // Skipped to avoid CI timeouts and resource issues
-    expect(true).toBe(true);
+    let xlargeSkillDir: string;
+    let xlargePackagePath: string;
+    let xlargeFixturesDir: string;
+
+    beforeAll(async () => {
+      // Create a separate temp directory for XLarge fixtures to isolate from other tests
+      xlargeFixturesDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'asm-xlarge-'));
+      xlargeSkillDir = path.join(xlargeFixturesDir, 'xlarge-skill');
+      xlargePackagePath = path.join(xlargeFixturesDir, 'xlarge-skill.skill');
+
+      await generateSkillDirectory(xlargeSkillDir, FIXTURE_SIZES.XLARGE, 'xlarge-skill');
+      await generateSkillPackage(xlargePackagePath, FIXTURE_SIZES.XLARGE, 'xlarge-skill-new');
+    }, 600000); // 10 minute timeout for 500MB generation
+
+    afterAll(async () => {
+      // Clean up XLarge fixtures
+      if (xlargeFixturesDir) {
+        await fs.promises.rm(xlargeFixturesDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should validate xlarge package under 5 seconds', async () => {
+      const { durationMs } = await measureTime(async () => {
+        const stats = await fs.promises.stat(xlargePackagePath);
+        expect(stats.isFile()).toBe(true);
+        return stats;
+      });
+
+      expect(durationMs).toBeLessThan(
+        THRESHOLDS.PACKAGE_VALIDATION_MS * THRESHOLDS.VARIANCE_FACTOR
+      );
+    });
+
+    it('should compare versions of xlarge skill under 30 seconds', async () => {
+      const { result: comparison, durationMs } = await measureTime(async () => {
+        return await compareVersions(xlargeSkillDir, xlargePackagePath);
+      });
+
+      expect(comparison).toBeDefined();
+      expect(durationMs).toBeLessThan(THRESHOLDS.FULL_UPDATE_CYCLE_MS * THRESHOLDS.VARIANCE_FACTOR);
+    }, 120000); // 2 minute timeout
+
+    it('should create backup of xlarge skill under 2 minutes', async () => {
+      const { result: backupResult, durationMs } = await measureTime(async () => {
+        return await createBackup(xlargeSkillDir, 'xlarge-skill');
+      });
+
+      expect(backupResult.success).toBe(true);
+      if (backupResult.success) {
+        // Clean up backup
+        await fs.promises.unlink(backupResult.path).catch(() => {});
+      }
+      expect(durationMs).toBeLessThan(THRESHOLDS.BACKUP_CREATION_MS * THRESHOLDS.VARIANCE_FACTOR);
+    }, 300000); // 5 minute timeout
   });
 });
