@@ -8,9 +8,14 @@
  * - Compares versions and shows diff
  * - Performs atomic update with rollback on failure
  * - Logs operations to audit log
+ *
+ * Note: This command uses a hybrid approach - the API for actual updates
+ * but internal generators for features that need detailed output (dry-run preview,
+ * rollback details) to maintain backward-compatible CLI output.
  */
 
 import { Command } from 'commander';
+import { update } from '../api';
 import { updateSkill, UpdateError } from '../generators/updater';
 import { validatePackageFile } from '../validators/package-file';
 import { validateSkillName } from '../validators/uninstall-name';
@@ -20,16 +25,22 @@ import { UpdateExitCodes } from '../types/update';
 import {
   formatUpdateProgress,
   formatUpdateSuccess,
-  formatRollbackSuccess,
-  formatRollbackFailed,
   formatDryRun,
   formatQuietOutput,
   formatError,
   formatCancelledUpdate,
+  formatRollbackSuccess,
+  formatRollbackFailed,
 } from '../formatters/update-formatter';
-// Note: confirmUpdate from '../utils/prompts' is available if confirmation
-// needs to be handled at the command level. Currently the updater generator
-// handles confirmation internally.
+import {
+  AsmError,
+  FileSystemError,
+  PackageError,
+  SecurityError,
+  CancellationError,
+  ValidationError,
+} from '../errors';
+import { success, warning } from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
 import * as output from '../utils/output';
 
@@ -216,25 +227,64 @@ async function handleUpdate(
       console.log(formatUpdateProgress('locating'));
     }
 
-    // Build update options
-    const updateOptions: UpdateOptions = {
-      scope: validatedScope,
+    // For dry-run, use generator directly for detailed output
+    if (dryRun) {
+      const updateOptions: UpdateOptions = {
+        scope: validatedScope,
+        force: force || false,
+        dryRun: true,
+        quiet: quiet || false,
+        noBackup: noBackup || false,
+        keepBackup: keepBackup || false,
+      };
+
+      const result: UpdateResultUnion = await updateSkill(
+        skillName,
+        resolvedPackagePath,
+        updateOptions
+      );
+
+      return handleResult(result, validatedScope, quiet);
+    }
+
+    // For actual updates, use the API
+    const apiResult = await update({
+      name: skillName,
+      file: resolvedPackagePath,
+      scope:
+        validatedScope === 'project' || validatedScope === 'personal' ? validatedScope : undefined,
+      targetPath:
+        validatedScope !== 'project' && validatedScope !== 'personal' ? validatedScope : undefined,
       force: force || false,
-      dryRun: dryRun || false,
-      quiet: quiet || false,
-      noBackup: noBackup || false,
       keepBackup: keepBackup || false,
-    };
+    });
 
-    // Call the updater
-    const result: UpdateResultUnion = await updateSkill(
-      skillName,
-      resolvedPackagePath,
-      updateOptions
-    );
+    // Output success
+    if (quiet) {
+      console.log(apiResult.updatedPath);
+    } else {
+      console.log('');
+      console.log(success('Skill updated successfully!'));
+      console.log('');
+      console.log('Update details:');
+      console.log(`  Name: ${skillName}`);
+      console.log(`  Path: ${apiResult.updatedPath}`);
+      if (apiResult.previousVersion) {
+        console.log(`  Previous version: ${apiResult.previousVersion}`);
+      }
+      if (apiResult.newVersion) {
+        console.log(`  New version: ${apiResult.newVersion}`);
+      }
+      if (apiResult.backupPath) {
+        console.log(`  Backup: ${apiResult.backupPath}`);
+      }
+      console.log('');
+      console.log(warning('Security note:'));
+      console.log('  Review the updated SKILL.md to understand any changes.');
+      console.log('');
+    }
 
-    // Handle result based on type
-    return handleResult(result, validatedScope, quiet);
+    return EXIT_CODES.SUCCESS;
   } catch (error) {
     return handleError(error, skillName, quiet);
   }
@@ -291,7 +341,79 @@ function handleResult(result: UpdateResultUnion, scope: UninstallScope, quiet?: 
 function handleError(error: unknown, skillName: string, quiet?: boolean): number {
   debug('Update error', error);
 
-  // Handle our custom UpdateError class
+  // Handle API error classes first
+  if (error instanceof CancellationError) {
+    if (!quiet) {
+      output.displayError('Update cancelled', error.message);
+    } else {
+      console.log(`CANCELLED: ${skillName}`);
+    }
+    return EXIT_CODES.CANCELLED;
+  }
+
+  if (error instanceof SecurityError) {
+    if (!quiet) {
+      output.displayError('Security error', error.message);
+    } else {
+      console.log(`FAIL: ${skillName}: ${error.message}`);
+    }
+    return EXIT_CODES.SECURITY_ERROR;
+  }
+
+  if (error instanceof ValidationError) {
+    if (!quiet) {
+      output.displayError('Validation error', error.message);
+      if (error.issues.length > 0) {
+        console.log('\nValidation issues:');
+        for (const issue of error.issues) {
+          console.log(`  • ${issue.message}`);
+        }
+      }
+    } else {
+      console.log(`FAIL: ${skillName}: ${error.message}`);
+    }
+    return EXIT_CODES.INVALID_PACKAGE;
+  }
+
+  if (error instanceof PackageError) {
+    if (!quiet) {
+      output.displayError('Package error', error.message);
+    } else {
+      console.log(`FAIL: ${skillName}: ${error.message}`);
+    }
+    // Check if this is a rollback scenario
+    if (error.message.includes('restored to previous version')) {
+      return EXIT_CODES.ROLLED_BACK;
+    }
+    return EXIT_CODES.INVALID_PACKAGE;
+  }
+
+  if (error instanceof FileSystemError) {
+    if (!quiet) {
+      output.displayError('File system error', error.message);
+    } else {
+      console.log(`FAIL: ${skillName}: ${error.message}`);
+    }
+    // Check for specific scenarios
+    if (error.message.includes('not found')) {
+      return EXIT_CODES.NOT_FOUND;
+    }
+    if (error.message.includes('Critical error')) {
+      return EXIT_CODES.ROLLBACK_FAILED;
+    }
+    return EXIT_CODES.FILESYSTEM_ERROR;
+  }
+
+  if (error instanceof AsmError) {
+    if (!quiet) {
+      output.displayError(error.message);
+    } else {
+      console.log(`FAIL: ${skillName}: ${error.message}`);
+    }
+    return EXIT_CODES.FILESYSTEM_ERROR;
+  }
+
+  // Handle internal UpdateError class (for dry-run path)
   if (error instanceof UpdateError) {
     const updateError = error.updateError;
 
@@ -310,11 +432,9 @@ function handleError(error: unknown, skillName: string, quiet?: boolean): number
       case 'filesystem-error':
         return EXIT_CODES.FILESYSTEM_ERROR;
       case 'validation-error':
-        // Check if it's package-related
         if (updateError.field === 'packagePath' || updateError.field === 'packageContent') {
           return EXIT_CODES.INVALID_PACKAGE;
         }
-        // Skill name or scope validation is a security error
         return EXIT_CODES.SECURITY_ERROR;
       case 'package-mismatch':
         return EXIT_CODES.INVALID_PACKAGE;

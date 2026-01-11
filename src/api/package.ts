@@ -158,6 +158,7 @@ export async function createPackage(options: PackageOptions): Promise<PackageRes
     return {
       packagePath: result.packagePath,
       size: result.size,
+      fileCount: result.fileCount,
     };
   } catch (error) {
     // Re-throw our own errors

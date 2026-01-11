@@ -2,11 +2,18 @@
  * Validate command implementation
  *
  * Validates Claude Skill structure and metadata against the official Anthropic specification.
+ *
+ * Note: This command uses the internal validateSkill function directly rather than the
+ * public API's validate() function to maintain backward-compatible CLI output format.
+ * The public API returns a simplified ValidateResult with errors/warnings arrays,
+ * while the CLI output shows detailed check-by-check results which requires the
+ * internal ValidationResult structure.
  */
 
 import { Command } from 'commander';
 import { validateSkill } from '../generators/validate';
 import { formatValidationOutput } from '../formatters/validate-formatter';
+import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
 
 /**
@@ -70,10 +77,10 @@ Output Formats:
 async function handleValidate(skillPath: string, options: ValidateOptions): Promise<void> {
   // Validate that path was provided
   if (!skillPath || skillPath.trim() === '') {
-    throw new Error('Skill path is required');
+    throw new FileSystemError('Skill path is required', skillPath || '');
   }
 
-  // Run validation
+  // Run validation using internal function for detailed check-by-check output
   const result = await validateSkill(skillPath);
 
   // Format output
@@ -107,7 +114,11 @@ function handleError(error: unknown, options: ValidateOptions): void {
   }
 
   // In normal mode, show detailed error
-  if (error instanceof Error) {
+  if (error instanceof FileSystemError) {
+    output.displayError('File system error', error.message);
+  } else if (error instanceof AsmError) {
+    output.displayError(error.message);
+  } else if (error instanceof Error) {
     output.displayError('Validation failed', error.message);
   } else {
     output.displayError('An unexpected error occurred', String(error));

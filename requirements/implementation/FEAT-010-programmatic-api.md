@@ -252,7 +252,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 8: CLI Refactoring
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Single source of truth**: CLI uses same code paths as API
@@ -288,14 +288,14 @@ The current codebase already has good separation between commands, generators, v
 9. Test all CLI commands manually
 
 #### Deliverables
-- [ ] Refactored `src/commands/scaffold.ts`
-- [ ] Refactored `src/commands/validate.ts`
-- [ ] Refactored `src/commands/package.ts`
-- [ ] Refactored `src/commands/install.ts`
-- [ ] Refactored `src/commands/update.ts`
-- [ ] Refactored `src/commands/uninstall.ts`
-- [ ] New `src/commands/list.ts` - List command
-- [ ] `tests/cli/` - CLI integration tests verifying unchanged behavior
+- [x] Refactored `src/commands/scaffold.ts`
+- [x] Refactored `src/commands/validate.ts`
+- [x] Refactored `src/commands/package.ts`
+- [x] Refactored `src/commands/install.ts`
+- [x] Refactored `src/commands/update.ts`
+- [x] Refactored `src/commands/uninstall.ts`
+- [x] New `src/commands/list.ts` - List command
+- [x] Existing CLI tests pass with refactored commands (backward compatibility verified)
 
 ---
 

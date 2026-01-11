@@ -2,6 +2,10 @@
  * Install command implementation
  *
  * Installs a Claude Code skill from a .skill package file.
+ *
+ * Note: This command uses a hybrid approach - the API for actual installation
+ * but internal generators for features that need more detail (dry-run preview,
+ * warning analysis, overwrite prompts) to maintain backward-compatible CLI output.
  */
 
 import { Command } from 'commander';
@@ -14,12 +18,10 @@ import {
 import { validatePackageFile } from '../validators/package-file';
 import { analyzePackageWarnings } from '../generators/install-validator';
 import { openZipArchive } from '../utils/extractor';
-import { InstallOptions, InstallResult, DryRunPreview } from '../types/install';
+import { InstallOptions, DryRunPreview } from '../types/install';
 import {
   formatInstallProgress,
   formatInstallSuccess,
-  formatInstallError,
-  formatQuietOutput,
   formatDryRunOutput,
   formatOverwritePrompt,
   formatPackageWarnings,
@@ -27,12 +29,12 @@ import {
 } from '../formatters/install-formatter';
 import { confirmInstallOverwrite } from '../utils/prompts';
 import {
-  PackageNotFoundError,
-  InvalidPackageError,
-  PackageValidationError,
+  AsmError,
   FileSystemError,
-  UserCancelledError,
-} from '../utils/errors';
+  PackageError,
+  SecurityError,
+  CancellationError,
+} from '../errors';
 import * as output from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
 
@@ -161,7 +163,10 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
 
     const packageValidation = await validatePackageFile(packagePath);
     if (!packageValidation.valid) {
-      throw new PackageNotFoundError(packageValidation.packagePath || packagePath);
+      throw new FileSystemError(
+        `Package not found: ${packageValidation.packagePath || packagePath}`,
+        packageValidation.packagePath || packagePath
+      );
     }
 
     const resolvedPath = packageValidation.packagePath as string;
@@ -193,16 +198,32 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
       }
     }
 
+    // Handle dry-run with generator directly (needs detailed preview data)
+    if (dryRun) {
+      const installOptions: InstallOptions = {
+        scope,
+        force,
+        dryRun: true,
+        quiet,
+        thorough,
+      };
+      const result = await installSkill(resolvedPath, installOptions);
+      if (isDryRunPreview(result)) {
+        console.log(formatDryRunOutput(result as DryRunPreview));
+        return EXIT_CODES.SUCCESS;
+      }
+    }
+
     // Prepare installation options
     const installOptions: InstallOptions = {
       scope,
       force,
-      dryRun,
+      dryRun: false,
       quiet,
       thorough,
     };
 
-    // Attempt installation
+    // Attempt installation (generator returns detailed result)
     let result = await installSkill(resolvedPath, installOptions);
 
     // Handle overwrite scenario
@@ -222,7 +243,8 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
       const confirmed = await confirmInstallOverwrite(result.skillName, promptMessage);
 
       if (!confirmed) {
-        throw new UserCancelledError('Installation cancelled by user');
+        output.displayError('Installation cancelled by user');
+        return EXIT_CODES.USER_CANCELLED;
       }
 
       // Retry with force
@@ -232,33 +254,26 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
       result = await installSkill(resolvedPath, { ...installOptions, force: true });
     }
 
-    // Handle dry-run result
-    if (isDryRunPreview(result)) {
-      console.log(formatDryRunOutput(result as DryRunPreview));
-      return EXIT_CODES.SUCCESS;
+    // Handle installation result (using generator result for detailed output)
+    if (!isInstallResult(result)) {
+      // Unexpected result type
+      throw new PackageError('Unexpected installation result');
     }
 
-    // Handle installation result
-    if (isInstallResult(result)) {
-      const installResult = result as InstallResult;
-
-      if (!installResult.success) {
-        const errorMessage = installResult.errors.join(', ') || 'Unknown error';
-        throw new PackageValidationError(errorMessage, installResult.errors);
-      }
-
-      // Output success
-      if (quiet) {
-        console.log(formatQuietOutput(installResult));
-      } else {
-        console.log(formatInstallSuccess(installResult));
-      }
-
-      return EXIT_CODES.SUCCESS;
+    if (!result.success) {
+      const errorMessage = result.errors.join(', ') || 'Unknown error';
+      throw new PackageError(errorMessage);
     }
 
-    // Should not reach here
-    throw new Error('Unexpected installation result');
+    // Output success using generator result (has full details)
+    if (quiet) {
+      console.log(result.skillPath);
+    } else {
+      // Use the formatter for consistent output
+      console.log(formatInstallSuccess(result));
+    }
+
+    return EXIT_CODES.SUCCESS;
   } catch (error) {
     return handleError(error, quiet);
   }
@@ -272,36 +287,19 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
  * @returns Exit code
  */
 function handleError(error: unknown, quiet?: boolean): number {
-  if (error instanceof UserCancelledError) {
+  if (error instanceof CancellationError) {
     if (!quiet) {
-      output.displayError(error.message);
+      console.log(output.error(error.message));
     } else {
       console.log('CANCELLED');
     }
     return EXIT_CODES.USER_CANCELLED;
   }
 
-  if (error instanceof PackageNotFoundError) {
+  if (error instanceof SecurityError) {
     if (!quiet) {
-      console.log(formatInstallError(error));
-    } else {
-      console.log(`FAIL: ${error.message}`);
-    }
-    return EXIT_CODES.FILE_SYSTEM_ERROR;
-  }
-
-  if (error instanceof InvalidPackageError) {
-    if (!quiet) {
-      console.log(formatInstallError(error));
-    } else {
-      console.log(`FAIL: ${error.message}`);
-    }
-    return EXIT_CODES.EXTRACTION_ERROR;
-  }
-
-  if (error instanceof PackageValidationError) {
-    if (!quiet) {
-      console.log(formatInstallError(error));
+      console.log(output.error('Security error'));
+      console.log(`  ${error.message}`);
     } else {
       console.log(`FAIL: ${error.message}`);
     }
@@ -310,23 +308,45 @@ function handleError(error: unknown, quiet?: boolean): number {
 
   if (error instanceof FileSystemError) {
     if (!quiet) {
-      console.log(formatInstallError(error));
+      console.log(output.error('File system error'));
+      console.log(`  ${error.message}`);
     } else {
       console.log(`FAIL: ${error.message}`);
     }
     return EXIT_CODES.FILE_SYSTEM_ERROR;
   }
 
+  if (error instanceof PackageError) {
+    if (!quiet) {
+      console.log(output.error('Package error'));
+      console.log(`  ${error.message}`);
+    } else {
+      console.log(`FAIL: ${error.message}`);
+    }
+    return EXIT_CODES.EXTRACTION_ERROR;
+  }
+
+  if (error instanceof AsmError) {
+    if (!quiet) {
+      console.log(output.error(error.message));
+    } else {
+      console.log(`FAIL: ${error.message}`);
+    }
+    return EXIT_CODES.EXTRACTION_ERROR;
+  }
+
   // Generic error handling
   if (error instanceof Error) {
     if (!quiet) {
-      output.displayError('Installation failed', error.message);
+      console.log(output.error('Installation failed'));
+      console.log(`  ${error.message}`);
     } else {
       console.log(`FAIL: ${error.message}`);
     }
   } else {
     if (!quiet) {
-      output.displayError('An unexpected error occurred', String(error));
+      console.log(output.error('An unexpected error occurred'));
+      console.log(`  ${String(error)}`);
     } else {
       console.log(`FAIL: ${String(error)}`);
     }

@@ -210,6 +210,11 @@ export interface PackageResult {
    * Size of the package file in bytes.
    */
   size: number;
+
+  /**
+   * Number of files included in the package.
+   */
+  fileCount: number;
 }
 
 // ============================================================================
