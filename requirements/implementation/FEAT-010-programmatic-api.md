@@ -221,7 +221,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 7: Uninstall API Function
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Batch operation**: Handles multiple skills in single call
@@ -244,9 +244,9 @@ The current codebase already has good separation between commands, generators, v
 5. Test concurrent uninstall safety
 
 #### Deliverables
-- [ ] `src/api/uninstall.ts` - Uninstall API function
-- [ ] `tests/unit/api/uninstall.test.ts` - Unit tests
-- [ ] `tests/integration/api/uninstall.test.ts` - Integration tests
+- [x] `src/api/uninstall.ts` - Uninstall API function
+- [x] `tests/unit/api/uninstall.test.ts` - Unit tests
+- [x] `tests/integration/api/uninstall.test.ts` - Integration tests
 
 ---
 

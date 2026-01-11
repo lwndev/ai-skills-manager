@@ -14,3 +14,4 @@ export { scaffold } from './scaffold';
 export { createPackage } from './package';
 export { install } from './install';
 export { update } from './update';
+export { uninstall } from './uninstall';

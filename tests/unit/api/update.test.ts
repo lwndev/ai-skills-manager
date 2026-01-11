@@ -893,6 +893,7 @@ describe('update API error mapping (mocked)', () => {
       const { UpdateError: MockUpdateError } = await import('../../../src/generators/updater');
       // Use type assertion to test the default case in mapUpdateError
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockUpdateSkill.mockRejectedValue(new MockUpdateError({ type: 'unknown-error-type' } as any));
 
       const { update: mockedUpdate } = await import('../../../src/api/update');
