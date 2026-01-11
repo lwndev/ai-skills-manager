@@ -101,8 +101,11 @@ describe('createPackage API integration', () => {
       const zip = new AdmZip(packageResult.packagePath);
       const skillMdEntry = zip.getEntries().find((e) => e.entryName.endsWith('SKILL.md'));
 
-      expect(skillMdEntry).toBeDefined();
-      const content = skillMdEntry!.getData().toString('utf-8');
+      if (!skillMdEntry) {
+        throw new Error('SKILL.md entry not found in package');
+      }
+
+      const content = skillMdEntry.getData().toString('utf-8');
       expect(content).toContain('name: content-test');
       expect(content).toContain('description: Testing content');
       expect(content).toContain('allowed-tools:');

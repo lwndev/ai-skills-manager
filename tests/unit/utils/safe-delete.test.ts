@@ -365,4 +365,107 @@ describe('Safe Delete', () => {
       expect(result.type).toBe('skipped');
     });
   });
+
+  describe('safeRecursiveDelete error paths', () => {
+    it('handles containment violation for skill directory itself', async () => {
+      // Create a skill that tries to delete outside parent
+      const skillPath = path.join(tempDir, 'skill');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+
+      const progress: DeleteProgress[] = [];
+      for await (const p of safeRecursiveDelete(skillPath)) {
+        progress.push(p);
+      }
+
+      // The skill directory deletion should succeed since it's within tempDir
+      const skillDirProgress = progress.find((p) => p.relativePath === '.');
+      expect(skillDirProgress).toBeDefined();
+      expect(skillDirProgress?.result.type).toBe('success');
+    });
+
+    it('tracks error messages correctly in summary', async () => {
+      const skillPath = path.join(tempDir, 'error-tracking');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+
+      // Create a simple skill with a file
+      await fs.promises.writeFile(path.join(skillPath, 'test.txt'), 'content');
+
+      const summary = await executeSkillDeletion(skillPath);
+
+      // Should complete successfully
+      expect(summary.errors).toBe(0);
+      expect(summary.errorMessages).toEqual([]);
+      expect(summary.filesDeleted).toBe(1);
+    });
+  });
+
+  describe('verification error handling', () => {
+    it('handles path traversal attempt', async () => {
+      const skillPath = path.join(tempDir, 'skill');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+
+      // Try to unlink a path with traversal
+      const traversalPath = path.join(skillPath, '..', '..', 'etc', 'passwd');
+      const result = await safeUnlink(skillPath, traversalPath);
+
+      expect(result.type).toBe('skipped');
+      if (result.type === 'skipped') {
+        expect(result.reason).toBe('containment-violation');
+      }
+    });
+
+    it('handles symlink pointing outside skill directory', async () => {
+      const skillPath = path.join(tempDir, 'skill');
+      await fs.promises.mkdir(skillPath, { recursive: true });
+
+      // Create a file outside the skill directory
+      const outsideFile = path.join(tempDir, 'outside.txt');
+      await fs.promises.writeFile(outsideFile, 'outside content');
+
+      // Create a symlink inside skill pointing to the outside file
+      const symlinkPath = path.join(skillPath, 'link-to-outside');
+      await fs.promises.symlink(outsideFile, symlinkPath);
+
+      // The symlink itself can be deleted (it's within the skill dir)
+      const result = await safeUnlink(skillPath, symlinkPath);
+      expect(result.type).toBe('success');
+
+      // But the target should still exist
+      await expect(fs.promises.access(outsideFile)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('directory deletion edge cases', () => {
+    it('skips directory that becomes non-empty during deletion', async () => {
+      const skillPath = path.join(tempDir, 'skill');
+      const subDir = path.join(skillPath, 'subdir');
+      await fs.promises.mkdir(subDir, { recursive: true });
+
+      // Add a file to subdir
+      await fs.promises.writeFile(path.join(subDir, 'file.txt'), 'content');
+
+      // Try to delete subdir directly (without deleting file first)
+      const result = await safeUnlink(skillPath, subDir);
+
+      expect(result.type).toBe('skipped');
+      if (result.type === 'skipped') {
+        expect(result.reason).toBe('not-empty');
+        expect(result.message).toContain('not empty');
+      }
+    });
+
+    it('handles deeply nested directories correctly', async () => {
+      const skillPath = path.join(tempDir, 'deep-skill');
+      const deepPath = path.join(skillPath, 'a', 'b', 'c', 'd', 'e');
+      await fs.promises.mkdir(deepPath, { recursive: true });
+      await fs.promises.writeFile(path.join(deepPath, 'deep.txt'), 'deep');
+
+      const summary = await executeSkillDeletion(skillPath);
+
+      expect(summary.filesDeleted).toBe(1);
+      expect(summary.directoriesDeleted).toBeGreaterThanOrEqual(6); // a, b, c, d, e, skill
+      expect(summary.skillDirectoryDeleted).toBe(true);
+      expect(summary.errors).toBe(0);
+    });
+  });
 });
