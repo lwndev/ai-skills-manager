@@ -597,6 +597,145 @@ describe('update API function', () => {
       }
     });
   });
+
+  describe('detailed mode', () => {
+    it('returns DetailedUpdateResult when detailed: true', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+        detailed: true,
+      });
+
+      // Should have DetailedUpdateResult properties
+      expect(result.type).toBe('update-success');
+      expect(result.skillName).toBeDefined();
+      if (result.type === 'update-success') {
+        expect(typeof result.previousFileCount).toBe('number');
+        expect(typeof result.currentFileCount).toBe('number');
+      }
+    });
+
+    it('returns success result with file counts and sizes', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.skillName).toBe(skillName);
+        expect(result.path).toContain(skillName);
+        expect(result.previousFileCount).toBeGreaterThan(0);
+        expect(result.currentFileCount).toBeGreaterThan(0);
+        expect(typeof result.previousSize).toBe('number');
+        expect(typeof result.currentSize).toBe('number');
+        expect(typeof result.backupWillBeRemoved).toBe('boolean');
+      }
+    });
+
+    it('returns dry-run preview with version comparison', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        dryRun: true,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-dry-run-preview');
+      if (result.type === 'update-dry-run-preview') {
+        expect(result.skillName).toBe(skillName);
+        expect(result.path).toBeDefined();
+
+        // Check version info structure
+        expect(result.currentVersion).toBeDefined();
+        expect(typeof result.currentVersion.fileCount).toBe('number');
+        expect(typeof result.currentVersion.size).toBe('number');
+
+        expect(result.newVersion).toBeDefined();
+        expect(typeof result.newVersion.fileCount).toBe('number');
+        expect(typeof result.newVersion.size).toBe('number');
+
+        // Check comparison structure
+        expect(result.comparison).toBeDefined();
+        expect(Array.isArray(result.comparison.filesAdded)).toBe(true);
+        expect(Array.isArray(result.comparison.filesRemoved)).toBe(true);
+        expect(Array.isArray(result.comparison.filesModified)).toBe(true);
+        expect(typeof result.comparison.sizeChange).toBe('number');
+
+        expect(result.backupPath).toBeDefined();
+      }
+    });
+
+    it('returns backupPath when keepBackup is true', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+        keepBackup: true,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.backupPath).toBeDefined();
+        expect(result.backupWillBeRemoved).toBe(false);
+      }
+    });
+
+    it('returns backupWillBeRemoved: true when keepBackup is false', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+        keepBackup: false,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-success');
+      if (result.type === 'update-success') {
+        expect(result.backupWillBeRemoved).toBe(true);
+      }
+    });
+
+    it('returns simple UpdateResult when detailed is false', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+        detailed: false,
+      });
+
+      // Should have UpdateResult properties
+      expect(result.updatedPath).toBeDefined();
+      expect(result.dryRun).toBe(false);
+
+      // Should NOT have DetailedUpdateResult properties
+      expect((result as { type?: string }).type).toBeUndefined();
+      expect((result as { previousFileCount?: number }).previousFileCount).toBeUndefined();
+    });
+
+    it('returns simple UpdateResult when detailed is not specified', async () => {
+      const result = await update({
+        name: skillName,
+        file: validPackagePath,
+        targetPath: installDir,
+        force: true,
+      });
+
+      // Should have UpdateResult properties
+      expect(result.updatedPath).toBeDefined();
+      expect(result.dryRun).toBe(false);
+    });
+  });
 });
 
 /**

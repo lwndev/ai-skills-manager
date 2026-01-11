@@ -29,7 +29,9 @@ import {
 } from '../generators/installer';
 import { InstallOptions as GeneratorInstallOptions } from '../types/install';
 
+// Disable no-redeclare for TypeScript function overloads
 /* eslint-disable no-redeclare */
+
 /**
  * Installs a skill from a .skill package file.
  *
@@ -99,7 +101,6 @@ export async function install(
 export async function install(
   options: ApiInstallOptions
 ): Promise<ApiInstallResult | DetailedInstallResult> {
-  /* eslint-enable no-redeclare */
   const {
     file,
     scope,

@@ -22,8 +22,14 @@ import { checkAborted } from '../utils/abort-signal';
 import { hasErrorCode } from '../utils/error-helpers';
 import { validateSkillName } from '../utils/skill-name-validation';
 import { uninstallSkill, isDryRunPreview, getScopePath } from '../generators/uninstaller';
-import type { UninstallOptions as GeneratorUninstallOptions } from '../types/uninstall';
+import type {
+  UninstallOptions as GeneratorUninstallOptions,
+  UninstallError,
+} from '../types/uninstall';
 import type { UninstallScope } from '../validators/uninstall-scope';
+
+// Disable no-redeclare for TypeScript function overloads
+/* eslint-disable no-redeclare */
 
 /**
  * Maps API scope to generator scope.
@@ -32,7 +38,105 @@ function mapScope(scope: 'project' | 'personal' | undefined): UninstallScope {
   return scope === 'personal' ? 'personal' : 'project';
 }
 
-/* eslint-disable no-redeclare */
+/**
+ * Result of handling a generator error.
+ * Either throws an error or returns a status indicating how to proceed.
+ */
+type ErrorHandlingResult = { action: 'not-found' } | { action: 'throw'; error: Error };
+
+/**
+ * Handles uninstall generator errors and maps them to API errors or not-found status.
+ * Centralizes error handling logic used by both simple and detailed modes.
+ */
+function handleGeneratorError(
+  error: UninstallError,
+  skillName: string,
+  force: boolean
+): ErrorHandlingResult {
+  switch (error.type) {
+    case 'skill-not-found':
+      return { action: 'not-found' };
+
+    case 'security-error':
+      return {
+        action: 'throw',
+        error: new SecurityError(`Security error for skill "${skillName}": ${error.details}`),
+      };
+
+    case 'filesystem-error':
+      return {
+        action: 'throw',
+        error: new FileSystemError(
+          `Filesystem error for skill "${skillName}": ${error.message}`,
+          error.path
+        ),
+      };
+
+    case 'validation-error':
+      if (!force) {
+        return { action: 'not-found' };
+      }
+      return {
+        action: 'throw',
+        error: new FileSystemError(
+          `Validation error for skill "${skillName}": ${error.message}`,
+          skillName
+        ),
+      };
+
+    case 'partial-removal':
+      return {
+        action: 'throw',
+        error: new FileSystemError(
+          `Partial removal of skill "${skillName}": ${error.filesRemoved} files removed, ${error.filesRemaining} remaining. ${error.lastError}`,
+          skillName
+        ),
+      };
+
+    case 'timeout':
+      return {
+        action: 'throw',
+        error: new FileSystemError(
+          `Timeout while removing skill "${skillName}" after ${error.timeoutMs}ms`,
+          skillName
+        ),
+      };
+
+    default:
+      // Unknown error type - treat as not found
+      return { action: 'not-found' };
+  }
+}
+
+/**
+ * Handles exceptions thrown during uninstall operations.
+ * Re-throws known errors or wraps unknown errors appropriately.
+ */
+function handleCatchBlockError(error: unknown, skillName: string): never {
+  // Re-throw our own errors
+  if (
+    error instanceof SecurityError ||
+    error instanceof FileSystemError ||
+    error instanceof CancellationError
+  ) {
+    throw error;
+  }
+
+  // Handle internal CancellationError (re-throw as public)
+  if (error instanceof Error && error.name === 'CancellationError') {
+    throw new CancellationError(error.message);
+  }
+
+  // Handle filesystem permission errors
+  if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
+    throw new FileSystemError(`Permission denied while removing "${skillName}"`, skillName);
+  }
+
+  // Wrap unknown errors as FileSystemError
+  const message = error instanceof Error ? error.message : String(error);
+  throw new FileSystemError(`Failed to uninstall skill "${skillName}": ${message}`, skillName);
+}
+
 /**
  * Uninstalls one or more skills from the specified scope.
  *
@@ -105,7 +209,6 @@ export async function uninstall(
 export async function uninstall(
   options: ApiUninstallOptions
 ): Promise<ApiUninstallResult | DetailedUninstallResult> {
-  /* eslint-enable no-redeclare */
   const {
     names,
     scope,
@@ -194,69 +297,17 @@ async function processSimpleUninstall(
         continue;
       }
 
-      const error = result.error;
+      // Handle generator errors using centralized handler
+      const errorResult = handleGeneratorError(result.error, skillName, generatorOptions.force);
 
-      if (error.type === 'skill-not-found') {
+      if (errorResult.action === 'not-found') {
         notFound.push(skillName);
         continue;
       }
 
-      if (error.type === 'security-error') {
-        throw new SecurityError(`Security error for skill "${skillName}": ${error.details}`);
-      }
-
-      if (error.type === 'filesystem-error') {
-        throw new FileSystemError(
-          `Filesystem error for skill "${skillName}": ${error.message}`,
-          error.path
-        );
-      }
-
-      if (error.type === 'validation-error') {
-        if (!generatorOptions.force) {
-          notFound.push(skillName);
-          continue;
-        }
-        throw new FileSystemError(
-          `Validation error for skill "${skillName}": ${error.message}`,
-          skillName
-        );
-      }
-
-      if (error.type === 'partial-removal') {
-        throw new FileSystemError(
-          `Partial removal of skill "${skillName}": ${error.filesRemoved} files removed, ${error.filesRemaining} remaining. ${error.lastError}`,
-          skillName
-        );
-      }
-
-      if (error.type === 'timeout') {
-        throw new FileSystemError(
-          `Timeout while removing skill "${skillName}" after ${error.timeoutMs}ms`,
-          skillName
-        );
-      }
-
-      notFound.push(skillName);
+      throw errorResult.error;
     } catch (error) {
-      if (
-        error instanceof SecurityError ||
-        error instanceof FileSystemError ||
-        error instanceof CancellationError
-      ) {
-        throw error;
-      }
-
-      if (error instanceof Error && error.name === 'CancellationError') {
-        throw new CancellationError(error.message);
-      }
-
-      if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-        throw new FileSystemError(`Permission denied while removing "${skillName}"`, skillName);
-      }
-
-      const message = error instanceof Error ? error.message : String(error);
-      throw new FileSystemError(`Failed to uninstall skill "${skillName}": ${message}`, skillName);
+      handleCatchBlockError(error, skillName);
     }
   }
 
@@ -329,6 +380,7 @@ async function processDetailedUninstall(
 
       const error = result.error;
 
+      // Handle skill-not-found specially to preserve searchedPath
       if (error.type === 'skill-not-found') {
         const notFound: DetailedUninstallNotFound = {
           type: 'not-found',
@@ -339,73 +391,22 @@ async function processDetailedUninstall(
         continue;
       }
 
-      if (error.type === 'security-error') {
-        throw new SecurityError(`Security error for skill "${skillName}": ${error.details}`);
+      // Handle other generator errors using centralized handler
+      const errorResult = handleGeneratorError(error, skillName, generatorOptions.force);
+
+      if (errorResult.action === 'not-found') {
+        const notFound: DetailedUninstallNotFound = {
+          type: 'not-found',
+          skillName,
+          searchedPath: scopePath,
+        };
+        results.push(notFound);
+        continue;
       }
 
-      if (error.type === 'filesystem-error') {
-        throw new FileSystemError(
-          `Filesystem error for skill "${skillName}": ${error.message}`,
-          error.path
-        );
-      }
-
-      if (error.type === 'validation-error') {
-        if (!generatorOptions.force) {
-          const notFound: DetailedUninstallNotFound = {
-            type: 'not-found',
-            skillName,
-            searchedPath: scopePath,
-          };
-          results.push(notFound);
-          continue;
-        }
-        throw new FileSystemError(
-          `Validation error for skill "${skillName}": ${error.message}`,
-          skillName
-        );
-      }
-
-      if (error.type === 'partial-removal') {
-        throw new FileSystemError(
-          `Partial removal of skill "${skillName}": ${error.filesRemoved} files removed, ${error.filesRemaining} remaining. ${error.lastError}`,
-          skillName
-        );
-      }
-
-      if (error.type === 'timeout') {
-        throw new FileSystemError(
-          `Timeout while removing skill "${skillName}" after ${error.timeoutMs}ms`,
-          skillName
-        );
-      }
-
-      // Unknown error type - treat as not found
-      const notFound: DetailedUninstallNotFound = {
-        type: 'not-found',
-        skillName,
-        searchedPath: scopePath,
-      };
-      results.push(notFound);
+      throw errorResult.error;
     } catch (error) {
-      if (
-        error instanceof SecurityError ||
-        error instanceof FileSystemError ||
-        error instanceof CancellationError
-      ) {
-        throw error;
-      }
-
-      if (error instanceof Error && error.name === 'CancellationError') {
-        throw new CancellationError(error.message);
-      }
-
-      if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-        throw new FileSystemError(`Permission denied while removing "${skillName}"`, skillName);
-      }
-
-      const message = error instanceof Error ? error.message : String(error);
-      throw new FileSystemError(`Failed to uninstall skill "${skillName}": ${message}`, skillName);
+      handleCatchBlockError(error, skillName);
     }
   }
 

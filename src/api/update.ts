@@ -33,6 +33,9 @@ import { validateSkillName } from '../utils/skill-name-validation';
 import { updateSkill, UpdateError as GeneratorUpdateError } from '../generators/updater';
 import { UpdateOptions as GeneratorUpdateOptions, UpdateResultUnion } from '../types/update';
 
+// Disable no-redeclare for TypeScript function overloads
+/* eslint-disable no-redeclare */
+
 /**
  * Maps internal update error to public error types.
  */
@@ -134,7 +137,6 @@ function isUpdateCancelled(
   return result.type === 'update-cancelled';
 }
 
-/* eslint-disable no-redeclare */
 /**
  * Updates an installed skill from a new .skill package file.
  *
@@ -206,7 +208,6 @@ export async function update(
 export async function update(
   options: ApiUpdateOptions
 ): Promise<ApiUpdateResult | DetailedUpdateResult> {
-  /* eslint-enable no-redeclare */
   const {
     name,
     file,

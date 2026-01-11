@@ -19,6 +19,9 @@ import {
 } from '../types/api';
 import { CheckName } from '../types/validation';
 
+// Disable no-redeclare for TypeScript function overloads
+/* eslint-disable no-redeclare */
+
 /**
  * Map of check names to machine-readable error codes.
  */
@@ -100,7 +103,6 @@ function transformToDetailedResult(
   };
 }
 
-/* eslint-disable no-redeclare */
 /**
  * Validates a skill at the specified path.
  *
@@ -183,7 +185,6 @@ export async function validate(
   path: string,
   options?: ValidateOptions
 ): Promise<ValidateResult | DetailedValidateResult> {
-  /* eslint-enable no-redeclare */
   const internalResult = await validateSkill(path);
 
   if (options?.detailed) {
