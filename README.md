@@ -546,6 +546,266 @@ Total: 2 files, 1.7 KB
 No changes were made.
 ```
 
+## Programmatic API
+
+AI Skills Manager can be used programmatically in Node.js applications. All CLI functionality is available as importable functions.
+
+### Installation
+
+```bash
+npm install ai-skills-manager
+```
+
+### Quick Example
+
+```typescript
+import {
+  scaffold,
+  validate,
+  createPackage,
+  install,
+  update,
+  uninstall,
+  list,
+} from 'ai-skills-manager';
+
+// Create a new skill
+const result = await scaffold({
+  name: 'my-skill',
+  description: 'A helpful skill',
+  scope: 'project',
+});
+console.log(`Created skill at: ${result.path}`);
+
+// Validate the skill
+const validation = await validate(result.path);
+if (validation.valid) {
+  console.log('Skill is valid!');
+}
+```
+
+### API Functions
+
+#### scaffold(options)
+
+Creates a new skill directory with the standard structure.
+
+```typescript
+const result = await scaffold({
+  name: 'my-skill',           // Required: skill name
+  description: 'Description', // Optional: skill description
+  scope: 'project',           // Optional: 'project' | 'personal'
+  output: './custom/path',    // Optional: custom output directory
+  allowedTools: ['Bash'],     // Optional: allowed tools list
+  force: false,               // Optional: overwrite existing
+});
+
+// Result: { path: string, files: string[] }
+```
+
+#### validate(path)
+
+Validates a skill at the specified path. Returns a result object (never throws for validation failures).
+
+```typescript
+const result = await validate('./my-skill');
+
+if (result.valid) {
+  console.log('Valid!');
+} else {
+  for (const error of result.errors) {
+    console.error(`[${error.code}] ${error.message}`);
+  }
+}
+
+// Also check warnings
+for (const warning of result.warnings) {
+  console.warn(`[${warning.code}] ${warning.message}`);
+}
+```
+
+#### createPackage(options)
+
+Creates a `.skill` package file from a skill directory.
+
+```typescript
+const result = await createPackage({
+  path: './my-skill',       // Required: skill directory path
+  output: './dist',         // Optional: output directory
+  skipValidation: false,    // Optional: skip validation
+  force: false,             // Optional: overwrite existing
+  signal: controller.signal // Optional: AbortSignal for cancellation
+});
+
+// Result: { packagePath: string, size: number, fileCount: number }
+```
+
+#### install(options)
+
+Installs a skill from a `.skill` package file.
+
+```typescript
+const result = await install({
+  file: './my-skill.skill', // Required: package file path
+  scope: 'project',         // Optional: 'project' | 'personal'
+  targetPath: '/custom',    // Optional: custom install path
+  force: false,             // Optional: overwrite existing
+  dryRun: false,            // Optional: preview only
+  signal: controller.signal // Optional: AbortSignal for cancellation
+});
+
+// Result: { installedPath: string, skillName: string, version?: string, dryRun: boolean }
+```
+
+#### update(options)
+
+Updates an installed skill from a new `.skill` package.
+
+```typescript
+const result = await update({
+  name: 'my-skill',              // Required: installed skill name
+  file: './my-skill-v2.skill',   // Required: new package file
+  scope: 'project',              // Optional: 'project' | 'personal'
+  force: false,                  // Optional: skip confirmation
+  dryRun: false,                 // Optional: preview only
+  keepBackup: false,             // Optional: keep backup after success
+  signal: controller.signal      // Optional: AbortSignal for cancellation
+});
+
+// Result: { updatedPath: string, previousVersion?: string, newVersion?: string, backupPath?: string, dryRun: boolean }
+```
+
+#### uninstall(options)
+
+Uninstalls one or more skills.
+
+```typescript
+const result = await uninstall({
+  names: ['skill-a', 'skill-b'], // Required: skill names to remove
+  scope: 'project',              // Optional: 'project' | 'personal'
+  force: true,                   // Required for programmatic use
+  dryRun: false,                 // Optional: preview only
+  signal: controller.signal      // Optional: AbortSignal for cancellation
+});
+
+// Result: { removed: string[], notFound: string[], dryRun: boolean }
+```
+
+#### list(options)
+
+Lists installed skills.
+
+```typescript
+// List all skills
+const allSkills = await list();
+
+// List only project skills
+const projectSkills = await list({ scope: 'project' });
+
+// List only personal skills
+const personalSkills = await list({ scope: 'personal' });
+
+// List skills in custom directory
+const customSkills = await list({ targetPath: '/custom/path' });
+
+// Result: InstalledSkill[]
+// Each skill: { name: string, path: string, scope: string, version?: string, description?: string }
+```
+
+### Error Handling
+
+All API functions throw typed errors that can be caught with `instanceof`:
+
+```typescript
+import {
+  install,
+  AsmError,
+  ValidationError,
+  FileSystemError,
+  PackageError,
+  SecurityError,
+  CancellationError,
+} from 'ai-skills-manager';
+
+try {
+  await install({ file: 'skill.skill' });
+} catch (e) {
+  if (e instanceof ValidationError) {
+    // Validation failed - check e.issues for details
+    for (const issue of e.issues) {
+      console.error(`[${issue.code}] ${issue.message}`);
+    }
+  } else if (e instanceof FileSystemError) {
+    // Filesystem error - check e.path for location
+    console.error(`File error at ${e.path}: ${e.message}`);
+  } else if (e instanceof PackageError) {
+    // Invalid or corrupted package
+    console.error('Package error:', e.message);
+  } else if (e instanceof SecurityError) {
+    // Security violation (path traversal, invalid name)
+    console.error('Security error:', e.message);
+  } else if (e instanceof CancellationError) {
+    // Operation was cancelled via AbortSignal
+    console.log('Operation cancelled');
+  } else if (e instanceof AsmError) {
+    // Catch-all for any ASM error
+    console.error(`ASM Error [${e.code}]: ${e.message}`);
+  }
+}
+```
+
+### Cancellation with AbortSignal
+
+Long-running operations support cancellation via `AbortSignal`:
+
+```typescript
+const controller = new AbortController();
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+try {
+  await install({
+    file: 'large-skill.skill',
+    signal: controller.signal
+  });
+} catch (e) {
+  if (e instanceof CancellationError) {
+    console.log('Installation was cancelled');
+  }
+}
+```
+
+### TypeScript Support
+
+All types are exported for TypeScript users:
+
+```typescript
+import type {
+  // Options types
+  ScaffoldOptions,
+  CreatePackageOptions,
+  InstallOptions,
+  UpdateOptions,
+  UninstallOptions,
+  ListOptions,
+
+  // Result types
+  ScaffoldResult,
+  ValidateResult,
+  CreatePackageResult,
+  InstallResult,
+  UpdateResult,
+  UninstallResult,
+  InstalledSkill,
+
+  // Common types
+  ApiScope,
+  ValidationIssue,
+  ValidationWarning,
+} from 'ai-skills-manager';
+```
+
 ## Development
 
 ### Commands

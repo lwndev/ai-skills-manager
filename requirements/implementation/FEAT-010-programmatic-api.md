@@ -343,7 +343,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 10: Documentation and Release
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **API discoverability**: Consumers need usage examples
@@ -369,12 +369,12 @@ The current codebase already has good separation between commands, generators, v
 11. Verify all acceptance criteria from requirements document
 
 #### Deliverables
-- [ ] JSDoc comments on all exports
-- [ ] Updated `README.md` with API documentation
-- [ ] Updated `CHANGELOG.md`
-- [ ] All tests passing with >80% coverage
-- [ ] Version bump in `package.json`
-- [ ] All acceptance criteria verified
+- [x] JSDoc comments on all exports
+- [x] Updated `README.md` with API documentation
+- [x] Updated `CHANGELOG.md`
+- [x] All tests passing with >80% coverage (88.73% statement, 88.65% line)
+- [ ] Version bump in `package.json` (deferred to release)
+- [x] All acceptance criteria verified
 
 ---
 
