@@ -89,7 +89,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 3: Scaffold API Function
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **First write operation**: Introduces filesystem modification patterns
@@ -111,9 +111,9 @@ The current codebase already has good separation between commands, generators, v
 5. Test error scenarios (invalid names, permission errors, existing directory)
 
 #### Deliverables
-- [ ] `src/api/scaffold.ts` - Scaffold API function
-- [ ] `tests/unit/api/scaffold.test.ts` - Unit tests
-- [ ] `tests/integration/api/scaffold.test.ts` - Integration tests
+- [x] `src/api/scaffold.ts` - Scaffold API function
+- [x] `tests/unit/api/scaffold.test.ts` - Unit tests
+- [x] `tests/integration/api/scaffold.test.ts` - Integration tests
 
 ---
 
