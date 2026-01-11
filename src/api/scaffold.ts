@@ -12,6 +12,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ScaffoldOptions, ScaffoldResult, ApiScope } from '../types/api';
 import { FileSystemError, SecurityError } from '../errors';
+import { hasErrorCode } from '../utils/error-helpers';
 import { validateName } from '../validators/name';
 import { getProjectSkillsDir, getPersonalSkillsDir } from '../utils/scope-resolver';
 import { generateSkillMd, SkillTemplateParams } from '../templates/skill-md';
@@ -52,13 +53,6 @@ async function directoryExists(dirPath: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
 }
 
 /**
@@ -116,7 +110,7 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
   // Validate the skill name (security check)
   const nameValidation = validateName(name);
   if (!nameValidation.valid) {
-    throw new SecurityError(nameValidation.error || `Invalid skill name: ${name}`);
+    throw new SecurityError(nameValidation.error || `Invalid skill name: "${name}"`);
   }
 
   // Resolve the output path
@@ -162,7 +156,7 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
   } catch (error) {
     // Handle filesystem errors
     if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-      throw new FileSystemError(`Permission denied creating skill at: ${skillPath}`, skillPath);
+      throw new FileSystemError(`Permission denied creating skill at: "${skillPath}"`, skillPath);
     }
 
     if (hasErrorCode(error, 'ENOENT')) {

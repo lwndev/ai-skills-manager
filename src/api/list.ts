@@ -12,6 +12,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ListOptions, InstalledSkill, InstalledSkillScope, ApiListScope } from '../types/api';
 import { FileSystemError } from '../errors';
+import { hasErrorCode } from '../utils/error-helpers';
 import { getProjectSkillsDir, getPersonalSkillsDir } from '../utils/scope-resolver';
 import { parseFrontmatter } from '../utils/frontmatter-parser';
 
@@ -135,13 +136,6 @@ async function listSkillsInDirectory(
   }
 
   return skills;
-}
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
 }
 
 /**

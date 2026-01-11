@@ -14,43 +14,17 @@ import {
 } from '../types/api';
 import { FileSystemError, SecurityError, CancellationError } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
+import { hasErrorCode } from '../utils/error-helpers';
+import { validateSkillName } from '../utils/skill-name-validation';
 import { uninstallSkill, isDryRunPreview } from '../generators/uninstaller';
 import type { UninstallOptions as GeneratorUninstallOptions } from '../types/uninstall';
 import type { UninstallScope } from '../validators/uninstall-scope';
-
-/**
- * Validates a skill name for security.
- * Rejects names that could be used for path traversal.
- */
-function validateSkillName(name: string): void {
-  // Check for path traversal attempts
-  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
-    throw new SecurityError(`Invalid skill name: "${name}" contains path traversal characters`);
-  }
-
-  // Check for absolute path indicators
-  if (path.isAbsolute(name)) {
-    throw new SecurityError(`Invalid skill name: "${name}" appears to be an absolute path`);
-  }
-
-  // Check for empty names
-  if (!name || name.trim() === '') {
-    throw new SecurityError('Invalid skill name: name cannot be empty');
-  }
-}
 
 /**
  * Maps API scope to generator scope.
  */
 function mapScope(scope: 'project' | 'personal' | undefined): UninstallScope {
   return scope === 'personal' ? 'personal' : 'project';
-}
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
 }
 
 /**

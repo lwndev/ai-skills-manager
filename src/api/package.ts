@@ -10,6 +10,7 @@
 import { PackageOptions, PackageResult, ValidationIssue } from '../types/api';
 import { ValidationError, PackageError, FileSystemError } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
+import { hasErrorCode } from '../utils/error-helpers';
 import { validate } from './validate';
 import {
   generatePackage,
@@ -18,13 +19,6 @@ import {
   getPackageName,
 } from '../generators/packager';
 import { PackageOptions as GeneratorPackageOptions } from '../types/package';
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
-}
 
 /**
  * Creates a .skill package from a skill directory.
@@ -177,11 +171,11 @@ export async function createPackage(options: PackageOptions): Promise<PackageRes
 
     // Handle filesystem errors
     if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-      throw new FileSystemError(`Permission denied: ${path}`, path);
+      throw new FileSystemError(`Permission denied: "${path}"`, path);
     }
 
     if (hasErrorCode(error, 'ENOENT')) {
-      throw new FileSystemError(`Skill directory not found: ${path}`, path);
+      throw new FileSystemError(`Skill directory not found: "${path}"`, path);
     }
 
     // Wrap other errors as PackageError

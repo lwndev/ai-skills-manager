@@ -7,7 +7,6 @@
  * @module api/update
  */
 
-import * as path from 'path';
 import { UpdateOptions as ApiUpdateOptions, UpdateResult as ApiUpdateResult } from '../types/api';
 import {
   PackageError,
@@ -17,31 +16,10 @@ import {
   ValidationError,
 } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
+import { hasErrorCode } from '../utils/error-helpers';
+import { validateSkillName } from '../utils/skill-name-validation';
 import { updateSkill, UpdateError as GeneratorUpdateError } from '../generators/updater';
 import { UpdateOptions as GeneratorUpdateOptions, UpdateResultUnion } from '../types/update';
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
-}
-
-/**
- * Validates a skill name for security.
- * Rejects names that could be used for path traversal.
- */
-function validateSkillName(name: string): void {
-  // Check for path traversal attempts
-  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
-    throw new SecurityError(`Invalid skill name: "${name}" contains path traversal characters`);
-  }
-
-  // Check for absolute path indicators
-  if (path.isAbsolute(name)) {
-    throw new SecurityError(`Invalid skill name: "${name}" appears to be an absolute path`);
-  }
-}
 
 /**
  * Maps internal update error to public error types.
@@ -309,11 +287,11 @@ export async function update(options: ApiUpdateOptions): Promise<ApiUpdateResult
 
     // Handle filesystem errors
     if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-      throw new FileSystemError(`Permission denied: ${file}`, file);
+      throw new FileSystemError(`Permission denied: "${file}"`, file);
     }
 
     if (hasErrorCode(error, 'ENOENT')) {
-      throw new FileSystemError(`File not found: ${file}`, file);
+      throw new FileSystemError(`File not found: "${file}"`, file);
     }
 
     // Handle internal errors

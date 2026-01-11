@@ -7,13 +7,14 @@
  * @module api/install
  */
 
-import * as path from 'path';
 import {
   InstallOptions as ApiInstallOptions,
   InstallResult as ApiInstallResult,
 } from '../types/api';
 import { PackageError, FileSystemError, SecurityError, CancellationError } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
+import { hasErrorCode } from '../utils/error-helpers';
+import { validateSkillName } from '../utils/skill-name-validation';
 import {
   installSkill,
   isInstallResult,
@@ -21,29 +22,6 @@ import {
   isOverwriteRequired,
 } from '../generators/installer';
 import { InstallOptions as GeneratorInstallOptions } from '../types/install';
-
-/**
- * Checks if an error has a specific error code.
- */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error !== null && typeof error === 'object' && 'code' in error && error.code === code;
-}
-
-/**
- * Validates a skill name for security.
- * Rejects names that could be used for path traversal.
- */
-function validateSkillName(name: string): void {
-  // Check for path traversal attempts
-  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
-    throw new SecurityError(`Invalid skill name: "${name}" contains path traversal characters`);
-  }
-
-  // Check for absolute path indicators
-  if (path.isAbsolute(name)) {
-    throw new SecurityError(`Invalid skill name: "${name}" appears to be an absolute path`);
-  }
-}
 
 /**
  * Installs a skill from a .skill package file.
@@ -203,11 +181,11 @@ export async function install(options: ApiInstallOptions): Promise<ApiInstallRes
 
     // Handle filesystem errors
     if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
-      throw new FileSystemError(`Permission denied: ${file}`, file);
+      throw new FileSystemError(`Permission denied: "${file}"`, file);
     }
 
     if (hasErrorCode(error, 'ENOENT')) {
-      throw new FileSystemError(`Package file not found: ${file}`, file);
+      throw new FileSystemError(`Package file not found: "${file}"`, file);
     }
 
     // Handle internal package errors
