@@ -1,7 +1,8 @@
 import { Command } from 'commander';
-import { validateName, validateDescription } from '../validators';
-import { createScaffold } from '../generators/scaffold';
-import { ValidationError, UserCancelledError, FileSystemError } from '../utils/errors';
+import { scaffold } from '../api';
+import { validateDescription } from '../validators';
+import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
+import type { ApiScope } from '../types/api';
 import * as output from '../utils/output';
 
 export function registerScaffoldCommand(program: Command): void {
@@ -31,7 +32,7 @@ Note:
   Use --personal to create in ~/.claude/skills/ (user scope).
   Use --output to specify a custom directory.`
     )
-    .action(async (name: string, options: ScaffoldOptions) => {
+    .action(async (name: string, options: CliScaffoldOptions) => {
       try {
         await handleScaffold(name, options);
       } catch (error) {
@@ -41,7 +42,7 @@ Note:
     });
 }
 
-interface ScaffoldOptions {
+interface CliScaffoldOptions {
   description?: string;
   output?: string;
   project?: boolean;
@@ -50,22 +51,18 @@ interface ScaffoldOptions {
   force?: boolean;
 }
 
-async function handleScaffold(name: string, options: ScaffoldOptions): Promise<void> {
-  // Validate skill name
-  const nameValidation = validateName(name);
-  if (!nameValidation.valid) {
-    throw new ValidationError(nameValidation.error || 'Invalid skill name');
-  }
-
+async function handleScaffold(name: string, options: CliScaffoldOptions): Promise<void> {
   // Validate description if provided
   if (options.description) {
     const descValidation = validateDescription(options.description);
     if (!descValidation.valid) {
-      throw new ValidationError(descValidation.error || 'Invalid description');
+      throw new ValidationError(descValidation.error || 'Invalid description', [
+        { code: 'INVALID_DESCRIPTION', message: descValidation.error || 'Invalid description' },
+      ]);
     }
   }
 
-  // Parse allowed tools if provided
+  // Parse allowed tools from comma-separated string
   let allowedTools: string[] | undefined;
   if (options.allowedTools) {
     allowedTools = options.allowedTools
@@ -74,41 +71,43 @@ async function handleScaffold(name: string, options: ScaffoldOptions): Promise<v
       .filter((tool) => tool.length > 0);
 
     if (allowedTools.length === 0) {
-      throw new ValidationError('Allowed tools list cannot be empty');
+      throw new ValidationError('Allowed tools list cannot be empty', [
+        { code: 'EMPTY_TOOLS_LIST', message: 'Allowed tools list cannot be empty' },
+      ]);
     }
   }
 
-  // Create the scaffold
-  const result = await createScaffold({
+  // Map CLI options to API scope
+  const scope: ApiScope | undefined = options.personal
+    ? 'personal'
+    : options.project
+      ? 'project'
+      : undefined;
+
+  // Call the API function
+  const result = await scaffold({
     name,
     description: options.description,
     allowedTools,
     output: options.output,
-    project: options.project,
-    personal: options.personal,
+    scope,
     force: options.force,
   });
 
-  // Handle the result
-  if (!result.success) {
-    if (result.error === 'Operation cancelled by user') {
-      throw new UserCancelledError();
-    }
-    throw new FileSystemError(result.error || 'Unknown error occurred');
-  }
-
   // Display success message
-  output.displayCreatedFiles(result.skillPath, result.filesCreated);
-  output.displayNextSteps(result.skillPath, name);
+  output.displayCreatedFiles(result.path, result.files);
+  output.displayNextSteps(result.path, name);
 }
 
 function handleError(error: unknown): void {
   if (error instanceof ValidationError) {
     output.displayValidationError('input', error.message);
-  } else if (error instanceof UserCancelledError) {
-    output.displayError(error.message);
+  } else if (error instanceof SecurityError) {
+    output.displayError('Security error', error.message);
   } else if (error instanceof FileSystemError) {
     output.displayError('File system error', error.message);
+  } else if (error instanceof AsmError) {
+    output.displayError(error.message);
   } else if (error instanceof Error) {
     output.displayError('Unexpected error', error.message);
   } else {

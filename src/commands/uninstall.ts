@@ -7,6 +7,9 @@
  * - Validates skill names rigorously to prevent path traversal
  * - Implements symlink and hard link detection
  * - Provides confirmation prompts before deletion
+ *
+ * Note: This command uses a hybrid approach - the internal generators for detailed
+ * file enumeration and confirmation prompts, with API error types for consistency.
  */
 
 import { Command } from 'commander';
@@ -58,6 +61,8 @@ import type {
   DryRunPreview,
   SkillInfo,
 } from '../types/uninstall';
+// API error types imported for potential future use in error handling
+// Currently using internal uninstall error types for backward compatibility
 import { createDebugLogger } from '../utils/debug';
 
 const debug = createDebugLogger('uninstall-command');

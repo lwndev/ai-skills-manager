@@ -291,17 +291,29 @@ export async function validateInputs(
     };
   }
 
-  // Validate scope (only 'project' or 'personal' allowed)
-  const scopeResult: UninstallScopeValidationResult = validateUninstallScope(options.scope);
-  if (!scopeResult.valid) {
-    return {
-      valid: false,
-      error: {
-        type: 'validation-error',
-        field: 'scope',
-        message: scopeResult.error || 'Invalid scope',
-      },
-    };
+  // Validate and resolve scope
+  // For 'project' or 'personal', use the standard validation
+  // For custom paths (API use), resolve directly
+  let scopeInfo: ScopeInfo;
+  const scope = options.scope;
+
+  if (scope === 'project' || scope === 'personal' || scope === undefined) {
+    // Standard scope validation for CLI use
+    const scopeResult: UninstallScopeValidationResult = validateUninstallScope(scope);
+    if (!scopeResult.valid) {
+      return {
+        valid: false,
+        error: {
+          type: 'validation-error',
+          field: 'scope',
+          message: scopeResult.error || 'Invalid scope',
+        },
+      };
+    }
+    scopeInfo = resolveScope(scopeResult.scope, options.cwd, options.homedir);
+  } else {
+    // Custom path for API use - resolve directly
+    scopeInfo = resolveScope(scope, options.cwd, options.homedir);
   }
 
   // Validate package file (exists, correct extension, valid ZIP)
@@ -316,9 +328,6 @@ export async function validateInputs(
       },
     };
   }
-
-  // Resolve scope to path
-  const scopeInfo = resolveScope(scopeResult.scope, options.cwd, options.homedir);
 
   // packagePath is guaranteed to exist when valid is true (external type limitation)
   if (!packageResult.packagePath) {

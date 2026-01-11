@@ -5,8 +5,20 @@ import {
   resolveOutputPath,
   directoryExists,
   createScaffold,
+  promptConfirmation,
   ScaffoldOptions,
 } from '../../../src/generators/scaffold';
+
+// Mock readline for promptConfirmation tests
+jest.mock('readline', () => ({
+  createInterface: jest.fn().mockReturnValue({
+    question: jest.fn((question: string, callback: (answer: string) => void) => {
+      // Default to 'n' (no) for tests
+      callback('n');
+    }),
+    close: jest.fn(),
+  }),
+}));
 
 describe('resolveOutputPath', () => {
   const originalCwd = process.cwd();
@@ -234,5 +246,54 @@ describe('createScaffold', () => {
       .then(() => true)
       .catch(() => false);
     expect(skillMdExists).toBe(true);
+  });
+
+  it('returns error when file system operation fails', async () => {
+    // Create a read-only directory to cause write failure
+    const readOnlyDir = path.join(tempDir, 'readonly');
+    await fs.mkdir(readOnlyDir, { recursive: true });
+
+    // Create a file where the skill directory should be created
+    // This will cause mkdir to fail when trying to create the skill directory
+    const blockingFile = path.join(readOnlyDir, 'blocked-skill');
+    await fs.writeFile(blockingFile, 'blocking');
+
+    const options: ScaffoldOptions = {
+      name: 'blocked-skill',
+      output: readOnlyDir,
+      force: true,
+    };
+
+    const result = await createScaffold(options);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain('Failed to create scaffold');
+  });
+
+  it('returns cancelled when user declines overwrite prompt', async () => {
+    // Create existing directory
+    const existingSkillPath = path.join(tempDir, 'existing-skill');
+    await fs.mkdir(existingSkillPath, { recursive: true });
+
+    const options: ScaffoldOptions = {
+      name: 'existing-skill',
+      output: tempDir,
+      // force is NOT set, so it will prompt
+    };
+
+    // The mock returns 'n' by default, so user declines
+    const result = await createScaffold(options);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Operation cancelled by user');
+  });
+});
+
+describe('promptConfirmation', () => {
+  it('returns false when user answers no', async () => {
+    // Mock is set to return 'n'
+    const result = await promptConfirmation('Test question?');
+    expect(result).toBe(false);
   });
 });

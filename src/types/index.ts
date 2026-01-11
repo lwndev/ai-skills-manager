@@ -2,6 +2,28 @@
  * Types barrel export
  */
 
+// Public API types (FEAT-010)
+export type {
+  ApiScope,
+  ApiListScope,
+  InstalledSkillScope,
+  ValidationIssue,
+  ValidationWarning,
+  ValidateResult,
+  ScaffoldOptions,
+  ScaffoldResult,
+  PackageOptions as ApiPackageOptions,
+  PackageResult as ApiPackageResult,
+  InstallOptions as ApiInstallOptions,
+  InstallResult as ApiInstallResult,
+  UpdateOptions as ApiUpdateOptions,
+  UpdateResult as ApiUpdateResult,
+  UninstallOptions as ApiUninstallOptions,
+  UninstallResult as ApiUninstallResult,
+  ListOptions,
+  InstalledSkill,
+} from './api';
+
 // Scope types
 export type { ScopeType, ScopeInfo, PathValidationResult, PathValidationError } from './scope';
 export { PathErrorCode } from './scope';

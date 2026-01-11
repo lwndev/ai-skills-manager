@@ -9,6 +9,7 @@ import { registerPackageCommand } from './commands/package';
 import { registerInstallCommand } from './commands/install';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpdateCommand } from './commands/update';
+import { registerListCommand } from './commands/list';
 
 const program = new Command();
 
@@ -26,5 +27,6 @@ registerPackageCommand(program);
 registerInstallCommand(program);
 registerUninstallCommand(program);
 registerUpdateCommand(program);
+registerListCommand(program);
 
 program.parse();

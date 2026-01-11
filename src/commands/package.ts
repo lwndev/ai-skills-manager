@@ -5,21 +5,17 @@
  */
 
 import { Command } from 'commander';
-import { generatePackage } from '../generators/packager';
-import { PackageOptions, PackageResult } from '../types/package';
-import {
-  formatPackageProgress,
-  formatPackageSuccess,
-  formatPackageError,
-  formatQuietOutput,
-} from '../formatters/package-formatter';
+import { createPackage } from '../api';
+import { formatPackageProgress, formatPackageSuccess } from '../formatters/package-formatter';
 import { confirmOverwrite } from '../utils/prompts';
 import {
-  PathValidationError,
-  ValidationFailedError,
-  UserCancelledError,
+  AsmError,
+  ValidationError,
   FileSystemError,
-} from '../utils/errors';
+  PackageError,
+  CancellationError,
+} from '../errors';
+import type { PackageResult } from '../types/api';
 import * as output from '../utils/output';
 
 /**
@@ -120,49 +116,60 @@ async function handlePackage(skillPath: string, options: PackageCommandOptions):
       console.log(formatPackageProgress('validating'));
     }
 
-    // Generate the package
-    const packageOptions: PackageOptions = {
-      outputPath,
-      force,
-      skipValidation,
-      quiet,
-    };
+    // First attempt - may fail if package exists
+    let result: PackageResult;
 
-    let result: PackageResult = await generatePackage(skillPath, packageOptions);
+    try {
+      result = await createPackage({
+        path: skillPath,
+        output: outputPath,
+        skipValidation,
+        force,
+      });
+    } catch (error) {
+      // Handle overwrite scenario - FileSystemError with "already exists" message
+      if (error instanceof FileSystemError && error.message.includes('already exists') && !force) {
+        if (quiet) {
+          // In quiet mode, fail if overwrite needed without --force
+          console.log(`FAIL: ${error.message}`);
+          return EXIT_CODES.FILE_SYSTEM_ERROR;
+        }
 
-    // Handle overwrite scenario
-    if (result.requiresOverwrite && !force) {
-      if (quiet) {
-        // In quiet mode, fail if overwrite needed without --force
-        console.log(`FAIL: Package already exists: ${result.packagePath}`);
-        return EXIT_CODES.FILE_SYSTEM_ERROR;
+        // Prompt user for confirmation
+        const confirmed = await confirmOverwrite(error.path);
+        if (!confirmed) {
+          output.displayError('Package creation cancelled by user');
+          return EXIT_CODES.FILE_SYSTEM_ERROR;
+        }
+
+        // Retry with force
+        if (!quiet) {
+          console.log(formatPackageProgress('creating'));
+        }
+        result = await createPackage({
+          path: skillPath,
+          output: outputPath,
+          skipValidation,
+          force: true,
+        });
+      } else {
+        throw error;
       }
-
-      // Prompt user for confirmation
-      const packagePathForPrompt = result.packagePath || 'existing package';
-      const confirmed = await confirmOverwrite(packagePathForPrompt);
-      if (!confirmed) {
-        throw new UserCancelledError('Package creation cancelled by user');
-      }
-
-      // Retry with force
-      if (!quiet) {
-        console.log(formatPackageProgress('creating'));
-      }
-      result = await generatePackage(skillPath, { ...packageOptions, force: true });
-    }
-
-    // Check for success
-    if (!result.success) {
-      const errorMessage = result.errors.join(', ') || 'Unknown error';
-      throw new FileSystemError(errorMessage);
     }
 
     // Output success
     if (quiet) {
-      console.log(formatQuietOutput(result));
+      console.log(result.packagePath);
     } else {
-      console.log(formatPackageSuccess(result));
+      // Create a compatible result object for the formatter
+      const formatterResult = {
+        success: true,
+        packagePath: result.packagePath,
+        fileCount: result.fileCount,
+        size: result.size,
+        errors: [] as string[],
+      };
+      console.log(formatPackageSuccess(formatterResult));
     }
 
     return EXIT_CODES.SUCCESS;
@@ -179,53 +186,83 @@ async function handlePackage(skillPath: string, options: PackageCommandOptions):
  * @returns Exit code
  */
 function handleError(error: unknown, quiet?: boolean): number {
-  if (error instanceof UserCancelledError) {
+  if (error instanceof CancellationError) {
     if (!quiet) {
-      output.displayError(error.message);
+      console.log(output.error(error.message));
     } else {
       console.log('CANCELLED');
     }
-    // User cancellation is treated as a file system error (graceful exit)
     return EXIT_CODES.FILE_SYSTEM_ERROR;
   }
 
-  if (error instanceof PathValidationError) {
-    if (!quiet) {
-      console.log(formatPackageError(error));
-    } else {
-      console.log(`FAIL: ${error.message}`);
-    }
-    return EXIT_CODES.FILE_SYSTEM_ERROR;
-  }
+  if (error instanceof ValidationError) {
+    // Check if this is a path/file not found error (should be FILE_SYSTEM_ERROR)
+    const isPathError = error.issues.some(
+      (issue) =>
+        issue.message.toLowerCase().includes('does not exist') ||
+        issue.message.toLowerCase().includes('not found') ||
+        issue.code === 'FILE_NOT_FOUND' ||
+        issue.code === 'PATH_NOT_FOUND'
+    );
 
-  if (error instanceof ValidationFailedError) {
     if (!quiet) {
-      console.log(formatPackageError(error));
+      console.log(output.error('Skill validation failed'));
+      if (error.issues.length > 0) {
+        console.log('\nValidation errors:');
+        for (const issue of error.issues) {
+          console.log(`  • ${issue.message}`);
+        }
+        console.log('');
+      }
     } else {
       console.log(`FAIL: ${error.message}`);
     }
-    return EXIT_CODES.VALIDATION_FAILED;
+
+    // Path errors are FILE_SYSTEM_ERROR, other validation errors are VALIDATION_FAILED
+    return isPathError ? EXIT_CODES.FILE_SYSTEM_ERROR : EXIT_CODES.VALIDATION_FAILED;
   }
 
   if (error instanceof FileSystemError) {
     if (!quiet) {
-      console.log(formatPackageError(error));
+      console.log(output.error('File system error'));
+      console.log(`  ${error.message}`);
     } else {
       console.log(`FAIL: ${error.message}`);
     }
     return EXIT_CODES.FILE_SYSTEM_ERROR;
+  }
+
+  if (error instanceof PackageError) {
+    if (!quiet) {
+      console.log(output.error('Package error'));
+      console.log(`  ${error.message}`);
+    } else {
+      console.log(`FAIL: ${error.message}`);
+    }
+    return EXIT_CODES.PACKAGE_ERROR;
+  }
+
+  if (error instanceof AsmError) {
+    if (!quiet) {
+      console.log(output.error(error.message));
+    } else {
+      console.log(`FAIL: ${error.message}`);
+    }
+    return EXIT_CODES.PACKAGE_ERROR;
   }
 
   // Generic error handling - treat as package creation error
   if (error instanceof Error) {
     if (!quiet) {
-      output.displayError('Package failed', error.message);
+      console.log(output.error('Package failed'));
+      console.log(`  ${error.message}`);
     } else {
       console.log(`FAIL: ${error.message}`);
     }
   } else {
     if (!quiet) {
-      output.displayError('An unexpected error occurred', String(error));
+      console.log(output.error('An unexpected error occurred'));
+      console.log(`  ${String(error)}`);
     } else {
       console.log(`FAIL: ${String(error)}`);
     }
