@@ -36,6 +36,12 @@ npm run lint:fix
 npm run quality
 ```
 
+## Testing and Linting
+
+Use `npm test` or run tests for a specific file or files (example: `npm test -- tests/path/to/file.test.ts`) for granular checks.
+
+Code is considered complete and functional only when `npm run quality` passes. 
+
 ## Project Structure
 
 - `src/` - TypeScript source code
@@ -67,6 +73,10 @@ npm run quality
   - "Learn how to write effective Skills that Claude can discover and use successfully."
   - Local copy: `docs/anthropic/skills/documentation/agent-skills-best-practices-20251229.md`
   - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 
+- Agent Skills Spec: 
+  - "The complete format specification for Agent Skills."
+  - Local copy: `docs/anthropic/skills/documentation/agent-skills-specification.md`
+  - [Open Source Documentation here:](https://agentskills.io/specification)
 
 ## Code Style Guidelines
 
