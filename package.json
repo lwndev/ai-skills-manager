@@ -1,6 +1,6 @@
 {
   "name": "ai-skills-manager",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "AI Skills Manager - CLI tool for managing Claude Code Agent Skills",
   "author": "lwndev",
   "license": "MIT",
