@@ -153,7 +153,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 5: Install API Function
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Core operation**: Installing skills is a primary use case
@@ -178,9 +178,9 @@ The current codebase already has good separation between commands, generators, v
 5. Test security scenarios (path traversal, invalid packages)
 
 #### Deliverables
-- [ ] `src/api/install.ts` - Install API function
-- [ ] `tests/unit/api/install.test.ts` - Unit tests
-- [ ] `tests/integration/api/install.test.ts` - Integration tests
+- [x] `src/api/install.ts` - Install API function
+- [x] `tests/unit/api/install.test.ts` - Unit tests
+- [x] `tests/integration/api/install.test.ts` - Integration tests
 
 ---
 
