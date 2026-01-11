@@ -301,7 +301,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 9: Package Entry Point and Exports
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Public interface**: Defines what consumers can import
@@ -333,11 +333,11 @@ The current codebase already has good separation between commands, generators, v
 7. Test installation from local path
 
 #### Deliverables
-- [ ] Updated `src/index.ts` - Package entry point with all exports
-- [ ] Updated `package.json` - Exports configuration
-- [ ] `tests/consumer/esm.test.mts` - ESM consumer test
-- [ ] `tests/consumer/cjs.test.cjs` - CommonJS consumer test
-- [ ] `tests/consumer/types.test.ts` - TypeScript type inference test
+- [x] Updated `src/index.ts` - Package entry point with all exports
+- [x] Updated `package.json` - Exports configuration
+- [x] `tests/consumer/esm.test.ts` - ESM consumer test (dynamic import)
+- [x] `tests/consumer/cjs.test.ts` - CommonJS consumer test (require)
+- [x] `tests/consumer/types.test.ts` - TypeScript type inference test
 
 ---
 
