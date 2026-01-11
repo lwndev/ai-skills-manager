@@ -119,7 +119,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 4: Package API Function (createPackage)
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Builds on validation**: Uses validate() internally unless skipped
@@ -143,11 +143,11 @@ The current codebase already has good separation between commands, generators, v
 5. Test cancellation scenarios
 
 #### Deliverables
-- [ ] `src/api/package.ts` - CreatePackage API function
-- [ ] `src/utils/abort-signal.ts` - AbortSignal checking utility
-- [ ] `tests/unit/api/package.test.ts` - Unit tests
-- [ ] `tests/integration/api/package.test.ts` - Integration tests
-- [ ] `tests/unit/utils/abort-signal.test.ts` - Cancellation utility tests
+- [x] `src/api/package.ts` - CreatePackage API function
+- [x] `src/utils/abort-signal.ts` - AbortSignal checking utility
+- [x] `tests/unit/api/package.test.ts` - Unit tests
+- [x] `tests/integration/api/package.test.ts` - Integration tests
+- [x] `tests/unit/utils/abort-signal.test.ts` - Cancellation utility tests
 
 ---
 
