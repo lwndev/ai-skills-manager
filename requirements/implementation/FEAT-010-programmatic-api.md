@@ -51,7 +51,7 @@ The current codebase already has good separation between commands, generators, v
 
 ### Phase 2: Core API Functions (validate, list)
 **Feature:** [FEAT-010](../features/FEAT-010-programmatic-api.md) | [#24](https://github.com/lwndev/ai-skills-manager/issues/24)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Simplest functions**: `validate()` and `list()` are read-only operations
@@ -77,13 +77,13 @@ The current codebase already has good separation between commands, generators, v
 6. Write integration tests verifying end-to-end behavior
 
 #### Deliverables
-- [ ] `src/api/validate.ts` - Validate API function
-- [ ] `src/api/list.ts` - List API function
-- [ ] `src/api/index.ts` - API barrel export
-- [ ] `tests/unit/api/validate.test.ts` - Unit tests
-- [ ] `tests/unit/api/list.test.ts` - Unit tests
-- [ ] `tests/integration/api/validate.test.ts` - Integration tests
-- [ ] `tests/integration/api/list.test.ts` - Integration tests
+- [x] `src/api/validate.ts` - Validate API function
+- [x] `src/api/list.ts` - List API function
+- [x] `src/api/index.ts` - API barrel export
+- [x] `tests/unit/api/validate.test.ts` - Unit tests
+- [x] `tests/unit/api/list.test.ts` - Unit tests
+- [x] `tests/integration/api/validate.test.ts` - Integration tests
+- [x] `tests/integration/api/list.test.ts` - Integration tests
 
 ---
 
