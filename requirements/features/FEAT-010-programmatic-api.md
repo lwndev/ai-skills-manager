@@ -612,35 +612,35 @@ async function showInstalledSkills() {
 ## Acceptance Criteria
 
 ### API Functionality
-- [ ] All seven API functions exported and working (scaffold, validate, createPackage, install, update, uninstall, list)
-- [ ] All TypeScript types exported and accurate
-- [ ] All error classes exported and usable for instanceof checks
-- [ ] API functions return typed results (not void)
-- [ ] API functions throw typed errors (not generic Error)
-- [ ] AbortSignal support for cancellable operations (createPackage, install, update, uninstall)
+- [x] All seven API functions exported and working (scaffold, validate, createPackage, install, update, uninstall, list)
+- [x] All TypeScript types exported and accurate
+- [x] All error classes exported and usable for instanceof checks
+- [x] API functions return typed results (not void)
+- [x] API functions throw typed errors (not generic Error)
+- [x] AbortSignal support for cancellable operations (createPackage, install, update, uninstall)
 
 ### CLI Compatibility
-- [ ] All existing CLI commands continue to work
-- [ ] CLI output format unchanged
-- [ ] CLI exit codes unchanged
-- [ ] CLI options unchanged
+- [x] All existing CLI commands continue to work
+- [x] CLI output format unchanged
+- [x] CLI exit codes unchanged
+- [x] CLI options unchanged
 
 ### Type Safety
-- [ ] Full TypeScript coverage on all exports
-- [ ] No `any` types in public API
-- [ ] Discriminated unions used for result types with branches
-- [ ] JSDoc comments on all exported functions
+- [x] Full TypeScript coverage on all exports
+- [x] No `any` types in public API
+- [x] Discriminated unions used for result types with branches
+- [x] JSDoc comments on all exported functions
 
 ### Testing
-- [ ] Unit tests for each API function (>80% coverage)
-- [ ] Integration tests for CLI via API
-- [ ] Error handling tests for all error types
-- [ ] Consumer tests verifying import patterns
+- [x] Unit tests for each API function (>80% coverage) - 88.73% statement, 88.65% line coverage
+- [x] Integration tests for CLI via API
+- [x] Error handling tests for all error types
+- [x] Consumer tests verifying import patterns
 
 ### Documentation
-- [ ] README updated with API usage examples
-- [ ] TypeScript types serve as documentation
-- [ ] Error handling patterns documented
+- [x] README updated with API usage examples
+- [x] TypeScript types serve as documentation
+- [x] Error handling patterns documented
 
 ## Related Features
 
