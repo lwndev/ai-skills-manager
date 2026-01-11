@@ -9,7 +9,14 @@
  */
 
 import { validateSkill } from '../generators/validate';
-import { ValidateResult, ValidationIssue, ValidationWarning } from '../types/api';
+import {
+  ValidateResult,
+  DetailedValidateResult,
+  ValidateOptions,
+  ValidationIssue,
+  ValidationWarning,
+  ValidationCheckName,
+} from '../types/api';
 import { CheckName } from '../types/validation';
 
 /**
@@ -27,13 +34,13 @@ const CHECK_TO_CODE: Record<CheckName, string> = {
 };
 
 /**
- * Transforms internal validation result to public API format.
+ * Transforms internal validation result to public API format (simple mode).
  *
  * The internal validation result has errors as strings and check details
  * in a separate structure. The public API expects typed ValidationIssue
  * objects with machine-readable codes.
  */
-function transformToApiResult(
+function transformToSimpleResult(
   internalResult: Awaited<ReturnType<typeof validateSkill>>,
   skillPath: string
 ): ValidateResult {
@@ -70,6 +77,89 @@ function transformToApiResult(
 }
 
 /**
+ * Transforms internal validation result to detailed API format.
+ *
+ * Returns the full check-by-check structure for CLI output and detailed analysis.
+ */
+function transformToDetailedResult(
+  internalResult: Awaited<ReturnType<typeof validateSkill>>
+): DetailedValidateResult {
+  // Cast the checks to the public type (they have the same structure)
+  const checks = internalResult.checks as Record<
+    ValidationCheckName,
+    { passed: boolean; error?: string }
+  >;
+
+  return {
+    valid: internalResult.valid,
+    skillPath: internalResult.skillPath,
+    skillName: internalResult.skillName,
+    checks,
+    errors: internalResult.errors,
+    warnings: internalResult.warnings,
+  };
+}
+
+/* eslint-disable no-redeclare */
+/**
+ * Validates a skill at the specified path.
+ *
+ * @param path - Path to the skill directory or SKILL.md file
+ * @param options - Options with `detailed: true` to get detailed results
+ * @returns Detailed validation result with check-by-check results
+ *
+ * @example
+ * ```typescript
+ * import { validate } from 'ai-skills-manager';
+ *
+ * // Get detailed check-by-check results (for CLI output)
+ * const detailed = await validate('./my-skill', { detailed: true });
+ * console.log(`Skill: ${detailed.skillName}`);
+ * console.log(`Path: ${detailed.skillPath}`);
+ *
+ * for (const [checkName, check] of Object.entries(detailed.checks)) {
+ *   const status = check.passed ? 'PASS' : 'FAIL';
+ *   console.log(`  ${checkName}: ${status}`);
+ *   if (check.error) {
+ *     console.log(`    Error: ${check.error}`);
+ *   }
+ * }
+ * ```
+ */
+export async function validate(
+  path: string,
+  options: { detailed: true }
+): Promise<DetailedValidateResult>;
+
+/**
+ * Validates a skill at the specified path.
+ *
+ * @param path - Path to the skill directory or SKILL.md file
+ * @param options - Options (optional)
+ * @returns Simple validation result with valid flag, errors, and warnings
+ *
+ * @example
+ * ```typescript
+ * import { validate } from 'ai-skills-manager';
+ *
+ * // Get simple result (default)
+ * const result = await validate('./my-skill');
+ *
+ * if (result.valid) {
+ *   console.log('Skill is valid!');
+ * } else {
+ *   for (const error of result.errors) {
+ *     console.error(`[${error.code}] ${error.message}`);
+ *   }
+ * }
+ * ```
+ */
+export async function validate(
+  path: string,
+  options?: { detailed?: false } | ValidateOptions
+): Promise<ValidateResult>;
+
+/**
  * Validates a skill at the specified path.
  *
  * Runs all validation checks on the skill directory:
@@ -83,33 +173,22 @@ function transformToApiResult(
  * - Name matches directory (frontmatter name equals directory name)
  *
  * This function never throws for validation failures. Instead, it returns
- * a result object with `valid: false` and an array of issues describing
- * what failed.
+ * a result object with `valid: false` and details about what failed.
  *
  * @param path - Path to the skill directory or SKILL.md file
- * @returns Validation result with valid flag, errors, and warnings
- *
- * @example
- * ```typescript
- * import { validate } from 'ai-skills-manager';
- *
- * const result = await validate('./my-skill');
- *
- * if (result.valid) {
- *   console.log('Skill is valid!');
- * } else {
- *   for (const error of result.errors) {
- *     console.error(`[${error.code}] ${error.message}`);
- *   }
- * }
- *
- * // Check warnings even if valid
- * for (const warning of result.warnings) {
- *   console.warn(`[${warning.code}] ${warning.message}`);
- * }
- * ```
+ * @param options - Optional configuration. Use `{ detailed: true }` for check-by-check results.
+ * @returns Validation result (simple or detailed based on options)
  */
-export async function validate(path: string): Promise<ValidateResult> {
+export async function validate(
+  path: string,
+  options?: ValidateOptions
+): Promise<ValidateResult | DetailedValidateResult> {
+  /* eslint-enable no-redeclare */
   const internalResult = await validateSkill(path);
-  return transformToApiResult(internalResult, path);
+
+  if (options?.detailed) {
+    return transformToDetailedResult(internalResult);
+  }
+
+  return transformToSimpleResult(internalResult, path);
 }

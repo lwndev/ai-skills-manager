@@ -11,12 +11,17 @@ import * as path from 'path';
 import {
   UninstallOptions as ApiUninstallOptions,
   UninstallResult as ApiUninstallResult,
+  DetailedUninstallResult,
+  DetailedUninstallSuccess,
+  DetailedUninstallNotFound,
+  DetailedUninstallDryRunPreview,
+  UninstallFileInfo,
 } from '../types/api';
 import { FileSystemError, SecurityError, CancellationError } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
 import { hasErrorCode } from '../utils/error-helpers';
 import { validateSkillName } from '../utils/skill-name-validation';
-import { uninstallSkill, isDryRunPreview } from '../generators/uninstaller';
+import { uninstallSkill, isDryRunPreview, getScopePath } from '../generators/uninstaller';
 import type { UninstallOptions as GeneratorUninstallOptions } from '../types/uninstall';
 import type { UninstallScope } from '../validators/uninstall-scope';
 
@@ -26,6 +31,61 @@ import type { UninstallScope } from '../validators/uninstall-scope';
 function mapScope(scope: 'project' | 'personal' | undefined): UninstallScope {
   return scope === 'personal' ? 'personal' : 'project';
 }
+
+/* eslint-disable no-redeclare */
+/**
+ * Uninstalls one or more skills from the specified scope.
+ *
+ * @param options - Configuration with `detailed: true` to get detailed results
+ * @returns Detailed result with per-skill file counts and bytes freed
+ *
+ * @example
+ * ```typescript
+ * import { uninstall } from 'ai-skills-manager';
+ *
+ * // Get detailed results for CLI output
+ * const result = await uninstall({
+ *   names: ['my-skill'],
+ *   force: true,
+ *   detailed: true
+ * });
+ *
+ * for (const r of result.results) {
+ *   if (r.type === 'success') {
+ *     console.log(`Removed ${r.skillName}: ${r.filesRemoved} files, ${r.bytesFreed} bytes`);
+ *   } else if (r.type === 'not-found') {
+ *     console.log(`Not found: ${r.skillName}`);
+ *   } else if (r.type === 'dry-run-preview') {
+ *     console.log(`Would remove ${r.skillName}: ${r.files.length} files`);
+ *   }
+ * }
+ * ```
+ */
+export async function uninstall(
+  options: ApiUninstallOptions & { detailed: true }
+): Promise<DetailedUninstallResult>;
+
+/**
+ * Uninstalls one or more skills from the specified scope.
+ *
+ * @param options - Configuration for the uninstall operation
+ * @returns Simple result with arrays of removed and not-found skill names
+ *
+ * @example
+ * ```typescript
+ * import { uninstall } from 'ai-skills-manager';
+ *
+ * // Simple result (default)
+ * const result = await uninstall({
+ *   names: ['my-skill'],
+ *   force: true
+ * });
+ * console.log(`Removed: ${result.removed.join(', ')}`);
+ * ```
+ */
+export async function uninstall(
+  options: ApiUninstallOptions & { detailed?: false }
+): Promise<ApiUninstallResult>;
 
 /**
  * Uninstalls one or more skills from the specified scope.
@@ -41,68 +101,20 @@ function mapScope(scope: 'project' | 'personal' | undefined): UninstallScope {
  * @throws SecurityError for invalid skill names (path traversal attempts)
  * @throws FileSystemError for permission errors
  * @throws CancellationError if the operation is cancelled via signal
- *
- * @example
- * ```typescript
- * import { uninstall, SecurityError, FileSystemError } from 'ai-skills-manager';
- *
- * // Uninstall a single skill
- * const result = await uninstall({
- *   names: ['my-skill'],
- *   force: true
- * });
- * console.log(`Removed: ${result.removed.join(', ')}`);
- *
- * // Uninstall multiple skills
- * const result2 = await uninstall({
- *   names: ['skill-a', 'skill-b', 'skill-c'],
- *   scope: 'personal',
- *   force: true
- * });
- * console.log(`Removed: ${result2.removed.length}, Not found: ${result2.notFound.length}`);
- *
- * // Uninstall from custom path
- * const result3 = await uninstall({
- *   names: ['my-skill'],
- *   targetPath: '/custom/skills/path',
- *   force: true
- * });
- *
- * // Dry run to preview what would be removed
- * const preview = await uninstall({
- *   names: ['my-skill'],
- *   dryRun: true
- * });
- * console.log(`Would remove: ${preview.removed.join(', ')}`);
- *
- * // With cancellation support
- * const controller = new AbortController();
- * setTimeout(() => controller.abort(), 5000);
- *
- * try {
- *   await uninstall({
- *     names: ['skill-1', 'skill-2'],
- *     force: true,
- *     signal: controller.signal
- *   });
- * } catch (e) {
- *   if (e instanceof CancellationError) {
- *     console.log('Uninstall was cancelled');
- *   }
- * }
- *
- * // Handle errors
- * try {
- *   await uninstall({ names: ['../../../etc/passwd'], force: true });
- * } catch (e) {
- *   if (e instanceof SecurityError) {
- *     console.error('Security violation:', e.message);
- *   }
- * }
- * ```
  */
-export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninstallResult> {
-  const { names, scope, targetPath, force = false, dryRun = false, signal } = options;
+export async function uninstall(
+  options: ApiUninstallOptions
+): Promise<ApiUninstallResult | DetailedUninstallResult> {
+  /* eslint-enable no-redeclare */
+  const {
+    names,
+    scope,
+    targetPath,
+    force = false,
+    dryRun = false,
+    signal,
+    detailed = false,
+  } = options;
 
   // Check for cancellation at start
   checkAborted(signal);
@@ -111,10 +123,6 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
   for (const name of names) {
     validateSkillName(name);
   }
-
-  // Track results
-  const removed: string[] = [];
-  const notFound: string[] = [];
 
   // Build generator options
   // When targetPath is provided, it takes precedence over scope.
@@ -146,45 +154,57 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
     }
   }
 
-  // Process each skill
+  // Get the scope path for not-found errors
+  const scopePath = getScopePath(generatorScope, generatorOptions.cwd);
+
+  // Track results based on mode
+  if (detailed) {
+    return processDetailedUninstall(names, generatorOptions, dryRun, signal, scopePath);
+  } else {
+    return processSimpleUninstall(names, generatorOptions, dryRun, signal);
+  }
+}
+
+/**
+ * Process uninstall in simple mode (returns arrays of skill names).
+ */
+async function processSimpleUninstall(
+  names: string[],
+  generatorOptions: Omit<GeneratorUninstallOptions, 'skillNames'>,
+  dryRun: boolean,
+  signal?: AbortSignal
+): Promise<ApiUninstallResult> {
+  const removed: string[] = [];
+  const notFound: string[] = [];
+
   for (const skillName of names) {
-    // Check for cancellation before each skill
     checkAborted(signal);
 
     try {
       const result = await uninstallSkill(skillName, generatorOptions);
-
-      // Check for cancellation after each skill
       checkAborted(signal);
 
-      // Handle dry-run preview
       if (isDryRunPreview(result)) {
-        // In dry-run mode, skill exists and would be removed
         removed.push(skillName);
         continue;
       }
 
-      // Handle success
       if (result.success) {
         removed.push(skillName);
         continue;
       }
 
-      // Handle failure
       const error = result.error;
 
-      // Skill not found
       if (error.type === 'skill-not-found') {
         notFound.push(skillName);
         continue;
       }
 
-      // Security errors should be thrown
       if (error.type === 'security-error') {
         throw new SecurityError(`Security error for skill "${skillName}": ${error.details}`);
       }
 
-      // Filesystem errors should be thrown
       if (error.type === 'filesystem-error') {
         throw new FileSystemError(
           `Filesystem error for skill "${skillName}": ${error.message}`,
@@ -192,22 +212,17 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
         );
       }
 
-      // Validation errors that aren't security-related
       if (error.type === 'validation-error') {
-        // If it's about unexpected files or missing SKILL.md and force isn't set,
-        // treat it as not found (user can retry with force)
-        if (!force) {
+        if (!generatorOptions.force) {
           notFound.push(skillName);
           continue;
         }
-        // With force, this shouldn't happen, but if it does, throw
         throw new FileSystemError(
           `Validation error for skill "${skillName}": ${error.message}`,
           skillName
         );
       }
 
-      // Partial removal errors - throw as filesystem error
       if (error.type === 'partial-removal') {
         throw new FileSystemError(
           `Partial removal of skill "${skillName}": ${error.filesRemoved} files removed, ${error.filesRemaining} remaining. ${error.lastError}`,
@@ -215,7 +230,6 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
         );
       }
 
-      // Timeout errors - throw as filesystem error
       if (error.type === 'timeout') {
         throw new FileSystemError(
           `Timeout while removing skill "${skillName}" after ${error.timeoutMs}ms`,
@@ -223,10 +237,8 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
         );
       }
 
-      // Unknown error type - shouldn't happen
       notFound.push(skillName);
     } catch (error) {
-      // Re-throw our own errors
       if (
         error instanceof SecurityError ||
         error instanceof FileSystemError ||
@@ -235,17 +247,14 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
         throw error;
       }
 
-      // Check if it's an internal CancellationError (re-throw)
       if (error instanceof Error && error.name === 'CancellationError') {
         throw new CancellationError(error.message);
       }
 
-      // Handle filesystem errors
       if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
         throw new FileSystemError(`Permission denied while removing "${skillName}"`, skillName);
       }
 
-      // Unknown errors - treat as filesystem error
       const message = error instanceof Error ? error.message : String(error);
       throw new FileSystemError(`Failed to uninstall skill "${skillName}": ${message}`, skillName);
     }
@@ -256,4 +265,191 @@ export async function uninstall(options: ApiUninstallOptions): Promise<ApiUninst
     notFound,
     dryRun,
   };
+}
+
+/**
+ * Process uninstall in detailed mode (returns per-skill results with file counts).
+ */
+async function processDetailedUninstall(
+  names: string[],
+  generatorOptions: Omit<GeneratorUninstallOptions, 'skillNames'>,
+  dryRun: boolean,
+  signal: AbortSignal | undefined,
+  scopePath: string
+): Promise<DetailedUninstallResult> {
+  const results: (
+    | DetailedUninstallSuccess
+    | DetailedUninstallNotFound
+    | DetailedUninstallDryRunPreview
+  )[] = [];
+  let totalFilesRemoved = 0;
+  let totalBytesFreed = 0;
+
+  for (const skillName of names) {
+    checkAborted(signal);
+
+    try {
+      const result = await uninstallSkill(skillName, generatorOptions);
+      checkAborted(signal);
+
+      if (isDryRunPreview(result)) {
+        // Map internal FileInfo to API UninstallFileInfo
+        const files: UninstallFileInfo[] = result.files.map((f) => ({
+          relativePath: f.relativePath,
+          absolutePath: f.absolutePath,
+          size: f.size,
+          isDirectory: f.isDirectory,
+          isSymlink: f.isSymlink,
+        }));
+
+        const preview: DetailedUninstallDryRunPreview = {
+          type: 'dry-run-preview',
+          skillName: result.skillName,
+          path: path.join(scopePath, result.skillName),
+          files,
+          totalSize: result.totalSize,
+        };
+        results.push(preview);
+        continue;
+      }
+
+      if (result.success) {
+        const success: DetailedUninstallSuccess = {
+          type: 'success',
+          skillName: result.skillName,
+          path: result.path,
+          filesRemoved: result.filesRemoved,
+          bytesFreed: result.bytesFreed,
+        };
+        results.push(success);
+        totalFilesRemoved += result.filesRemoved;
+        totalBytesFreed += result.bytesFreed;
+        continue;
+      }
+
+      const error = result.error;
+
+      if (error.type === 'skill-not-found') {
+        const notFound: DetailedUninstallNotFound = {
+          type: 'not-found',
+          skillName,
+          searchedPath: error.searchedPath,
+        };
+        results.push(notFound);
+        continue;
+      }
+
+      if (error.type === 'security-error') {
+        throw new SecurityError(`Security error for skill "${skillName}": ${error.details}`);
+      }
+
+      if (error.type === 'filesystem-error') {
+        throw new FileSystemError(
+          `Filesystem error for skill "${skillName}": ${error.message}`,
+          error.path
+        );
+      }
+
+      if (error.type === 'validation-error') {
+        if (!generatorOptions.force) {
+          const notFound: DetailedUninstallNotFound = {
+            type: 'not-found',
+            skillName,
+            searchedPath: scopePath,
+          };
+          results.push(notFound);
+          continue;
+        }
+        throw new FileSystemError(
+          `Validation error for skill "${skillName}": ${error.message}`,
+          skillName
+        );
+      }
+
+      if (error.type === 'partial-removal') {
+        throw new FileSystemError(
+          `Partial removal of skill "${skillName}": ${error.filesRemoved} files removed, ${error.filesRemaining} remaining. ${error.lastError}`,
+          skillName
+        );
+      }
+
+      if (error.type === 'timeout') {
+        throw new FileSystemError(
+          `Timeout while removing skill "${skillName}" after ${error.timeoutMs}ms`,
+          skillName
+        );
+      }
+
+      // Unknown error type - treat as not found
+      const notFound: DetailedUninstallNotFound = {
+        type: 'not-found',
+        skillName,
+        searchedPath: scopePath,
+      };
+      results.push(notFound);
+    } catch (error) {
+      if (
+        error instanceof SecurityError ||
+        error instanceof FileSystemError ||
+        error instanceof CancellationError
+      ) {
+        throw error;
+      }
+
+      if (error instanceof Error && error.name === 'CancellationError') {
+        throw new CancellationError(error.message);
+      }
+
+      if (hasErrorCode(error, 'EACCES') || hasErrorCode(error, 'EPERM')) {
+        throw new FileSystemError(`Permission denied while removing "${skillName}"`, skillName);
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      throw new FileSystemError(`Failed to uninstall skill "${skillName}": ${message}`, skillName);
+    }
+  }
+
+  const totalRemoved = results.filter(
+    (r) => r.type === 'success' || r.type === 'dry-run-preview'
+  ).length;
+  const totalNotFound = results.filter((r) => r.type === 'not-found').length;
+
+  return {
+    results,
+    totalRemoved,
+    totalNotFound,
+    totalFilesRemoved,
+    totalBytesFreed,
+    dryRun,
+  };
+}
+
+// Export type guards for consumers
+export { isDryRunPreview };
+
+/**
+ * Type guard for DetailedUninstallSuccess.
+ */
+export function isUninstallSuccess(
+  result: DetailedUninstallSuccess | DetailedUninstallNotFound | DetailedUninstallDryRunPreview
+): result is DetailedUninstallSuccess {
+  return result.type === 'success';
+}
+
+/**
+ * Type guard for DetailedUninstallNotFound.
+ */
+export function isUninstallNotFound(
+  result: DetailedUninstallSuccess | DetailedUninstallNotFound | DetailedUninstallDryRunPreview
+): result is DetailedUninstallNotFound {
+  return result.type === 'not-found';
+}
+
+/**
+ * Type guard for DetailedUninstallDryRunPreview.
+ */
+export function isUninstallDryRunPreview(
+  result: DetailedUninstallSuccess | DetailedUninstallNotFound | DetailedUninstallDryRunPreview
+): result is DetailedUninstallDryRunPreview {
+  return result.type === 'dry-run-preview';
 }

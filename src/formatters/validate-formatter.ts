@@ -7,13 +7,13 @@
  * - JSON: Structured JSON output for programmatic use
  */
 
-import { ValidationResult, CheckName } from '../types/validation';
+import { DetailedValidateResult, ValidationCheckName } from '../types/api';
 import { success, error, warning } from '../utils/output';
 
 /**
  * Human-readable names for each check
  */
-const CHECK_NAMES: Record<CheckName, string> = {
+const CHECK_NAMES: Record<ValidationCheckName, string> = {
   fileExists: 'File existence',
   frontmatterValid: 'Frontmatter validity',
   requiredFields: 'Required fields',
@@ -29,7 +29,7 @@ const CHECK_NAMES: Record<CheckName, string> = {
  *
  * Shows each check with pass/fail status and error details
  */
-export function formatNormal(result: ValidationResult): string {
+export function formatNormal(result: DetailedValidateResult): string {
   const lines: string[] = [];
 
   // Header
@@ -41,7 +41,7 @@ export function formatNormal(result: ValidationResult): string {
   lines.push('');
 
   // Individual check results
-  const checkOrder: CheckName[] = [
+  const checkOrder: ValidationCheckName[] = [
     'fileExists',
     'frontmatterValid',
     'requiredFields',
@@ -94,7 +94,7 @@ export function formatNormal(result: ValidationResult): string {
  *
  * Shows only a single line with pass/fail status
  */
-export function formatQuiet(result: ValidationResult): string {
+export function formatQuiet(result: DetailedValidateResult): string {
   if (result.valid) {
     return 'PASS';
   } else {
@@ -105,9 +105,9 @@ export function formatQuiet(result: ValidationResult): string {
 /**
  * Format validation result as JSON
  *
- * Returns the full ValidationResult as formatted JSON
+ * Returns the full DetailedValidateResult as formatted JSON
  */
-export function formatJSON(result: ValidationResult): string {
+export function formatJSON(result: DetailedValidateResult): string {
   return JSON.stringify(result, null, 2);
 }
 
@@ -118,7 +118,7 @@ export function formatJSON(result: ValidationResult): string {
  * @param options - Output options (quiet, json)
  */
 export function formatValidationOutput(
-  result: ValidationResult,
+  result: DetailedValidateResult,
   options: { quiet?: boolean; json?: boolean }
 ): string {
   if (options.json) {

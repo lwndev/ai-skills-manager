@@ -7,7 +7,19 @@
  * @module api/update
  */
 
-import { UpdateOptions as ApiUpdateOptions, UpdateResult as ApiUpdateResult } from '../types/api';
+import {
+  UpdateOptions as ApiUpdateOptions,
+  UpdateResult as ApiUpdateResult,
+  DetailedUpdateResult,
+  DetailedUpdateSuccess,
+  DetailedUpdateDryRunPreview,
+  DetailedUpdateRolledBack,
+  DetailedUpdateRollbackFailed,
+  DetailedUpdateCancelled,
+  UpdateFileChange,
+  UpdateVersionInfo,
+  UpdateVersionComparison,
+} from '../types/api';
 import {
   PackageError,
   FileSystemError,
@@ -90,6 +102,90 @@ function mapUpdateError(error: GeneratorUpdateError): Error {
 }
 
 /**
+ * Type guard functions for result type narrowing.
+ */
+function isUpdateSuccess(
+  result: UpdateResultUnion
+): result is { type: 'update-success' } & UpdateResultUnion {
+  return result.type === 'update-success';
+}
+
+function isUpdateDryRunPreview(
+  result: UpdateResultUnion
+): result is { type: 'update-dry-run-preview' } & UpdateResultUnion {
+  return result.type === 'update-dry-run-preview';
+}
+
+function isUpdateRolledBack(
+  result: UpdateResultUnion
+): result is { type: 'update-rolled-back' } & UpdateResultUnion {
+  return result.type === 'update-rolled-back';
+}
+
+function isUpdateRollbackFailed(
+  result: UpdateResultUnion
+): result is { type: 'update-rollback-failed' } & UpdateResultUnion {
+  return result.type === 'update-rollback-failed';
+}
+
+function isUpdateCancelled(
+  result: UpdateResultUnion
+): result is { type: 'update-cancelled' } & UpdateResultUnion {
+  return result.type === 'update-cancelled';
+}
+
+/* eslint-disable no-redeclare */
+/**
+ * Updates an installed skill from a new .skill package file.
+ *
+ * @param options - Configuration with `detailed: true` to get detailed results
+ * @returns Detailed result with discriminated union for type-safe handling
+ *
+ * @example
+ * ```typescript
+ * import { update } from 'ai-skills-manager';
+ *
+ * // Get detailed results for CLI output
+ * const result = await update({
+ *   name: 'my-skill',
+ *   file: './my-skill-v2.skill',
+ *   detailed: true
+ * });
+ *
+ * if (result.type === 'update-success') {
+ *   console.log(`Updated ${result.skillName}`);
+ * } else if (result.type === 'update-dry-run-preview') {
+ *   console.log(`Would update: ${result.comparison.filesModified.length} files`);
+ * }
+ * ```
+ */
+export async function update(
+  options: ApiUpdateOptions & { detailed: true }
+): Promise<DetailedUpdateResult>;
+
+/**
+ * Updates an installed skill from a new .skill package file.
+ *
+ * @param options - Configuration for the update operation
+ * @returns Simple result with updated path and version info
+ *
+ * @example
+ * ```typescript
+ * import { update } from 'ai-skills-manager';
+ *
+ * // Simple result (default)
+ * const result = await update({
+ *   name: 'my-skill',
+ *   file: './my-skill-v2.skill'
+ * });
+ * console.log(`Updated at ${result.updatedPath}`);
+ * ```
+ */
+export async function update(
+  options: ApiUpdateOptions & { detailed?: false }
+): Promise<ApiUpdateResult>;
+
+/**
  * Updates an installed skill from a new .skill package file.
  *
  * This function:
@@ -106,80 +202,11 @@ function mapUpdateError(error: GeneratorUpdateError): Error {
  * @throws SecurityError for invalid skill names or path traversal
  * @throws ValidationError if the new package fails validation
  * @throws CancellationError if the operation is cancelled via signal
- *
- * @example
- * ```typescript
- * import { update, FileSystemError, PackageError } from 'ai-skills-manager';
- *
- * // Basic update
- * const result = await update({
- *   name: 'my-skill',
- *   file: './my-skill-v2.skill'
- * });
- * console.log(`Updated ${result.updatedPath}`);
- *
- * // Update in personal scope
- * const result2 = await update({
- *   name: 'my-skill',
- *   file: './my-skill-v2.skill',
- *   scope: 'personal'
- * });
- *
- * // Force update (skip confirmation, allow downgrade)
- * const result3 = await update({
- *   name: 'my-skill',
- *   file: './my-skill-older.skill',
- *   force: true
- * });
- *
- * // Dry run to preview update
- * const preview = await update({
- *   name: 'my-skill',
- *   file: './my-skill-v2.skill',
- *   dryRun: true
- * });
- * console.log(`Would update to ${preview.updatedPath}`);
- *
- * // Keep backup after update
- * const result4 = await update({
- *   name: 'my-skill',
- *   file: './my-skill-v2.skill',
- *   keepBackup: true
- * });
- * console.log(`Backup at: ${result4.backupPath}`);
- *
- * // With cancellation support
- * const controller = new AbortController();
- * setTimeout(() => controller.abort(), 5000);
- *
- * try {
- *   await update({
- *     name: 'my-skill',
- *     file: './my-skill-v2.skill',
- *     signal: controller.signal
- *   });
- * } catch (e) {
- *   if (e instanceof CancellationError) {
- *     console.log('Update was cancelled');
- *   }
- * }
- *
- * // Handle errors
- * try {
- *   await update({
- *     name: 'my-skill',
- *     file: './my-skill-v2.skill'
- *   });
- * } catch (e) {
- *   if (e instanceof FileSystemError) {
- *     console.error(`File error at ${e.path}: ${e.message}`);
- *   } else if (e instanceof PackageError) {
- *     console.error('Package error:', e.message);
- *   }
- * }
- * ```
  */
-export async function update(options: ApiUpdateOptions): Promise<ApiUpdateResult> {
+export async function update(
+  options: ApiUpdateOptions
+): Promise<ApiUpdateResult | DetailedUpdateResult> {
+  /* eslint-enable no-redeclare */
   const {
     name,
     file,
@@ -189,6 +216,7 @@ export async function update(options: ApiUpdateOptions): Promise<ApiUpdateResult
     dryRun = false,
     keepBackup = false,
     signal,
+    detailed = false,
   } = options;
 
   // Check for cancellation at start
@@ -218,51 +246,13 @@ export async function update(options: ApiUpdateOptions): Promise<ApiUpdateResult
     // Check for cancellation after generator completes
     checkAborted(signal);
 
-    // Handle result based on type discriminant
-    switch (result.type) {
-      case 'update-success':
-        return {
-          updatedPath: result.path,
-          previousVersion: undefined, // Version extraction not yet implemented
-          newVersion: undefined,
-          backupPath: result.backupPath,
-          dryRun: false,
-        };
-
-      case 'update-dry-run-preview':
-        return {
-          updatedPath: result.path,
-          previousVersion: undefined,
-          newVersion: undefined,
-          backupPath: result.backupPath,
-          dryRun: true,
-        };
-
-      case 'update-cancelled':
-        throw new CancellationError(
-          result.reason === 'user-cancelled' ? 'Update cancelled by user' : 'Update was interrupted'
-        );
-
-      case 'update-rolled-back':
-        // Update failed but rollback succeeded
-        throw new PackageError(
-          `Update failed: ${result.failureReason}. ` +
-            `Skill restored to previous version.` +
-            (result.backupPath ? ` Backup available at: ${result.backupPath}` : '')
-        );
-
-      case 'update-rollback-failed':
-        // Critical: both update and rollback failed
-        throw new FileSystemError(
-          `Critical error: Update failed (${result.updateFailureReason}) and ` +
-            `rollback also failed (${result.rollbackFailureReason}). ` +
-            result.recoveryInstructions,
-          result.path
-        );
-
-      default:
-        throw new PackageError('Unexpected update result');
+    // Handle detailed mode
+    if (detailed) {
+      return transformToDetailedResult(result);
     }
+
+    // Handle simple mode
+    return transformToSimpleResult(result);
   } catch (error) {
     // Re-throw our own errors
     if (
@@ -329,4 +319,221 @@ export async function update(options: ApiUpdateOptions): Promise<ApiUpdateResult
     const message = error instanceof Error ? error.message : String(error);
     throw new PackageError(`Update failed: ${message}`);
   }
+}
+
+/**
+ * Transform generator result to simple API result.
+ */
+function transformToSimpleResult(result: UpdateResultUnion): ApiUpdateResult {
+  switch (result.type) {
+    case 'update-success':
+      return {
+        updatedPath: result.path,
+        previousVersion: undefined, // Version extraction not yet implemented
+        newVersion: undefined,
+        backupPath: result.backupPath,
+        dryRun: false,
+      };
+
+    case 'update-dry-run-preview':
+      return {
+        updatedPath: result.path,
+        previousVersion: undefined,
+        newVersion: undefined,
+        backupPath: result.backupPath,
+        dryRun: true,
+      };
+
+    case 'update-cancelled':
+      throw new CancellationError(
+        result.reason === 'user-cancelled' ? 'Update cancelled by user' : 'Update was interrupted'
+      );
+
+    case 'update-rolled-back':
+      // Update failed but rollback succeeded
+      throw new PackageError(
+        `Update failed: ${result.failureReason}. ` +
+          `Skill restored to previous version.` +
+          (result.backupPath ? ` Backup available at: ${result.backupPath}` : '')
+      );
+
+    case 'update-rollback-failed':
+      // Critical: both update and rollback failed
+      throw new FileSystemError(
+        `Critical error: Update failed (${result.updateFailureReason}) and ` +
+          `rollback also failed (${result.rollbackFailureReason}). ` +
+          result.recoveryInstructions,
+        result.path
+      );
+
+    default:
+      throw new PackageError('Unexpected update result');
+  }
+}
+
+/**
+ * Transform generator result to detailed API result.
+ */
+function transformToDetailedResult(result: UpdateResultUnion): DetailedUpdateResult {
+  switch (result.type) {
+    case 'update-success': {
+      const success: DetailedUpdateSuccess = {
+        type: 'update-success',
+        skillName: result.skillName,
+        path: result.path,
+        previousFileCount: result.previousFileCount,
+        currentFileCount: result.currentFileCount,
+        previousSize: result.previousSize,
+        currentSize: result.currentSize,
+        backupPath: result.backupPath,
+        backupWillBeRemoved: result.backupWillBeRemoved,
+      };
+      return success;
+    }
+
+    case 'update-dry-run-preview': {
+      // Transform file changes
+      const filesAdded: UpdateFileChange[] = result.comparison.filesAdded.map((f) => ({
+        path: f.path,
+        changeType: 'added' as const,
+        sizeBefore: f.sizeBefore,
+        sizeAfter: f.sizeAfter,
+      }));
+
+      const filesRemoved: UpdateFileChange[] = result.comparison.filesRemoved.map((f) => ({
+        path: f.path,
+        changeType: 'removed' as const,
+        sizeBefore: f.sizeBefore,
+        sizeAfter: f.sizeAfter,
+      }));
+
+      const filesModified: UpdateFileChange[] = result.comparison.filesModified.map((f) => ({
+        path: f.path,
+        changeType: 'modified' as const,
+        sizeBefore: f.sizeBefore,
+        sizeAfter: f.sizeAfter,
+      }));
+
+      const currentVersion: UpdateVersionInfo = {
+        path: result.currentVersion.path,
+        fileCount: result.currentVersion.fileCount,
+        size: result.currentVersion.size,
+        lastModified: result.currentVersion.lastModified,
+      };
+
+      const newVersion: UpdateVersionInfo = {
+        path: result.newVersion.path,
+        fileCount: result.newVersion.fileCount,
+        size: result.newVersion.size,
+        lastModified: result.newVersion.lastModified,
+      };
+
+      const comparison: UpdateVersionComparison = {
+        filesAdded,
+        filesRemoved,
+        filesModified,
+        sizeChange: result.comparison.sizeChange,
+      };
+
+      const preview: DetailedUpdateDryRunPreview = {
+        type: 'update-dry-run-preview',
+        skillName: result.skillName,
+        path: result.path,
+        currentVersion,
+        newVersion,
+        comparison,
+        backupPath: result.backupPath,
+      };
+      return preview;
+    }
+
+    case 'update-rolled-back': {
+      const rolledBack: DetailedUpdateRolledBack = {
+        type: 'update-rolled-back',
+        skillName: result.skillName,
+        path: result.path,
+        failureReason: result.failureReason,
+        backupPath: result.backupPath,
+      };
+      return rolledBack;
+    }
+
+    case 'update-rollback-failed': {
+      const failed: DetailedUpdateRollbackFailed = {
+        type: 'update-rollback-failed',
+        skillName: result.skillName,
+        path: result.path,
+        updateFailureReason: result.updateFailureReason,
+        rollbackFailureReason: result.rollbackFailureReason,
+        backupPath: result.backupPath,
+        recoveryInstructions: result.recoveryInstructions,
+      };
+      return failed;
+    }
+
+    case 'update-cancelled': {
+      const cancelled: DetailedUpdateCancelled = {
+        type: 'update-cancelled',
+        skillName: result.skillName,
+        reason: result.reason,
+        cleanupPerformed: result.cleanupPerformed,
+      };
+      return cancelled;
+    }
+
+    default:
+      throw new PackageError('Unexpected update result');
+  }
+}
+
+// Export type guards for consumers
+export { isUpdateSuccess };
+export { isUpdateDryRunPreview };
+export { isUpdateRolledBack };
+export { isUpdateRollbackFailed };
+export { isUpdateCancelled };
+
+/**
+ * Type guard for DetailedUpdateSuccess.
+ */
+export function isDetailedUpdateSuccess(
+  result: DetailedUpdateResult
+): result is DetailedUpdateSuccess {
+  return result.type === 'update-success';
+}
+
+/**
+ * Type guard for DetailedUpdateDryRunPreview.
+ */
+export function isDetailedUpdateDryRunPreview(
+  result: DetailedUpdateResult
+): result is DetailedUpdateDryRunPreview {
+  return result.type === 'update-dry-run-preview';
+}
+
+/**
+ * Type guard for DetailedUpdateRolledBack.
+ */
+export function isDetailedUpdateRolledBack(
+  result: DetailedUpdateResult
+): result is DetailedUpdateRolledBack {
+  return result.type === 'update-rolled-back';
+}
+
+/**
+ * Type guard for DetailedUpdateRollbackFailed.
+ */
+export function isDetailedUpdateRollbackFailed(
+  result: DetailedUpdateResult
+): result is DetailedUpdateRollbackFailed {
+  return result.type === 'update-rollback-failed';
+}
+
+/**
+ * Type guard for DetailedUpdateCancelled.
+ */
+export function isDetailedUpdateCancelled(
+  result: DetailedUpdateResult
+): result is DetailedUpdateCancelled {
+  return result.type === 'update-cancelled';
 }

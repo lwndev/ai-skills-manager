@@ -10,6 +10,12 @@
 import {
   InstallOptions as ApiInstallOptions,
   InstallResult as ApiInstallResult,
+  DetailedInstallResult,
+  DetailedInstallSuccess,
+  DetailedInstallDryRunPreview,
+  DetailedInstallOverwriteRequired,
+  InstallFileInfo,
+  InstallFileComparison,
 } from '../types/api';
 import { PackageError, FileSystemError, SecurityError, CancellationError } from '../errors';
 import { checkAborted } from '../utils/abort-signal';
@@ -17,11 +23,62 @@ import { hasErrorCode } from '../utils/error-helpers';
 import { validateSkillName } from '../utils/skill-name-validation';
 import {
   installSkill,
-  isInstallResult,
-  isDryRunPreview,
-  isOverwriteRequired,
+  isInstallResult as isInternalInstallResult,
+  isDryRunPreview as isInternalDryRunPreview,
+  isOverwriteRequired as isInternalOverwriteRequired,
 } from '../generators/installer';
 import { InstallOptions as GeneratorInstallOptions } from '../types/install';
+
+/* eslint-disable no-redeclare */
+/**
+ * Installs a skill from a .skill package file.
+ *
+ * @param options - Configuration with `detailed: true` to get detailed results
+ * @returns Detailed result with discriminated union for type-safe handling
+ *
+ * @example
+ * ```typescript
+ * import { install, isInstallResult, isDryRunPreview, isOverwriteRequired } from 'ai-skills-manager';
+ *
+ * // Get detailed results for CLI output
+ * const result = await install({
+ *   file: './my-skill.skill',
+ *   detailed: true
+ * });
+ *
+ * if (result.type === 'install-success') {
+ *   console.log(`Installed ${result.skillName}: ${result.fileCount} files`);
+ * } else if (result.type === 'install-dry-run-preview') {
+ *   console.log(`Would install ${result.skillName} to ${result.targetPath}`);
+ * } else if (result.type === 'install-overwrite-required') {
+ *   console.log(`Skill ${result.skillName} already exists at ${result.existingPath}`);
+ * }
+ * ```
+ */
+export async function install(
+  options: ApiInstallOptions & { detailed: true }
+): Promise<DetailedInstallResult>;
+
+/**
+ * Installs a skill from a .skill package file.
+ *
+ * @param options - Configuration for the installation
+ * @returns Simple result with the installed path, skill name, and version
+ *
+ * @example
+ * ```typescript
+ * import { install, FileSystemError, PackageError } from 'ai-skills-manager';
+ *
+ * // Basic installation (default simple mode)
+ * const result = await install({
+ *   file: './my-skill.skill'
+ * });
+ * console.log(`Installed ${result.skillName} to ${result.installedPath}`);
+ * ```
+ */
+export async function install(
+  options: ApiInstallOptions & { detailed?: false }
+): Promise<ApiInstallResult>;
 
 /**
  * Installs a skill from a .skill package file.
@@ -38,71 +95,20 @@ import { InstallOptions as GeneratorInstallOptions } from '../types/install';
  * @throws FileSystemError for permission errors or if skill already exists (without force)
  * @throws SecurityError for path traversal attempts
  * @throws CancellationError if the operation is cancelled via signal
- *
- * @example
- * ```typescript
- * import { install, FileSystemError, PackageError } from 'ai-skills-manager';
- *
- * // Basic installation
- * const result = await install({
- *   file: './my-skill.skill'
- * });
- * console.log(`Installed ${result.skillName} to ${result.installedPath}`);
- *
- * // Install to personal scope
- * const result2 = await install({
- *   file: './my-skill.skill',
- *   scope: 'personal'
- * });
- *
- * // Install to custom path
- * const result3 = await install({
- *   file: './my-skill.skill',
- *   targetPath: '/custom/skills/path'
- * });
- *
- * // Force overwrite existing skill
- * const result4 = await install({
- *   file: './my-skill.skill',
- *   force: true
- * });
- *
- * // Dry run to preview installation
- * const preview = await install({
- *   file: './my-skill.skill',
- *   dryRun: true
- * });
- * console.log(`Would install ${preview.skillName} to ${preview.installedPath}`);
- *
- * // With cancellation support
- * const controller = new AbortController();
- * setTimeout(() => controller.abort(), 5000);
- *
- * try {
- *   await install({
- *     file: './large-skill.skill',
- *     signal: controller.signal
- *   });
- * } catch (e) {
- *   if (e instanceof CancellationError) {
- *     console.log('Installation was cancelled');
- *   }
- * }
- *
- * // Handle errors
- * try {
- *   await install({ file: './my-skill.skill' });
- * } catch (e) {
- *   if (e instanceof FileSystemError) {
- *     console.error(`File error at ${e.path}: ${e.message}`);
- *   } else if (e instanceof PackageError) {
- *     console.error('Package error:', e.message);
- *   }
- * }
- * ```
  */
-export async function install(options: ApiInstallOptions): Promise<ApiInstallResult> {
-  const { file, scope, targetPath, force = false, dryRun = false, signal } = options;
+export async function install(
+  options: ApiInstallOptions
+): Promise<ApiInstallResult | DetailedInstallResult> {
+  /* eslint-enable no-redeclare */
+  const {
+    file,
+    scope,
+    targetPath,
+    force = false,
+    dryRun = false,
+    signal,
+    detailed = false,
+  } = options;
 
   // Check for cancellation at start
   checkAborted(signal);
@@ -124,45 +130,13 @@ export async function install(options: ApiInstallOptions): Promise<ApiInstallRes
     // Check for cancellation after generator completes
     checkAborted(signal);
 
-    // Handle dry-run preview result
-    if (isDryRunPreview(result)) {
-      // Validate skill name for security
-      validateSkillName(result.skillName);
-
-      return {
-        installedPath: result.targetPath,
-        skillName: result.skillName,
-        version: undefined, // Dry run doesn't extract version
-        dryRun: true,
-      };
+    // Handle detailed mode
+    if (detailed) {
+      return transformToDetailedResult(result);
     }
 
-    // Handle overwrite-required result
-    if (isOverwriteRequired(result)) {
-      // Validate skill name for security
-      validateSkillName(result.skillName);
-
-      throw new FileSystemError(
-        `Skill "${result.skillName}" already exists at ${result.existingPath}. Use force: true to overwrite.`,
-        result.existingPath
-      );
-    }
-
-    // Handle successful installation result
-    if (isInstallResult(result)) {
-      // Validate skill name for security
-      validateSkillName(result.skillName);
-
-      return {
-        installedPath: result.skillPath,
-        skillName: result.skillName,
-        version: undefined, // Version extraction is not implemented in the generator
-        dryRun: false,
-      };
-    }
-
-    // Should never reach here due to exhaustive type checking
-    throw new PackageError('Unexpected installation result');
+    // Handle simple mode
+    return transformToSimpleResult(result);
   } catch (error) {
     // Re-throw our own errors
     if (
@@ -217,4 +191,154 @@ export async function install(options: ApiInstallOptions): Promise<ApiInstallRes
     const message = error instanceof Error ? error.message : String(error);
     throw new PackageError(`Installation failed: ${message}`);
   }
+}
+
+/**
+ * Transform generator result to simple API result.
+ */
+function transformToSimpleResult(
+  result: ReturnType<typeof installSkill> extends Promise<infer T> ? T : never
+): ApiInstallResult {
+  // Handle dry-run preview result
+  if (isInternalDryRunPreview(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    return {
+      installedPath: result.targetPath,
+      skillName: result.skillName,
+      version: undefined, // Dry run doesn't extract version
+      dryRun: true,
+    };
+  }
+
+  // Handle overwrite-required result
+  if (isInternalOverwriteRequired(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    throw new FileSystemError(
+      `Skill "${result.skillName}" already exists at ${result.existingPath}. Use force: true to overwrite.`,
+      result.existingPath
+    );
+  }
+
+  // Handle successful installation result
+  if (isInternalInstallResult(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    return {
+      installedPath: result.skillPath,
+      skillName: result.skillName,
+      version: undefined, // Version extraction is not implemented in the generator
+      dryRun: false,
+    };
+  }
+
+  // Should never reach here due to exhaustive type checking
+  throw new PackageError('Unexpected installation result');
+}
+
+/**
+ * Transform generator result to detailed API result.
+ */
+function transformToDetailedResult(
+  result: ReturnType<typeof installSkill> extends Promise<infer T> ? T : never
+): DetailedInstallResult {
+  // Handle dry-run preview result
+  if (isInternalDryRunPreview(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    const files: InstallFileInfo[] = result.files.map((f) => ({
+      path: f.path,
+      size: f.size,
+      isDirectory: f.isDirectory,
+    }));
+
+    const preview: DetailedInstallDryRunPreview = {
+      type: 'install-dry-run-preview',
+      skillName: result.skillName,
+      targetPath: result.targetPath,
+      files,
+      totalSize: result.totalSize,
+      wouldOverwrite: result.wouldOverwrite,
+      conflicts: result.conflicts,
+    };
+    return preview;
+  }
+
+  // Handle overwrite-required result
+  if (isInternalOverwriteRequired(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    const files: InstallFileComparison[] = result.files.map((f) => ({
+      path: f.path,
+      existsInTarget: f.existsInTarget,
+      packageSize: f.packageSize,
+      targetSize: f.targetSize,
+      wouldModify: f.wouldModify,
+    }));
+
+    const overwrite: DetailedInstallOverwriteRequired = {
+      type: 'install-overwrite-required',
+      skillName: result.skillName,
+      existingPath: result.existingPath,
+      files,
+    };
+    return overwrite;
+  }
+
+  // Handle successful installation result
+  if (isInternalInstallResult(result)) {
+    // Validate skill name for security
+    validateSkillName(result.skillName);
+
+    const success: DetailedInstallSuccess = {
+      type: 'install-success',
+      skillPath: result.skillPath,
+      skillName: result.skillName,
+      fileCount: result.fileCount,
+      size: result.size,
+      wasOverwritten: result.wasOverwritten,
+    };
+    return success;
+  }
+
+  // Should never reach here due to exhaustive type checking
+  throw new PackageError('Unexpected installation result');
+}
+
+// Export type guards for consumers
+export { isInternalInstallResult as isInstallResult };
+export { isInternalDryRunPreview as isDryRunPreview };
+export { isInternalOverwriteRequired as isOverwriteRequired };
+
+/**
+ * Type guard for DetailedInstallSuccess.
+ */
+export function isDetailedInstallSuccess(
+  result: DetailedInstallResult
+): result is DetailedInstallSuccess {
+  return result.type === 'install-success';
+}
+
+/**
+ * Type guard for DetailedInstallDryRunPreview.
+ */
+export function isDetailedInstallDryRunPreview(
+  result: DetailedInstallResult
+): result is DetailedInstallDryRunPreview {
+  return result.type === 'install-dry-run-preview';
+}
+
+/**
+ * Type guard for DetailedInstallOverwriteRequired.
+ */
+export function isDetailedInstallOverwriteRequired(
+  result: DetailedInstallResult
+): result is DetailedInstallOverwriteRequired {
+  return result.type === 'install-overwrite-required';
 }

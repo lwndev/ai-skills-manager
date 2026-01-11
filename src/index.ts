@@ -64,7 +64,15 @@ export type { AsmErrorCode } from './errors';
 export type { ApiScope, ApiListScope, InstalledSkillScope } from './types/api';
 
 // Validation types
-export type { ValidationIssue, ValidationWarning, ValidateResult } from './types/api';
+export type {
+  ValidationIssue,
+  ValidationWarning,
+  ValidateResult,
+  ValidateOptions,
+  DetailedValidateResult,
+  ValidationCheckName,
+  ValidationCheckResult,
+} from './types/api';
 
 // Scaffold types
 export type { ScaffoldOptions, ScaffoldResult } from './types/api';
@@ -76,13 +84,69 @@ export type {
 } from './types/api';
 
 // Install types
-export type { InstallOptions, InstallResult } from './types/api';
+export type {
+  InstallOptions,
+  InstallResult,
+  DetailedInstallResult,
+  DetailedInstallSuccess,
+  DetailedInstallDryRunPreview,
+  DetailedInstallOverwriteRequired,
+  InstallFileInfo,
+  InstallFileComparison,
+} from './types/api';
+
+// Install type guards
+export {
+  isInstallResult,
+  isDryRunPreview,
+  isOverwriteRequired,
+  isDetailedInstallSuccess,
+  isDetailedInstallDryRunPreview,
+  isDetailedInstallOverwriteRequired,
+} from './api/install';
 
 // Update types
-export type { UpdateOptions, UpdateResult } from './types/api';
+export type {
+  UpdateOptions,
+  UpdateResult,
+  DetailedUpdateResult,
+  DetailedUpdateSuccess,
+  DetailedUpdateDryRunPreview,
+  DetailedUpdateRolledBack,
+  DetailedUpdateRollbackFailed,
+  DetailedUpdateCancelled,
+  UpdateFileChange,
+  UpdateVersionInfo,
+  UpdateVersionComparison,
+} from './types/api';
+
+// Update type guards
+export {
+  isUpdateSuccess,
+  isUpdateDryRunPreview,
+  isUpdateRolledBack,
+  isUpdateRollbackFailed,
+  isUpdateCancelled,
+  isDetailedUpdateSuccess,
+  isDetailedUpdateDryRunPreview,
+  isDetailedUpdateRolledBack,
+  isDetailedUpdateRollbackFailed,
+  isDetailedUpdateCancelled,
+} from './api/update';
 
 // Uninstall types
-export type { UninstallOptions, UninstallResult } from './types/api';
+export type {
+  UninstallOptions,
+  UninstallResult,
+  DetailedUninstallResult,
+  DetailedUninstallSuccess,
+  DetailedUninstallNotFound,
+  DetailedUninstallDryRunPreview,
+  UninstallFileInfo,
+} from './types/api';
+
+// Uninstall type guards
+export { isUninstallSuccess, isUninstallNotFound, isUninstallDryRunPreview } from './api/uninstall';
 
 // List types
 export type { ListOptions, InstalledSkill } from './types/api';
