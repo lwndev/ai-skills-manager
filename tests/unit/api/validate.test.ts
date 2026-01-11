@@ -371,4 +371,148 @@ Content.
       expect(result.valid).toBe(true);
     });
   });
+
+  describe('detailed mode', () => {
+    it('returns DetailedValidateResult when detailed: true', async () => {
+      const skillPath = await createSkill(`---
+name: detailed-test
+description: Test detailed mode
+---
+
+# My Skill
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      // Should have DetailedValidateResult properties
+      expect(result.valid).toBe(true);
+      expect(result.skillPath).toBeDefined();
+      expect(result.skillName).toBe('detailed-test');
+      expect(result.checks).toBeDefined();
+      expect(Array.isArray(result.errors)).toBe(true);
+    });
+
+    it('includes check-by-check results', async () => {
+      const skillPath = await createSkill(`---
+name: check-test
+description: Test check results
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      // Should have all check results
+      expect(result.checks.fileExists).toBeDefined();
+      expect(result.checks.frontmatterValid).toBeDefined();
+      expect(result.checks.requiredFields).toBeDefined();
+      expect(result.checks.allowedProperties).toBeDefined();
+      expect(result.checks.nameFormat).toBeDefined();
+      expect(result.checks.descriptionFormat).toBeDefined();
+      expect(result.checks.compatibilityFormat).toBeDefined();
+      expect(result.checks.nameMatchesDirectory).toBeDefined();
+    });
+
+    it('shows passed status for each check', async () => {
+      const skillPath = await createSkill(`---
+name: passed-test
+description: Test passed checks
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      // All checks should pass for valid skill
+      for (const [, check] of Object.entries(result.checks)) {
+        expect(check.passed).toBe(true);
+        expect(check.error).toBeUndefined();
+      }
+    });
+
+    it('shows failed status with error message', async () => {
+      const skillPath = await createSkill(`---
+name: InvalidName
+description: Has invalid name
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      expect(result.valid).toBe(false);
+      expect(result.checks.nameFormat.passed).toBe(false);
+      expect(result.checks.nameFormat.error).toBeDefined();
+    });
+
+    it('includes skillPath in detailed result', async () => {
+      const skillPath = await createSkill(`---
+name: path-test
+description: Test path in result
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      expect(result.skillPath).toContain('path-test');
+    });
+
+    it('returns simple ValidateResult when detailed is false', async () => {
+      const skillPath = await createSkill(`---
+name: simple-test
+description: Test simple mode
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath, { detailed: false });
+
+      // Should have ValidateResult properties only
+      expect(result.valid).toBe(true);
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(Array.isArray(result.warnings)).toBe(true);
+
+      // Should NOT have DetailedValidateResult properties
+      expect((result as { skillPath?: string }).skillPath).toBeUndefined();
+      expect((result as { checks?: unknown }).checks).toBeUndefined();
+    });
+
+    it('returns simple ValidateResult when no options provided', async () => {
+      const skillPath = await createSkill(`---
+name: no-options
+description: Test no options
+---
+
+Content.
+`);
+
+      const result = await validate(skillPath);
+
+      // Should have ValidateResult properties only
+      expect(result.valid).toBe(true);
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(Array.isArray(result.warnings)).toBe(true);
+    });
+
+    it('includes warnings in detailed result', async () => {
+      const largeContent = 'x'.repeat(50001);
+      const skillPath = await createSkill(`---
+name: warning-test
+description: Has large content
+---
+
+${largeContent}
+`);
+
+      const result = await validate(skillPath, { detailed: true });
+
+      expect(result.warnings?.length).toBeGreaterThan(0);
+    });
+  });
 });

@@ -3,15 +3,12 @@
  *
  * Validates Claude Skill structure and metadata against the official Anthropic specification.
  *
- * Note: This command uses the internal validateSkill function directly rather than the
- * public API's validate() function to maintain backward-compatible CLI output format.
- * The public API returns a simplified ValidateResult with errors/warnings arrays,
- * while the CLI output shows detailed check-by-check results which requires the
- * internal ValidationResult structure.
+ * Uses the public API's validate() function with `detailed: true` to get check-by-check
+ * results for CLI output.
  */
 
 import { Command } from 'commander';
-import { validateSkill } from '../generators/validate';
+import { validate } from '../api/validate';
 import { formatValidationOutput } from '../formatters/validate-formatter';
 import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
@@ -80,8 +77,8 @@ async function handleValidate(skillPath: string, options: ValidateOptions): Prom
     throw new FileSystemError('Skill path is required', skillPath || '');
   }
 
-  // Run validation using internal function for detailed check-by-check output
-  const result = await validateSkill(skillPath);
+  // Run validation using public API with detailed: true for check-by-check output
+  const result = await validate(skillPath, { detailed: true });
 
   // Format output
   const formattedOutput = formatValidationOutput(result, options);

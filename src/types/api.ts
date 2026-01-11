@@ -78,7 +78,7 @@ export interface ValidationWarning {
 }
 
 /**
- * Result of validating a skill.
+ * Result of validating a skill (simple mode).
  *
  * Always returned by `validate()` - validation failures do not throw.
  */
@@ -97,6 +97,61 @@ export interface ValidateResult {
    * Array of validation warnings (non-blocking issues).
    */
   warnings: ValidationWarning[];
+}
+
+/**
+ * Names of all validation checks performed.
+ */
+export type ValidationCheckName =
+  | 'fileExists'
+  | 'frontmatterValid'
+  | 'requiredFields'
+  | 'allowedProperties'
+  | 'nameFormat'
+  | 'descriptionFormat'
+  | 'compatibilityFormat'
+  | 'nameMatchesDirectory';
+
+/**
+ * Result of a single validation check.
+ */
+export interface ValidationCheckResult {
+  /** Whether the check passed */
+  passed: boolean;
+  /** Error message if check failed */
+  error?: string;
+}
+
+/**
+ * Detailed result of validating a skill.
+ *
+ * Returned by `validate()` when called with `{ detailed: true }`.
+ * Contains check-by-check results for CLI output and detailed analysis.
+ */
+export interface DetailedValidateResult {
+  /** Whether all checks passed */
+  valid: boolean;
+  /** Path to the skill being validated */
+  skillPath: string;
+  /** Name of the skill (extracted from frontmatter, if available) */
+  skillName?: string;
+  /** Results of each individual check, keyed by check name */
+  checks: Record<ValidationCheckName, ValidationCheckResult>;
+  /** Array of all error messages (for convenience) */
+  errors: string[];
+  /** Array of warning messages (non-blocking issues) */
+  warnings?: string[];
+}
+
+/**
+ * Options for the validate function.
+ */
+export interface ValidateOptions {
+  /**
+   * When true, returns detailed check-by-check results.
+   * When false or omitted, returns simplified ValidateResult.
+   */
+  detailed?: boolean;
 }
 
 // ============================================================================
@@ -258,10 +313,16 @@ export interface InstallOptions {
    * If aborted, throws `CancellationError`.
    */
   signal?: AbortSignal;
+
+  /**
+   * When true, returns detailed results with file lists and conflict info.
+   * When false or omitted, returns simplified InstallResult.
+   */
+  detailed?: boolean;
 }
 
 /**
- * Result of installing a skill.
+ * Result of installing a skill (simple mode).
  */
 export interface InstallResult {
   /**
@@ -284,6 +345,97 @@ export interface InstallResult {
    */
   dryRun: boolean;
 }
+
+/**
+ * Information about a file in an install package.
+ */
+export interface InstallFileInfo {
+  /** Relative path within the skill directory */
+  path: string;
+  /** Size of the file in bytes */
+  size: number;
+  /** Whether this entry is a directory */
+  isDirectory: boolean;
+}
+
+/**
+ * File comparison result for overwrite detection.
+ */
+export interface InstallFileComparison {
+  /** Relative path of the file */
+  path: string;
+  /** Whether the file exists in the target */
+  existsInTarget: boolean;
+  /** Size in the package */
+  packageSize: number;
+  /** Size in the target (if exists) */
+  targetSize?: number;
+  /** Whether the file would be modified */
+  wouldModify: boolean;
+}
+
+/**
+ * Successful installation result (detailed mode).
+ */
+export interface DetailedInstallSuccess {
+  /** Discriminant for type narrowing */
+  type: 'install-success';
+  /** Path where the skill was installed */
+  skillPath: string;
+  /** Name of the installed skill */
+  skillName: string;
+  /** Number of files installed */
+  fileCount: number;
+  /** Total size of installed files in bytes */
+  size: number;
+  /** Whether an existing skill was overwritten */
+  wasOverwritten: boolean;
+}
+
+/**
+ * Dry-run preview result (detailed mode).
+ */
+export interface DetailedInstallDryRunPreview {
+  /** Discriminant for type narrowing */
+  type: 'install-dry-run-preview';
+  /** Name of the skill to be installed */
+  skillName: string;
+  /** Target installation path */
+  targetPath: string;
+  /** Files that would be installed */
+  files: InstallFileInfo[];
+  /** Total size of all files in bytes */
+  totalSize: number;
+  /** Whether an existing skill would be overwritten */
+  wouldOverwrite: boolean;
+  /** Files that would conflict with existing files */
+  conflicts: string[];
+}
+
+/**
+ * Overwrite required result (detailed mode).
+ */
+export interface DetailedInstallOverwriteRequired {
+  /** Discriminant for type narrowing */
+  type: 'install-overwrite-required';
+  /** Name of the existing skill */
+  skillName: string;
+  /** Path to the existing skill */
+  existingPath: string;
+  /** File comparison details */
+  files: InstallFileComparison[];
+}
+
+/**
+ * Detailed result of installing a skill.
+ *
+ * Returned by `install()` when called with `{ detailed: true }`.
+ * Contains discriminated union result with full file information.
+ */
+export type DetailedInstallResult =
+  | DetailedInstallSuccess
+  | DetailedInstallDryRunPreview
+  | DetailedInstallOverwriteRequired;
 
 // ============================================================================
 // Update Types
@@ -337,10 +489,16 @@ export interface UpdateOptions {
    * If aborted, throws `CancellationError`.
    */
   signal?: AbortSignal;
+
+  /**
+   * When true, returns detailed results with version comparison info.
+   * When false or omitted, returns simplified UpdateResult.
+   */
+  detailed?: boolean;
 }
 
 /**
- * Result of updating a skill.
+ * Result of updating a skill (simple mode).
  */
 export interface UpdateResult {
   /**
@@ -368,6 +526,155 @@ export interface UpdateResult {
    */
   dryRun: boolean;
 }
+
+/**
+ * Information about a file change during update.
+ */
+export interface UpdateFileChange {
+  /** Relative path within the skill directory */
+  path: string;
+  /** Type of change */
+  changeType: 'added' | 'removed' | 'modified';
+  /** Size before update (0 for added files) */
+  sizeBefore: number;
+  /** Size after update (0 for removed files) */
+  sizeAfter: number;
+}
+
+/**
+ * Version information for update comparison.
+ */
+export interface UpdateVersionInfo {
+  /** Path to the skill or package */
+  path: string;
+  /** Number of files */
+  fileCount: number;
+  /** Total size in bytes */
+  size: number;
+  /** Last modified timestamp (ISO-8601) */
+  lastModified?: string;
+}
+
+/**
+ * Comparison of changes between versions.
+ */
+export interface UpdateVersionComparison {
+  /** Files added in new version */
+  filesAdded: UpdateFileChange[];
+  /** Files removed in new version */
+  filesRemoved: UpdateFileChange[];
+  /** Files modified in new version */
+  filesModified: UpdateFileChange[];
+  /** Net size change in bytes */
+  sizeChange: number;
+}
+
+/**
+ * Successful update result (detailed mode).
+ */
+export interface DetailedUpdateSuccess {
+  /** Discriminant for type narrowing */
+  type: 'update-success';
+  /** Name of the updated skill */
+  skillName: string;
+  /** Path where the skill is installed */
+  path: string;
+  /** File count before update */
+  previousFileCount: number;
+  /** File count after update */
+  currentFileCount: number;
+  /** Size in bytes before update */
+  previousSize: number;
+  /** Size in bytes after update */
+  currentSize: number;
+  /** Path to backup file (if created) */
+  backupPath?: string;
+  /** Whether the backup will be removed */
+  backupWillBeRemoved: boolean;
+}
+
+/**
+ * Dry-run preview result (detailed mode).
+ */
+export interface DetailedUpdateDryRunPreview {
+  /** Discriminant for type narrowing */
+  type: 'update-dry-run-preview';
+  /** Name of the skill being previewed */
+  skillName: string;
+  /** Path where the skill is installed */
+  path: string;
+  /** Current skill information */
+  currentVersion: UpdateVersionInfo;
+  /** New package information */
+  newVersion: UpdateVersionInfo;
+  /** Comparison of changes */
+  comparison: UpdateVersionComparison;
+  /** Path where backup would be created */
+  backupPath: string;
+}
+
+/**
+ * Rolled back result (detailed mode) - update failed but rollback succeeded.
+ */
+export interface DetailedUpdateRolledBack {
+  /** Discriminant for type narrowing */
+  type: 'update-rolled-back';
+  /** Name of the skill that was rolled back */
+  skillName: string;
+  /** Path where the skill is installed */
+  path: string;
+  /** Reason the update failed */
+  failureReason: string;
+  /** Path to backup file (kept for manual recovery) */
+  backupPath?: string;
+}
+
+/**
+ * Rollback failed result (detailed mode) - critical error state.
+ */
+export interface DetailedUpdateRollbackFailed {
+  /** Discriminant for type narrowing */
+  type: 'update-rollback-failed';
+  /** Name of the skill in broken state */
+  skillName: string;
+  /** Path where the skill was installed */
+  path: string;
+  /** Reason the update failed */
+  updateFailureReason: string;
+  /** Reason the rollback failed */
+  rollbackFailureReason: string;
+  /** Path to backup file (if available) */
+  backupPath?: string;
+  /** Manual recovery instructions */
+  recoveryInstructions: string;
+}
+
+/**
+ * Cancelled result (detailed mode).
+ */
+export interface DetailedUpdateCancelled {
+  /** Discriminant for type narrowing */
+  type: 'update-cancelled';
+  /** Name of the skill that was being updated */
+  skillName: string;
+  /** Reason for cancellation */
+  reason: 'user-cancelled' | 'interrupted';
+  /** Whether any cleanup was performed */
+  cleanupPerformed: boolean;
+}
+
+/**
+ * Detailed result of updating a skill.
+ *
+ * Returned by `update()` when called with `{ detailed: true }`.
+ * Contains discriminated union result with full version comparison.
+ */
+export type DetailedUpdateResult =
+  | DetailedUpdateSuccess
+  | DetailedUpdateDryRunPreview
+  | DetailedUpdateRolledBack
+  | DetailedUpdateRollbackFailed
+  | DetailedUpdateCancelled;
 
 // ============================================================================
 // Uninstall Types
@@ -411,10 +718,16 @@ export interface UninstallOptions {
    * If aborted, throws `CancellationError`.
    */
   signal?: AbortSignal;
+
+  /**
+   * When true, returns detailed results with file counts and bytes freed.
+   * When false or omitted, returns simplified UninstallResult.
+   */
+  detailed?: boolean;
 }
 
 /**
- * Result of uninstalling skills.
+ * Result of uninstalling skills (simple mode).
  */
 export interface UninstallResult {
   /**
@@ -430,6 +743,91 @@ export interface UninstallResult {
   /**
    * Whether this was a dry run (no changes made).
    */
+  dryRun: boolean;
+}
+
+/**
+ * Information about a file in a skill directory.
+ */
+export interface UninstallFileInfo {
+  /** Relative path within the skill directory */
+  relativePath: string;
+  /** Absolute path on the file system */
+  absolutePath: string;
+  /** File size in bytes */
+  size: number;
+  /** Whether this is a directory */
+  isDirectory: boolean;
+  /** Whether this is a symbolic link */
+  isSymlink: boolean;
+}
+
+/**
+ * Result of successfully uninstalling a single skill (detailed mode).
+ */
+export interface DetailedUninstallSuccess {
+  /** Discriminant for type narrowing */
+  type: 'success';
+  /** Name of the uninstalled skill */
+  skillName: string;
+  /** Path that was removed */
+  path: string;
+  /** Number of files removed */
+  filesRemoved: number;
+  /** Total bytes freed */
+  bytesFreed: number;
+}
+
+/**
+ * Result when a skill was not found (detailed mode).
+ */
+export interface DetailedUninstallNotFound {
+  /** Discriminant for type narrowing */
+  type: 'not-found';
+  /** Name of the skill that was not found */
+  skillName: string;
+  /** Path that was searched */
+  searchedPath: string;
+}
+
+/**
+ * Preview of what would be removed in dry-run mode (detailed mode).
+ */
+export interface DetailedUninstallDryRunPreview {
+  /** Discriminant for type narrowing */
+  type: 'dry-run-preview';
+  /** Skill name being previewed */
+  skillName: string;
+  /** Path that would be removed */
+  path: string;
+  /** List of files that would be removed */
+  files: UninstallFileInfo[];
+  /** Total size of all files */
+  totalSize: number;
+}
+
+/**
+ * Detailed result of uninstalling skills.
+ *
+ * Returned by `uninstall()` when called with `{ detailed: true }`.
+ * Contains per-skill results with file counts and bytes freed.
+ */
+export interface DetailedUninstallResult {
+  /** Results for each skill (success, not-found, or dry-run preview) */
+  results: (
+    | DetailedUninstallSuccess
+    | DetailedUninstallNotFound
+    | DetailedUninstallDryRunPreview
+  )[];
+  /** Total number of skills successfully removed */
+  totalRemoved: number;
+  /** Total number of skills not found */
+  totalNotFound: number;
+  /** Total files removed across all skills */
+  totalFilesRemoved: number;
+  /** Total bytes freed across all skills */
+  totalBytesFreed: number;
+  /** Whether this was a dry run (no changes made) */
   dryRun: boolean;
 }
 

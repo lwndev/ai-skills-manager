@@ -450,6 +450,20 @@ describe('Install Formatter', () => {
       expect(output).toContain('2 new files');
       expect(output).toContain('2 modified files');
     });
+
+    it('handles empty file list', () => {
+      const files: FileComparison[] = [];
+
+      const output = formatOverwritePrompt('my-skill', '/path', files);
+
+      expect(output).toContain('my-skill');
+      expect(output).toContain('already exists');
+      expect(output).toContain('Changes:');
+      // Should not contain file counts since all are 0
+      expect(output).not.toContain('new file');
+      expect(output).not.toContain('modified file');
+      expect(output).not.toContain('unchanged file');
+    });
   });
 
   describe('formatDryRunOutput edge cases', () => {

@@ -521,4 +521,167 @@ describe('install API function', () => {
       expect(content).toContain(newSkillName);
     });
   });
+
+  describe('detailed mode', () => {
+    it('returns DetailedInstallResult when detailed: true', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        detailed: true,
+      });
+
+      // Should have DetailedInstallResult properties
+      expect(result.type).toBe('install-success');
+      expect(result.skillName).toBeDefined();
+      if (result.type === 'install-success') {
+        expect(typeof result.fileCount).toBe('number');
+        expect(typeof result.size).toBe('number');
+      }
+    });
+
+    it('returns success result with file counts and size', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('install-success');
+      if (result.type === 'install-success') {
+        expect(result.skillName).toBe(skillName);
+        expect(result.skillPath).toContain(skillName);
+        expect(result.fileCount).toBeGreaterThan(0);
+        expect(result.size).toBeGreaterThan(0);
+        expect(result.wasOverwritten).toBe(false);
+      }
+    });
+
+    it('returns dry-run preview with file list', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        dryRun: true,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('install-dry-run-preview');
+      if (result.type === 'install-dry-run-preview') {
+        expect(result.skillName).toBe(skillName);
+        expect(result.targetPath).toBeDefined();
+        expect(Array.isArray(result.files)).toBe(true);
+        expect(result.files.length).toBeGreaterThan(0);
+        expect(typeof result.totalSize).toBe('number');
+        expect(typeof result.wouldOverwrite).toBe('boolean');
+        expect(Array.isArray(result.conflicts)).toBe(true);
+
+        // Each file should have the correct structure
+        const file = result.files[0];
+        expect(file.path).toBeDefined();
+        expect(typeof file.size).toBe('number');
+        expect(typeof file.isDirectory).toBe('boolean');
+      }
+    });
+
+    it('returns overwrite-required when skill exists without force', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      // Install first time
+      await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+      });
+
+      // Try to install again with detailed: true (no force)
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('install-overwrite-required');
+      if (result.type === 'install-overwrite-required') {
+        expect(result.skillName).toBe(skillName);
+        expect(result.existingPath).toBeDefined();
+        expect(Array.isArray(result.files)).toBe(true);
+
+        // Each file comparison should have the correct structure
+        if (result.files.length > 0) {
+          const file = result.files[0];
+          expect(file.path).toBeDefined();
+          expect(typeof file.existsInTarget).toBe('boolean');
+          expect(typeof file.packageSize).toBe('number');
+          expect(typeof file.wouldModify).toBe('boolean');
+        }
+      }
+    });
+
+    it('returns wasOverwritten: true when force overwriting', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      // Install first time
+      await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+      });
+
+      // Install again with force and detailed: true
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.type).toBe('install-success');
+      if (result.type === 'install-success') {
+        expect(result.wasOverwritten).toBe(true);
+      }
+    });
+
+    it('returns simple InstallResult when detailed is false', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+        detailed: false,
+      });
+
+      // Should have InstallResult properties
+      expect(result.installedPath).toBeDefined();
+      expect(result.skillName).toBeDefined();
+      expect(result.dryRun).toBe(false);
+
+      // Should NOT have DetailedInstallResult properties
+      expect((result as { type?: string }).type).toBeUndefined();
+      expect((result as { fileCount?: number }).fileCount).toBeUndefined();
+    });
+
+    it('returns simple InstallResult when detailed is not specified', async () => {
+      const targetDir = path.join(tempDir, 'install-target');
+      await fs.mkdir(targetDir, { recursive: true });
+
+      const result = await install({
+        file: validPackagePath,
+        targetPath: targetDir,
+      });
+
+      // Should have InstallResult properties
+      expect(result.installedPath).toBeDefined();
+      expect(result.skillName).toBeDefined();
+      expect(result.dryRun).toBe(false);
+    });
+  });
 });

@@ -445,6 +445,17 @@ describe('Uninstall Formatter', () => {
       expect(output).toContain('Security Error');
       expect(output).toContain('symlink pointing outside');
     });
+
+    it('formats unknown error type gracefully', () => {
+      // Test the default case for unknown error types
+      const err = {
+        type: 'unknown-error-type',
+      } as unknown as UninstallError;
+
+      const output = formatError(err, 'my-skill');
+
+      expect(output).toContain('Unknown error occurred');
+    });
   });
 
   describe('formatSecurityError', () => {
@@ -516,6 +527,21 @@ describe('Uninstall Formatter', () => {
       expect(output).toContain('Directory name case mismatch');
       expect(output).toContain('case-insensitive filesystems');
       expect(output).toContain('substitution attack');
+    });
+
+    it('formats unknown security error reason gracefully', () => {
+      // Test the default case for unknown security error reasons
+      const err = {
+        type: 'security-error' as const,
+        reason: 'unknown-reason' as 'symlink-escape', // Cast to bypass type check
+        details: 'Some unknown security issue',
+      };
+
+      const output = formatSecurityError(err);
+
+      expect(output).toContain('Security Error');
+      expect(output).toContain('unknown-reason');
+      expect(output).toContain('Some unknown security issue');
     });
   });
 

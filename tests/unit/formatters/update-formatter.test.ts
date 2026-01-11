@@ -98,6 +98,12 @@ describe('Update Formatter', () => {
       const output = formatUpdateProgress('complete');
       expect(output).toContain('Update complete');
     });
+
+    it('formats unknown stage with default message', () => {
+      // Test the default case for unknown stage types
+      const output = formatUpdateProgress('unknown-stage' as 'locating');
+      expect(output).toContain('Processing');
+    });
   });
 
   describe('formatCurrentVersion', () => {
@@ -231,6 +237,22 @@ describe('Update Formatter', () => {
       expect(output).toContain('modified');
       expect(output).toContain('-200 B');
     });
+
+    it('formats unknown change type gracefully', () => {
+      // Test the default case for unknown change types
+      const change = {
+        path: 'unknown-file.txt',
+        changeType: 'unknown' as 'added', // Cast to bypass type check
+        sizeBefore: 0,
+        sizeAfter: 0,
+        sizeDelta: 0,
+      };
+
+      const output = formatFileChangeLine(change);
+
+      expect(output).toContain('?');
+      expect(output).toContain('unknown-file.txt');
+    });
   });
 
   describe('formatChangeSummary', () => {
@@ -316,6 +338,54 @@ describe('Update Formatter', () => {
       expect(output).toContain('file0.md');
       expect(output).toContain('file9.md');
       expect(output).toContain('... and 5 more added files');
+    });
+
+    it('truncates modified files list when exceeding maxFiles', () => {
+      const comparison: VersionComparison = {
+        filesAdded: [],
+        filesModified: Array.from({ length: 15 }, (_, i) => ({
+          path: `modified${i}.md`,
+          changeType: 'modified' as const,
+          sizeBefore: 100,
+          sizeAfter: 200,
+          sizeDelta: 100,
+        })),
+        filesRemoved: [],
+        addedCount: 0,
+        removedCount: 0,
+        modifiedCount: 15,
+        sizeChange: 1500,
+      };
+
+      const output = formatChangeSummary(comparison, 10);
+
+      expect(output).toContain('modified0.md');
+      expect(output).toContain('modified9.md');
+      expect(output).toContain('... and 5 more modified files');
+    });
+
+    it('truncates removed files list when exceeding maxFiles', () => {
+      const comparison: VersionComparison = {
+        filesAdded: [],
+        filesModified: [],
+        filesRemoved: Array.from({ length: 12 }, (_, i) => ({
+          path: `removed${i}.md`,
+          changeType: 'removed' as const,
+          sizeBefore: 100,
+          sizeAfter: 0,
+          sizeDelta: -100,
+        })),
+        addedCount: 0,
+        removedCount: 12,
+        modifiedCount: 0,
+        sizeChange: -1200,
+      };
+
+      const output = formatChangeSummary(comparison, 10);
+
+      expect(output).toContain('removed0.md');
+      expect(output).toContain('removed9.md');
+      expect(output).toContain('... and 2 more removed files');
     });
   });
 
@@ -671,6 +741,46 @@ describe('Update Formatter', () => {
 
       expect(output).toContain('No file changes detected');
     });
+
+    it('truncates long file lists in dry-run output', () => {
+      const preview: UpdateDryRunPreview = {
+        type: 'update-dry-run-preview',
+        skillName: 'my-skill',
+        path: '.claude/skills/my-skill',
+        currentVersion: {
+          path: '.claude/skills/my-skill',
+          fileCount: 4,
+          size: 7800,
+        },
+        newVersion: {
+          path: './my-skill-v2.skill',
+          fileCount: 20,
+          size: 20000,
+        },
+        comparison: {
+          filesAdded: Array.from({ length: 15 }, (_, i) => ({
+            path: `new-file${i}.md`,
+            changeType: 'added' as const,
+            sizeBefore: 0,
+            sizeAfter: 100,
+            sizeDelta: 100,
+          })),
+          filesModified: [],
+          filesRemoved: [],
+          addedCount: 15,
+          removedCount: 0,
+          modifiedCount: 0,
+          sizeChange: 1500,
+        },
+        backupPath: '~/.asm/backups/my-skill.skill',
+      };
+
+      const output = formatDryRun(preview);
+
+      expect(output).toContain('new-file0.md');
+      expect(output).toContain('new-file9.md');
+      expect(output).toContain('... and 5 more added files');
+    });
   });
 
   describe('formatQuietOutput', () => {
@@ -877,6 +987,17 @@ describe('Update Formatter', () => {
       expect(output).toContain('Skill path: .claude/skills/my-skill');
       expect(output).toContain('Recovery');
       expect(output).toContain('exit code 7');
+    });
+
+    it('formats unknown error type gracefully', () => {
+      // Test the default case for unknown error types
+      const err = {
+        type: 'unknown-error-type',
+      } as unknown as UpdateError;
+
+      const output = formatError(err);
+
+      expect(output).toContain('Unknown error occurred');
     });
   });
 

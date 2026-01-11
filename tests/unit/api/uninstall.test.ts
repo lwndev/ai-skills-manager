@@ -582,4 +582,178 @@ describe('uninstall API function', () => {
       await expect(fs.stat(scaffoldResult.path)).rejects.toThrow();
     });
   });
+
+  describe('detailed mode', () => {
+    it('returns DetailedUninstallResult when detailed: true', async () => {
+      const skillName = 'detailed-test-skill';
+      await createTestSkill(skillName);
+
+      const result = await uninstall({
+        names: [skillName],
+        targetPath: skillsDir,
+        force: true,
+        detailed: true,
+      });
+
+      // Should have DetailedUninstallResult properties
+      expect(result.results).toBeDefined();
+      expect(Array.isArray(result.results)).toBe(true);
+      expect(typeof result.totalRemoved).toBe('number');
+      expect(typeof result.totalNotFound).toBe('number');
+      expect(typeof result.totalFilesRemoved).toBe('number');
+      expect(typeof result.totalBytesFreed).toBe('number');
+      expect(typeof result.dryRun).toBe('boolean');
+    });
+
+    it('returns success result with file counts and bytes freed', async () => {
+      const skillName = 'detailed-success-skill';
+      await createTestSkill(skillName);
+
+      const result = await uninstall({
+        names: [skillName],
+        targetPath: skillsDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+
+      expect(skillResult.type).toBe('success');
+      if (skillResult.type === 'success') {
+        expect(skillResult.skillName).toBe(skillName);
+        expect(skillResult.path).toContain(skillName);
+        expect(skillResult.filesRemoved).toBeGreaterThan(0);
+        expect(skillResult.bytesFreed).toBeGreaterThan(0);
+      }
+    });
+
+    it('returns not-found result for missing skill', async () => {
+      const result = await uninstall({
+        names: ['nonexistent-skill'],
+        targetPath: skillsDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+
+      expect(skillResult.type).toBe('not-found');
+      if (skillResult.type === 'not-found') {
+        expect(skillResult.skillName).toBe('nonexistent-skill');
+        expect(skillResult.searchedPath).toBeDefined();
+      }
+    });
+
+    it('returns dry-run preview with file list', async () => {
+      const skillName = 'dry-run-preview-skill';
+      await createTestSkill(skillName);
+
+      const result = await uninstall({
+        names: [skillName],
+        targetPath: skillsDir,
+        dryRun: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+
+      expect(skillResult.type).toBe('dry-run-preview');
+      if (skillResult.type === 'dry-run-preview') {
+        expect(skillResult.skillName).toBe(skillName);
+        expect(Array.isArray(skillResult.files)).toBe(true);
+        expect(skillResult.files.length).toBeGreaterThan(0);
+        expect(skillResult.totalSize).toBeGreaterThan(0);
+
+        // Each file should have the correct structure
+        const file = skillResult.files[0];
+        expect(file.relativePath).toBeDefined();
+        expect(file.absolutePath).toBeDefined();
+        expect(typeof file.size).toBe('number');
+        expect(typeof file.isDirectory).toBe('boolean');
+        expect(typeof file.isSymlink).toBe('boolean');
+      }
+    });
+
+    it('aggregates totals across multiple skills', async () => {
+      const skill1 = 'multi-skill-a';
+      const skill2 = 'multi-skill-b';
+      await createTestSkill(skill1);
+      await createTestSkill(skill2);
+
+      const result = await uninstall({
+        names: [skill1, skill2],
+        targetPath: skillsDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(2);
+      expect(result.totalRemoved).toBe(2);
+      expect(result.totalNotFound).toBe(0);
+      expect(result.totalFilesRemoved).toBeGreaterThan(0);
+      expect(result.totalBytesFreed).toBeGreaterThan(0);
+    });
+
+    it('handles mixed results (some found, some not)', async () => {
+      const existingSkill = 'mixed-existing';
+      await createTestSkill(existingSkill);
+
+      const result = await uninstall({
+        names: [existingSkill, 'nonexistent-mixed'],
+        targetPath: skillsDir,
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(2);
+      expect(result.totalRemoved).toBe(1);
+      expect(result.totalNotFound).toBe(1);
+
+      // Find each result by type
+      const successResults = result.results.filter((r) => r.type === 'success');
+      const notFoundResults = result.results.filter((r) => r.type === 'not-found');
+
+      expect(successResults).toHaveLength(1);
+      expect(notFoundResults).toHaveLength(1);
+    });
+
+    it('returns simple UninstallResult when detailed is false', async () => {
+      const skillName = 'simple-mode-skill';
+      await createTestSkill(skillName);
+
+      const result = await uninstall({
+        names: [skillName],
+        targetPath: skillsDir,
+        force: true,
+        detailed: false,
+      });
+
+      // Should have UninstallResult properties
+      expect(result.removed).toBeDefined();
+      expect(result.notFound).toBeDefined();
+      expect(result.dryRun).toBe(false);
+
+      // Should NOT have DetailedUninstallResult properties
+      expect((result as { results?: unknown }).results).toBeUndefined();
+      expect((result as { totalFilesRemoved?: unknown }).totalFilesRemoved).toBeUndefined();
+    });
+
+    it('returns simple UninstallResult when detailed is not specified', async () => {
+      const skillName = 'default-mode-skill';
+      await createTestSkill(skillName);
+
+      const result = await uninstall({
+        names: [skillName],
+        targetPath: skillsDir,
+        force: true,
+      });
+
+      // Should have UninstallResult properties
+      expect(result.removed).toBeDefined();
+      expect(result.notFound).toBeDefined();
+    });
+  });
 });
