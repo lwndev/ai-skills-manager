@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Skills Manager (ASM) is a TypeScript CLI tool for managing Claude Code Agent Skills. It enables creating, testing, distributing, installing, updating, and removing skills for the Claude Code skills system.
 
+> **Note:** The project-level skills previously bundled in `.claude/skills/` have been migrated to a public repository at https://github.com/lwndev/lwndev-agent-skills. Install them from there for personal use (`~/.claude/skills/`) or project use.
+
 ## Development Commands
 
 ```bash
