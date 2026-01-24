@@ -34,6 +34,10 @@ const CHECK_TO_CODE: Record<CheckName, string> = {
   descriptionFormat: 'INVALID_DESCRIPTION_FORMAT',
   compatibilityFormat: 'INVALID_COMPATIBILITY_FORMAT',
   nameMatchesDirectory: 'NAME_DIRECTORY_MISMATCH',
+  contextFormat: 'INVALID_CONTEXT_FORMAT',
+  agentFormat: 'INVALID_AGENT_FORMAT',
+  hooksFormat: 'INVALID_HOOKS_FORMAT',
+  userInvocableFormat: 'INVALID_USER_INVOCABLE_FORMAT',
 };
 
 /**

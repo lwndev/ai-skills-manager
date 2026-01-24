@@ -14,6 +14,10 @@ import { validateName } from '../validators/name';
 import { validateDescription } from '../validators/description';
 import { validateCompatibility } from '../validators/compatibility';
 import { validateDirectoryName } from '../validators/directory-name';
+import { validateContext } from '../validators/context';
+import { validateAgent } from '../validators/agent';
+import { validateHooks } from '../validators/hooks';
+import { validateUserInvocable } from '../validators/user-invocable';
 import { analyzeFileSize } from '../analyzers/file-size';
 
 /**
@@ -29,6 +33,10 @@ function initializeChecks(): Record<CheckName, { passed: boolean; error?: string
     descriptionFormat: { passed: false },
     compatibilityFormat: { passed: false },
     nameMatchesDirectory: { passed: false },
+    contextFormat: { passed: false },
+    agentFormat: { passed: false },
+    hooksFormat: { passed: false },
+    userInvocableFormat: { passed: false },
   };
 }
 
@@ -157,7 +165,41 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     error: compatResult.error,
   };
 
-  // Step 8: Name matches directory check
+  // Step 8: Context format check (Claude Code 2.1.x)
+  // Validates the optional context field (must be "fork" if present)
+  const contextResult = validateContext(frontmatter.context);
+  checks.contextFormat = {
+    passed: contextResult.valid,
+    error: contextResult.error,
+  };
+
+  // Step 9: Agent format check (Claude Code 2.1.x)
+  // Validates the optional agent field (must be non-empty string if present)
+  const agentResult = validateAgent(frontmatter.agent);
+  checks.agentFormat = {
+    passed: agentResult.valid,
+    error: agentResult.error,
+  };
+
+  // Step 10: Hooks format check (Claude Code 2.1.x)
+  // Validates the optional hooks field and collects warnings for unknown keys
+  const hooksResult = validateHooks(frontmatter.hooks);
+  checks.hooksFormat = {
+    passed: hooksResult.valid,
+    error: hooksResult.valid ? undefined : hooksResult.error,
+  };
+  // Collect warnings from hooks validation
+  const hooksWarnings = hooksResult.valid && hooksResult.warnings ? hooksResult.warnings : [];
+
+  // Step 11: User-invocable format check (Claude Code 2.1.x)
+  // Validates the optional user-invocable field (must be boolean if present)
+  const userInvocableResult = validateUserInvocable(frontmatter['user-invocable']);
+  checks.userInvocableFormat = {
+    passed: userInvocableResult.valid,
+    error: userInvocableResult.error,
+  };
+
+  // Step 12: Name matches directory check
   // Validates that frontmatter name matches parent directory name
   if (
     typeof frontmatter.name === 'string' &&
@@ -175,10 +217,10 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     checks.nameMatchesDirectory = { passed: true };
   }
 
-  // Step 9: File size analysis (generates warnings, not errors)
+  // Step 13: File size analysis (generates warnings, not errors)
   // Analyze body content for size recommendations
   const fileSizeAnalysis = analyzeFileSize(parseResult.body || '');
-  const warnings = fileSizeAnalysis.warnings;
+  const warnings = [...hooksWarnings, ...fileSizeAnalysis.warnings];
 
   return buildResult(
     fileResult.resolvedPath || skillPath,

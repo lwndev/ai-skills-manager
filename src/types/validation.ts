@@ -13,7 +13,11 @@ export type CheckName =
   | 'nameFormat'
   | 'descriptionFormat'
   | 'compatibilityFormat'
-  | 'nameMatchesDirectory';
+  | 'nameMatchesDirectory'
+  | 'contextFormat'
+  | 'agentFormat'
+  | 'hooksFormat'
+  | 'userInvocableFormat';
 
 /**
  * Result of a single validation check

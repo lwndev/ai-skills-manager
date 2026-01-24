@@ -24,6 +24,10 @@ describe('validate formatters', () => {
       descriptionFormat: { passed: true },
       compatibilityFormat: { passed: true },
       nameMatchesDirectory: { passed: true },
+      contextFormat: { passed: true },
+      agentFormat: { passed: true },
+      hooksFormat: { passed: true },
+      userInvocableFormat: { passed: true },
     },
     errors: [],
     warnings: [],
@@ -45,6 +49,10 @@ describe('validate formatters', () => {
       descriptionFormat: { passed: true },
       compatibilityFormat: { passed: true },
       nameMatchesDirectory: { passed: true },
+      contextFormat: { passed: true },
+      agentFormat: { passed: true },
+      hooksFormat: { passed: true },
+      userInvocableFormat: { passed: true },
     },
     errors: [
       'Unknown property: invalid-prop',
@@ -65,6 +73,10 @@ describe('validate formatters', () => {
       descriptionFormat: { passed: false },
       compatibilityFormat: { passed: false },
       nameMatchesDirectory: { passed: false },
+      contextFormat: { passed: false },
+      agentFormat: { passed: false },
+      hooksFormat: { passed: false },
+      userInvocableFormat: { passed: false },
     },
     errors: ['SKILL.md not found at /path/to/missing'],
     warnings: [],
@@ -129,6 +141,10 @@ describe('validate formatters', () => {
           descriptionFormat: { passed: true },
           compatibilityFormat: { passed: true },
           nameMatchesDirectory: { passed: true },
+          contextFormat: { passed: true },
+          agentFormat: { passed: true },
+          hooksFormat: { passed: true },
+          userInvocableFormat: { passed: true },
         },
         errors: ['Invalid YAML syntax', 'Missing required field: name'],
         warnings: [],
@@ -156,6 +172,10 @@ describe('validate formatters', () => {
           descriptionFormat: { passed: true },
           compatibilityFormat: { passed: true },
           nameMatchesDirectory: { passed: true },
+          contextFormat: { passed: true },
+          agentFormat: { passed: true },
+          hooksFormat: { passed: true },
+          userInvocableFormat: { passed: true },
         },
         errors: [],
         warnings: ['Content size exceeds 50KB', 'Consider splitting into smaller files'],
@@ -241,6 +261,10 @@ describe('validate formatters', () => {
       expect(parsed.checks).toHaveProperty('descriptionFormat');
       expect(parsed.checks).toHaveProperty('compatibilityFormat');
       expect(parsed.checks).toHaveProperty('nameMatchesDirectory');
+      expect(parsed.checks).toHaveProperty('contextFormat');
+      expect(parsed.checks).toHaveProperty('agentFormat');
+      expect(parsed.checks).toHaveProperty('hooksFormat');
+      expect(parsed.checks).toHaveProperty('userInvocableFormat');
     });
   });
 

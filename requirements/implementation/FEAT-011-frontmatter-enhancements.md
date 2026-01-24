@@ -10,7 +10,7 @@ The work is organized into three phases: type system updates, field validators, 
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-011 | [#33](https://github.com/lwndev/ai-skills-manager/issues/33), [#35](https://github.com/lwndev/ai-skills-manager/issues/35) | [FEAT-011-frontmatter-enhancements.md](../features/FEAT-011-frontmatter-enhancements.md) | High | Medium | Pending |
+| FEAT-011 | [#33](https://github.com/lwndev/ai-skills-manager/issues/33), [#35](https://github.com/lwndev/ai-skills-manager/issues/35) | [FEAT-011-frontmatter-enhancements.md](../features/FEAT-011-frontmatter-enhancements.md) | High | Medium | ✅ Complete |
 
 ## Recommended Build Sequence
 
@@ -116,7 +116,7 @@ The work is organized into three phases: type system updates, field validators, 
 
 ### Phase 3: Validation Pipeline Integration
 **Feature:** [FEAT-011](../features/FEAT-011-frontmatter-enhancements.md) | [#33](https://github.com/lwndev/ai-skills-manager/issues/33), [#35](https://github.com/lwndev/ai-skills-manager/issues/35)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Validators are complete and tested, ready for integration
@@ -145,10 +145,10 @@ The work is organized into three phases: type system updates, field validators, 
 4. Run `npm run quality` to verify all tests pass and no regressions
 
 #### Deliverables
-- [ ] `src/generators/validate.ts` - Integrated new validators
-- [ ] `tests/generators/validate.test.ts` - Integration tests for new fields
-- [ ] All existing tests continue to pass
-- [ ] `npm run quality` passes
+- [x] `src/generators/validate.ts` - Integrated new validators
+- [x] `tests/unit/generators/validate.test.ts` - Integration tests for new fields
+- [x] All existing tests continue to pass
+- [x] `npm run quality` passes
 
 ---
 
@@ -214,24 +214,24 @@ export type HooksValidationResult =
 ## Success Criteria
 
 ### Per-Feature Criteria (from Requirements)
-- [ ] `context` field accepted and validated (must be "fork" if present)
-- [ ] `agent` field accepted and validated (non-empty string)
-- [ ] `hooks` field accepted and validated (object with known hook keys)
-- [ ] `user-invocable` field accepted and validated (boolean)
-- [ ] Unknown hook keys produce warnings, not errors
-- [ ] YAML list format for `allowed-tools` is parsed correctly
-- [ ] Inline format for `allowed-tools` continues to work
-- [ ] `ParsedFrontmatter` type updated with new fields
-- [ ] `ALLOWED_KEYS` set updated in frontmatter validator
-- [ ] Error messages are clear and actionable
-- [ ] All existing tests continue to pass
-- [ ] New unit tests for each new field
-- [ ] Integration tests for full validation workflow
+- [x] `context` field accepted and validated (must be "fork" if present)
+- [x] `agent` field accepted and validated (non-empty string)
+- [x] `hooks` field accepted and validated (object with known hook keys)
+- [x] `user-invocable` field accepted and validated (boolean)
+- [x] Unknown hook keys produce warnings, not errors
+- [x] YAML list format for `allowed-tools` is parsed correctly
+- [x] Inline format for `allowed-tools` continues to work
+- [x] `ParsedFrontmatter` type updated with new fields
+- [x] `ALLOWED_KEYS` set updated in frontmatter validator
+- [x] Error messages are clear and actionable
+- [x] All existing tests continue to pass
+- [x] New unit tests for each new field
+- [x] Integration tests for full validation workflow
 
 ### Overall Success
-- `npm run quality` passes
-- No breaking changes to existing validation behavior
-- New fields validate according to Claude Code 2.1.x specification
+- [x] `npm run quality` passes
+- [x] No breaking changes to existing validation behavior
+- [x] New fields validate according to Claude Code 2.1.x specification
 
 ## Code Organization
 
