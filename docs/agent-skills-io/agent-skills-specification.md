@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://agentskills.io/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # Specification
 
 > The complete format specification for Agent Skills.
@@ -248,8 +252,3 @@ skills-ref validate ./my-skill
 ```
 
 This checks that your `SKILL.md` frontmatter is valid and follows all naming conventions.
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://agentskills.io/llms.txt
