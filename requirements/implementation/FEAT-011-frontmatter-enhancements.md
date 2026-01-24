@@ -58,7 +58,7 @@ The work is organized into three phases: type system updates, field validators, 
 
 ### Phase 2: Field Validators
 **Feature:** [FEAT-011](../features/FEAT-011-frontmatter-enhancements.md) | [#33](https://github.com/lwndev/ai-skills-manager/issues/33)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - With types in place, validators can be implemented with full type safety
@@ -103,14 +103,14 @@ The work is organized into three phases: type system updates, field validators, 
    - Error message content verification
 
 #### Deliverables
-- [ ] `src/validators/context.ts` - Context field validator
-- [ ] `src/validators/agent.ts` - Agent field validator
-- [ ] `src/validators/hooks.ts` - Hooks field validator with warning support
-- [ ] `src/validators/user-invocable.ts` - User-invocable field validator
-- [ ] `tests/validators/context.test.ts` - Context validator tests
-- [ ] `tests/validators/agent.test.ts` - Agent validator tests
-- [ ] `tests/validators/hooks.test.ts` - Hooks validator tests
-- [ ] `tests/validators/user-invocable.test.ts` - User-invocable validator tests
+- [x] `src/validators/context.ts` - Context field validator
+- [x] `src/validators/agent.ts` - Agent field validator
+- [x] `src/validators/hooks.ts` - Hooks field validator with warning support
+- [x] `src/validators/user-invocable.ts` - User-invocable field validator
+- [x] `tests/unit/validators/context.test.ts` - Context validator tests
+- [x] `tests/unit/validators/agent.test.ts` - Agent validator tests
+- [x] `tests/unit/validators/hooks.test.ts` - Hooks validator tests
+- [x] `tests/unit/validators/user-invocable.test.ts` - User-invocable validator tests
 
 ---
 
