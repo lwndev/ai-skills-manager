@@ -889,4 +889,33 @@ export interface InstalledSkill {
    * Description of the skill (from SKILL.md frontmatter).
    */
   description?: string;
+
+  /**
+   * Relative path from the project root for nested skills.
+   * Only populated when discovered via recursive scanning.
+   * Example: `packages/api/.claude/skills/my-skill`
+   */
+  location?: string;
+}
+
+/**
+ * Options for listing installed skills with recursive discovery.
+ * Extends ListOptions with options for nested directory scanning.
+ */
+export interface RecursiveListOptions extends ListOptions {
+  /**
+   * Enable nested directory discovery.
+   * When true, scans subdirectories for `.claude/skills` directories.
+   * Only applies to project scope (personal scope is never recursively scanned).
+   * Defaults to `false`.
+   */
+  recursive?: boolean;
+
+  /**
+   * Maximum depth to traverse when scanning nested directories.
+   * A depth of 0 means only scan the root `.claude/skills`.
+   * A depth of 1 means scan immediate subdirectories, etc.
+   * Defaults to `3`.
+   */
+  depth?: number;
 }
