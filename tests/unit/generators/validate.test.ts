@@ -497,6 +497,10 @@ Content.
         'descriptionFormat',
         'compatibilityFormat',
         'nameMatchesDirectory',
+        'contextFormat',
+        'agentFormat',
+        'hooksFormat',
+        'userInvocableFormat',
       ]);
     });
 
@@ -513,6 +517,383 @@ Content.
 
       expect(path.isAbsolute(result.skillPath)).toBe(true);
       expect(result.skillPath).toContain('SKILL.md');
+    });
+  });
+
+  describe('Claude Code 2.1.x fields', () => {
+    describe('context field', () => {
+      it('validates skill with context: fork', async () => {
+        const skillPath = await createSkill(`---
+name: context-skill
+description: Skill with context field
+context: fork
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.contextFormat.passed).toBe(true);
+      });
+
+      it('fails when context has invalid value', async () => {
+        const skillPath = await createSkill(`---
+name: invalid-context
+description: Skill with invalid context
+context: something-else
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.contextFormat.passed).toBe(false);
+        expect(result.checks.contextFormat.error).toContain('must be "fork"');
+      });
+
+      it('passes when context is absent', async () => {
+        const skillPath = await createSkill(`---
+name: no-context
+description: Skill without context field
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.checks.contextFormat.passed).toBe(true);
+      });
+    });
+
+    describe('agent field', () => {
+      it('validates skill with agent field', async () => {
+        const skillPath = await createSkill(`---
+name: agent-skill
+description: Skill with agent field
+agent: my-custom-agent
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.agentFormat.passed).toBe(true);
+      });
+
+      it('fails when agent is empty string', async () => {
+        const skillPath = await createSkill(`---
+name: empty-agent
+description: Skill with empty agent
+agent: ""
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.agentFormat.passed).toBe(false);
+        expect(result.checks.agentFormat.error).toContain('non-empty string');
+      });
+
+      it('fails when agent is not a string', async () => {
+        const skillPath = await createSkill(`---
+name: number-agent
+description: Skill with number agent
+agent: 123
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.agentFormat.passed).toBe(false);
+      });
+    });
+
+    describe('hooks field', () => {
+      it('validates skill with valid hooks', async () => {
+        const skillPath = await createSkill(`---
+name: hooks-skill
+description: Skill with hooks field
+hooks:
+  PreToolUse: echo "before"
+  PostToolUse:
+    - echo "after1"
+    - echo "after2"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+      });
+
+      it('validates skill with Stop hook', async () => {
+        const skillPath = await createSkill(`---
+name: stop-hook-skill
+description: Skill with Stop hook
+hooks:
+  Stop: cleanup.sh
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+      });
+
+      it('generates warning for unknown hook keys', async () => {
+        const skillPath = await createSkill(`---
+name: unknown-hooks
+description: Skill with unknown hooks
+hooks:
+  PreToolUse: echo "valid"
+  CustomHook: echo "unknown"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings?.some((w) => w.includes('Unknown hook'))).toBe(true);
+        expect(result.warnings?.some((w) => w.includes('CustomHook'))).toBe(true);
+      });
+
+      it('fails when hooks is not an object', async () => {
+        const skillPath = await createSkill(`---
+name: invalid-hooks
+description: Skill with invalid hooks type
+hooks: not-an-object
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.hooksFormat.passed).toBe(false);
+        expect(result.checks.hooksFormat.error).toContain('must be an object');
+      });
+
+      it('fails when hooks is an array', async () => {
+        const skillPath = await createSkill(`---
+name: array-hooks
+description: Skill with array hooks
+hooks:
+  - PreToolUse
+  - PostToolUse
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.hooksFormat.passed).toBe(false);
+        expect(result.checks.hooksFormat.error).toContain('must be an object');
+      });
+
+      it('fails when hook value is not string or array', async () => {
+        const skillPath = await createSkill(`---
+name: bad-hook-value
+description: Skill with bad hook value
+hooks:
+  PreToolUse:
+    nested: object
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.hooksFormat.passed).toBe(false);
+        expect(result.checks.hooksFormat.error).toContain('string or array of strings');
+      });
+    });
+
+    describe('user-invocable field', () => {
+      it('validates skill with user-invocable: true', async () => {
+        const skillPath = await createSkill(`---
+name: invocable-skill
+description: User-invocable skill
+user-invocable: true
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.userInvocableFormat.passed).toBe(true);
+      });
+
+      it('validates skill with user-invocable: false', async () => {
+        const skillPath = await createSkill(`---
+name: non-invocable
+description: Non-user-invocable skill
+user-invocable: false
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.userInvocableFormat.passed).toBe(true);
+      });
+
+      it('fails when user-invocable is string "true"', async () => {
+        const skillPath = await createSkill(`---
+name: string-invocable
+description: String boolean skill
+user-invocable: "true"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.userInvocableFormat.passed).toBe(false);
+        expect(result.checks.userInvocableFormat.error).toContain('must be a boolean');
+      });
+
+      it('fails when user-invocable is a number', async () => {
+        const skillPath = await createSkill(`---
+name: number-invocable
+description: Number value skill
+user-invocable: 1
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.userInvocableFormat.passed).toBe(false);
+      });
+    });
+
+    describe('combined Claude Code 2.1.x fields', () => {
+      it('validates skill with all new fields present and valid', async () => {
+        const skillPath = await createSkill(`---
+name: complete-21x-skill
+description: Skill with all Claude Code 2.1.x fields
+context: fork
+agent: custom-agent
+hooks:
+  PreToolUse: before.sh
+  PostToolUse:
+    - after1.sh
+    - after2.sh
+  Stop: cleanup.sh
+user-invocable: true
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.contextFormat.passed).toBe(true);
+        expect(result.checks.agentFormat.passed).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+        expect(result.checks.userInvocableFormat.passed).toBe(true);
+      });
+
+      it('validates skill with subset of new fields', async () => {
+        const skillPath = await createSkill(`---
+name: partial-21x-skill
+description: Skill with some Claude Code 2.1.x fields
+user-invocable: true
+hooks:
+  PreToolUse: setup.sh
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.contextFormat.passed).toBe(true);
+        expect(result.checks.agentFormat.passed).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+        expect(result.checks.userInvocableFormat.passed).toBe(true);
+      });
+
+      it('validates backward compatibility with no new fields', async () => {
+        const skillPath = await createSkill(`---
+name: legacy-skill
+description: Skill without any 2.1.x fields
+license: MIT
+allowed-tools:
+  - Read
+  - Write
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.contextFormat.passed).toBe(true);
+        expect(result.checks.agentFormat.passed).toBe(true);
+        expect(result.checks.hooksFormat.passed).toBe(true);
+        expect(result.checks.userInvocableFormat.passed).toBe(true);
+      });
+
+      it('reports multiple errors for multiple invalid new fields', async () => {
+        const skillPath = await createSkill(`---
+name: multi-error-skill
+description: Skill with multiple invalid 2.1.x fields
+context: invalid
+agent: ""
+user-invocable: "yes"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.contextFormat.passed).toBe(false);
+        expect(result.checks.agentFormat.passed).toBe(false);
+        expect(result.checks.userInvocableFormat.passed).toBe(false);
+        expect(result.errors.length).toBeGreaterThanOrEqual(3);
+      });
     });
   });
 });

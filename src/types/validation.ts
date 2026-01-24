@@ -13,7 +13,11 @@ export type CheckName =
   | 'nameFormat'
   | 'descriptionFormat'
   | 'compatibilityFormat'
-  | 'nameMatchesDirectory';
+  | 'nameMatchesDirectory'
+  | 'contextFormat'
+  | 'agentFormat'
+  | 'hooksFormat'
+  | 'userInvocableFormat';
 
 /**
  * Result of a single validation check
@@ -46,6 +50,16 @@ export interface ValidationResult {
 }
 
 /**
+ * Hook configuration for skill execution events
+ */
+export interface HooksConfig {
+  PreToolUse?: string | string[];
+  PostToolUse?: string | string[];
+  Stop?: string | string[];
+  [key: string]: string | string[] | undefined;
+}
+
+/**
  * Parsed frontmatter data from SKILL.md
  */
 export interface ParsedFrontmatter {
@@ -55,6 +69,11 @@ export interface ParsedFrontmatter {
   compatibility?: string;
   'allowed-tools'?: string[];
   metadata?: Record<string, unknown>;
+  // Claude Code 2.1.x fields
+  context?: 'fork';
+  agent?: string;
+  hooks?: HooksConfig;
+  'user-invocable'?: boolean;
   [key: string]: unknown;
 }
 

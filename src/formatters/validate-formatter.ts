@@ -22,6 +22,10 @@ const CHECK_NAMES: Record<ValidationCheckName, string> = {
   descriptionFormat: 'Description format',
   compatibilityFormat: 'Compatibility format',
   nameMatchesDirectory: 'Name matches directory',
+  contextFormat: 'Context format',
+  agentFormat: 'Agent format',
+  hooksFormat: 'Hooks format',
+  userInvocableFormat: 'User-invocable format',
 };
 
 /**
@@ -49,6 +53,10 @@ export function formatNormal(result: DetailedValidateResult): string {
     'nameFormat',
     'descriptionFormat',
     'compatibilityFormat',
+    'contextFormat',
+    'agentFormat',
+    'hooksFormat',
+    'userInvocableFormat',
     'nameMatchesDirectory',
   ];
 
