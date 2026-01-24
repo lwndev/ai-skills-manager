@@ -61,22 +61,27 @@ Code is considered complete and functional only when `npm run quality` passes.
 
 ## Skills Reference Material
 
-- Agent Skills Overview: 
-  - Description: "Agent Skills are modular capabilities that extend Claude's functionality. Each Skill packages instructions, metadata, and optional resources (scripts, templates) that Claude uses automatically when relevant."
-  - Local copy: `docs/anthropic/skills/documentation/agent-skills-overview-20251229.md` 
-  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
-- Agent Quickstart: 
-  - Description: "Learn how to use Agent Skills to create documents with the Claude API in under 10 minutes."
-  - Local copy: `docs/anthropic/skills/documentation/agent-skills-quickstart-20251229.md` 
-  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart) 
-- Agent Best Practices:
-  - "Learn how to write effective Skills that Claude can discover and use successfully."
-  - Local copy: `docs/anthropic/skills/documentation/agent-skills-best-practices-20251229.md`
-  - [Maintained by Anthopic here:](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) 
-- Agent Skills Spec: 
-  - "The complete format specification for Agent Skills."
-  - Local copy: `docs/anthropic/skills/documentation/agent-skills-specification.md`
-  - [Open Source Documentation here:](https://agentskills.io/specification)
+Skills documentation is split between two sources:
+
+### Anthropic's Official Documentation (`docs/anthropic/skills/`)
+
+Anthropic's documentation covers Claude Code's implementation of skills:
+
+- **Agent Skills Overview** - `agent-skills-overview-20251229.md`
+  - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
+- **Agent Skills Quickstart** - `agent-skills-quickstart-20251229.md`
+  - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart)
+- **Agent Skills Best Practices** - `agent-skills-best-practices-20251229.md`
+  - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+
+### Open Source Agent Skills Specification (`docs/agent-skills-io/`)
+
+The open source specification from [agentskills.io](https://agentskills.io) defines a vendor-neutral format:
+
+- **Agent Skills Overview** - `agent-skills-oveview.md`
+- **What Are Skills** - `agent-skills-what-are-skills.md`
+- **Agent Skills Specification** - `agent-skills-specification.md`
+  - [Source](https://agentskills.io/specification)
 
 ## Code Style Guidelines
 
