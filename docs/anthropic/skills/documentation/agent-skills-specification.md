@@ -43,14 +43,37 @@ metadata:
 ---
 ```
 
-| Field           | Required | Constraints                                                                                                       |
-| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
-| `name`          | Yes      | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen.             |
-| `description`   | Yes      | Max 1024 characters. Non-empty. Describes what the skill does and when to use it.                                 |
-| `license`       | No       | License name or reference to a bundled license file.                                                              |
-| `compatibility` | No       | Max 500 characters. Indicates environment requirements (intended product, system packages, network access, etc.). |
-| `metadata`      | No       | Arbitrary key-value mapping for additional metadata.                                                              |
-| `allowed-tools` | No       | Space-delimited list of pre-approved tools the skill may use. (Experimental)                                      |
+With Claude Code 2.1.x fields:
+
+```yaml  theme={null}
+---
+name: code-review
+description: Performs automated code review with pre-commit hooks.
+context: fork
+agent: review-agent
+hooks:
+  PreToolUse: "npm run lint"
+  Stop: "./scripts/cleanup.sh"
+user-invocable: true
+allowed-tools:
+  - Read
+  - Grep
+  - Bash(git:*)
+---
+```
+
+| Field            | Required | Constraints                                                                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `name`           | Yes      | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen.             |
+| `description`    | Yes      | Max 1024 characters. Non-empty. Describes what the skill does and when to use it.                                 |
+| `license`        | No       | License name or reference to a bundled license file.                                                              |
+| `compatibility`  | No       | Max 500 characters. Indicates environment requirements (intended product, system packages, network access, etc.). |
+| `metadata`       | No       | Arbitrary key-value mapping for additional metadata.                                                              |
+| `allowed-tools`  | No       | Space-delimited list or YAML array of pre-approved tools the skill may use. (Experimental)                        |
+| `context`        | No       | Must be `"fork"` if specified. Runs skill in a forked sub-agent context. (Claude Code 2.1.x)                      |
+| `agent`          | No       | Non-empty string specifying agent type for execution. (Claude Code 2.1.x)                                         |
+| `hooks`          | No       | Object defining lifecycle hooks (PreToolUse, PostToolUse, Stop). (Claude Code 2.1.x)                              |
+| `user-invocable` | No       | Boolean controlling visibility in slash command menu. Default: `true`. (Claude Code 2.1.x)                        |
 
 #### `name` field
 
@@ -165,13 +188,88 @@ metadata:
 
 The optional `allowed-tools` field:
 
-* A space-delimited list of tools that are pre-approved to run
+* A list of tools that are pre-approved to run
+* Can be specified as a space-delimited string or a YAML array
 * Experimental. Support for this field may vary between agent implementations
+
+Examples:
+
+Inline format:
+
+```yaml  theme={null}
+allowed-tools: Bash(git:*) Bash(jq:*) Read
+```
+
+YAML list format:
+
+```yaml  theme={null}
+allowed-tools:
+  - Read
+  - Write
+  - Bash(git:*)
+```
+
+#### `context` field
+
+The optional `context` field (Claude Code 2.1.x):
+
+* Must be exactly `"fork"` if specified
+* When set to `"fork"`, the skill runs in a forked sub-agent context
+* Useful for skills that need isolated execution
 
 Example:
 
 ```yaml  theme={null}
-allowed-tools: Bash(git:*) Bash(jq:*) Read
+context: fork
+```
+
+#### `agent` field
+
+The optional `agent` field (Claude Code 2.1.x):
+
+* Must be a non-empty string if specified
+* Specifies the agent type for skill execution
+* No format constraints on the agent name (defers to Claude Code)
+
+Example:
+
+```yaml  theme={null}
+agent: code-review
+```
+
+#### `hooks` field
+
+The optional `hooks` field (Claude Code 2.1.x):
+
+* Must be an object if specified
+* Defines lifecycle hooks that execute at specific points
+* Allowed hook keys: `PreToolUse`, `PostToolUse`, `Stop`
+* Each hook value can be a string (single command) or array of strings (multiple commands)
+* Unknown hook keys produce warnings but do not cause validation failure
+
+Example:
+
+```yaml  theme={null}
+hooks:
+  PreToolUse: "./scripts/pre-hook.sh"
+  PostToolUse:
+    - "npm test"
+    - "npm run build"
+  Stop: "./scripts/cleanup.sh"
+```
+
+#### `user-invocable` field
+
+The optional `user-invocable` field (Claude Code 2.1.x):
+
+* Must be a boolean (`true` or `false`) if specified
+* Controls whether the skill appears in the slash command menu
+* Default behavior when omitted: skill is visible (`true`)
+
+Example:
+
+```yaml  theme={null}
+user-invocable: false
 ```
 
 ### Body content
