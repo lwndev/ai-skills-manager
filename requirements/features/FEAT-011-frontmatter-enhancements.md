@@ -252,4 +252,4 @@ export interface ParsedFrontmatter {
 - [ ] All existing tests continue to pass
 - [ ] New unit tests for each new field
 - [ ] Integration tests for full validation workflow
-- [ ] Documentation updated with new field descriptions
+- [x] Documentation updated with new field descriptions

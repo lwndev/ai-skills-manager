@@ -135,6 +135,12 @@ The validate command performs these checks in order:
 4. **Allowed properties** - Ensures only permitted frontmatter keys are used
 5. **Name format** - Validates hyphen-case format, max 64 characters
 6. **Description format** - Validates no angle brackets, max 1024 characters
+7. **Compatibility format** - Validates optional compatibility field (max 500 characters)
+8. **Context format** - Validates optional context field (must be "fork" if present)
+9. **Agent format** - Validates optional agent field (must be non-empty string if present)
+10. **Hooks format** - Validates optional hooks object structure; unknown hook keys produce warnings
+11. **User-invocable format** - Validates optional user-invocable field (must be boolean if present)
+12. **Name matches directory** - Validates frontmatter name matches parent directory name
 
 #### Exit Codes
 
@@ -175,9 +181,16 @@ PASS
     "requiredFields": { "passed": true },
     "allowedProperties": { "passed": true },
     "nameFormat": { "passed": true },
-    "descriptionFormat": { "passed": true }
+    "descriptionFormat": { "passed": true },
+    "compatibilityFormat": { "passed": true },
+    "contextFormat": { "passed": true },
+    "agentFormat": { "passed": true },
+    "hooksFormat": { "passed": true },
+    "userInvocableFormat": { "passed": true },
+    "nameMatchesDirectory": { "passed": true }
   },
-  "errors": []
+  "errors": [],
+  "warnings": []
 }
 ```
 
@@ -915,7 +928,7 @@ Make sure the path points to a skill directory containing a SKILL.md file, or di
 Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
 
 **Error: Unknown frontmatter property**
-Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `allowed-tools`, `metadata`. Remove any other keys.
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.
