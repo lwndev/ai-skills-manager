@@ -15,6 +15,11 @@ const ALLOWED_KEYS = new Set([
   'compatibility',
   'allowed-tools',
   'metadata',
+  // Claude Code 2.1.x fields
+  'context',
+  'agent',
+  'hooks',
+  'user-invocable',
 ]);
 
 export interface FrontmatterData {

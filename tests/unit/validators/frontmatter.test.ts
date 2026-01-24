@@ -29,6 +29,58 @@ describe('validateFrontmatterKeys', () => {
       ).toEqual({ valid: true });
     });
 
+    it('accepts Claude Code 2.1.x context field', () => {
+      expect(
+        validateFrontmatterKeys({
+          name: 'my-skill',
+          context: 'fork',
+        })
+      ).toEqual({ valid: true });
+    });
+
+    it('accepts Claude Code 2.1.x agent field', () => {
+      expect(
+        validateFrontmatterKeys({
+          name: 'my-skill',
+          agent: 'code-review',
+        })
+      ).toEqual({ valid: true });
+    });
+
+    it('accepts Claude Code 2.1.x hooks field', () => {
+      expect(
+        validateFrontmatterKeys({
+          name: 'my-skill',
+          hooks: {
+            PreToolUse: 'npm run lint',
+            PostToolUse: ['npm test', 'npm run build'],
+          },
+        })
+      ).toEqual({ valid: true });
+    });
+
+    it('accepts Claude Code 2.1.x user-invocable field', () => {
+      expect(
+        validateFrontmatterKeys({
+          name: 'my-skill',
+          'user-invocable': true,
+        })
+      ).toEqual({ valid: true });
+    });
+
+    it('accepts all Claude Code 2.1.x fields together', () => {
+      expect(
+        validateFrontmatterKeys({
+          name: 'my-skill',
+          description: 'A skill description',
+          context: 'fork',
+          agent: 'code-review',
+          hooks: { PreToolUse: 'npm test' },
+          'user-invocable': false,
+        })
+      ).toEqual({ valid: true });
+    });
+
     it('accepts frontmatter with allowed-tools', () => {
       expect(
         validateFrontmatterKeys({
@@ -110,6 +162,11 @@ describe('validateFrontmatterKeys', () => {
       expect(result.error).toContain('license');
       expect(result.error).toContain('allowed-tools');
       expect(result.error).toContain('metadata');
+      // Claude Code 2.1.x fields
+      expect(result.error).toContain('context');
+      expect(result.error).toContain('agent');
+      expect(result.error).toContain('hooks');
+      expect(result.error).toContain('user-invocable');
     });
   });
 });

@@ -442,6 +442,76 @@ Content.
       expect(result.success).toBe(true);
       expect(result.data?.['allowed-tools']).toBeUndefined();
     });
+
+    it('treats null as undefined (field not specified)', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: null
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toBeUndefined();
+    });
+
+    it('treats YAML tilde (~) as undefined', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: ~
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toBeUndefined();
+    });
+
+    it('handles empty YAML list', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: []
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual([]);
+    });
+
+    it('handles YAML inline list format', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: [Read, Write, Bash]
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
+
+    it('handles YAML inline list with quoted strings', () => {
+      const content = `---
+name: my-skill
+description: Test
+allowed-tools: ["Read", "Write", "Bash"]
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.['allowed-tools']).toEqual(['Read', 'Write', 'Bash']);
+    });
   });
 });
 
