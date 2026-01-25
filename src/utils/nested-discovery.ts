@@ -125,7 +125,8 @@ export async function* findNestedSkillDirectories(
   const stack: StackEntry[] = [{ dirPath: rootDir, depth: 0 }];
 
   while (stack.length > 0) {
-    const entry = stack.pop()!;
+    const entry = stack.pop();
+    if (!entry) break;
     const { dirPath, depth } = entry;
 
     // Get directory stats for symlink loop detection

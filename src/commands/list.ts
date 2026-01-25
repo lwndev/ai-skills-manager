@@ -231,10 +231,12 @@ function formatProjectSkillsGrouped(skills: InstalledSkill[]): void {
       groupKey = '.claude/skills';
     }
 
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, []);
+    const existing = groups.get(groupKey);
+    if (existing) {
+      existing.push(skill);
+    } else {
+      groups.set(groupKey, [skill]);
     }
-    groups.get(groupKey)!.push(skill);
   }
 
   // Sort groups: root first, then alphabetically
@@ -247,7 +249,8 @@ function formatProjectSkillsGrouped(skills: InstalledSkill[]): void {
 
   // Output each group
   for (const key of sortedKeys) {
-    const groupSkills = groups.get(key)!;
+    const groupSkills = groups.get(key);
+    if (!groupSkills) continue;
     console.log(`Project skills (${key}/):`.replace('//', '/'));
     for (const skill of groupSkills) {
       formatSkillEntry(skill);

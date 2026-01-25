@@ -34,10 +34,11 @@ dist/
       const ig = await loadGitignore(projectRoot);
 
       expect(ig).not.toBeNull();
-      expect(ig!.ignores('node_modules/')).toBe(true);
-      expect(ig!.ignores('dist/')).toBe(true);
-      expect(ig!.ignores('error.log')).toBe(true);
-      expect(ig!.ignores('src/')).toBe(false);
+      if (!ig) return;
+      expect(ig.ignores('node_modules/')).toBe(true);
+      expect(ig.ignores('dist/')).toBe(true);
+      expect(ig.ignores('error.log')).toBe(true);
+      expect(ig.ignores('src/')).toBe(false);
     });
 
     it('returns null when .gitignore does not exist', async () => {
@@ -65,8 +66,9 @@ dist/
       const ig = await loadGitignore(projectRoot);
 
       expect(ig).not.toBeNull();
+      if (!ig) return;
       // Empty gitignore should not ignore anything
-      expect(ig!.ignores('node_modules/')).toBe(false);
+      expect(ig.ignores('node_modules/')).toBe(false);
     });
 
     it('handles .gitignore with comments and blank lines', async () => {
@@ -86,10 +88,11 @@ dist/
       const ig = await loadGitignore(projectRoot);
 
       expect(ig).not.toBeNull();
-      expect(ig!.ignores('node_modules/')).toBe(true);
-      expect(ig!.ignores('dist/')).toBe(true);
+      if (!ig) return;
+      expect(ig.ignores('node_modules/')).toBe(true);
+      expect(ig.ignores('dist/')).toBe(true);
       // Comments should not be treated as patterns
-      expect(ig!.ignores('# This is a comment')).toBe(false);
+      expect(ig.ignores('# This is a comment')).toBe(false);
     });
   });
 
