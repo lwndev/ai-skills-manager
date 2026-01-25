@@ -10,11 +10,18 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ListOptions, InstalledSkill, InstalledSkillScope, ApiListScope } from '../types/api';
+import {
+  RecursiveListOptions,
+  InstalledSkill,
+  InstalledSkillScope,
+  ApiListScope,
+} from '../types/api';
 import { FileSystemError } from '../errors';
 import { hasErrorCode } from '../utils/error-helpers';
 import { getProjectSkillsDir, getPersonalSkillsDir } from '../utils/scope-resolver';
 import { parseFrontmatter } from '../utils/frontmatter-parser';
+import { loadGitignore } from '../utils/gitignore-parser';
+import { findNestedSkillDirectories } from '../utils/nested-discovery';
 
 /**
  * Skill marker filename.
@@ -62,16 +69,23 @@ async function readSkillMetadata(
 }
 
 /**
+ * Default maximum depth for recursive discovery.
+ */
+const DEFAULT_RECURSIVE_DEPTH = 3;
+
+/**
  * Lists skills in a specific directory.
  *
  * @param skillsDir - Directory to scan for skills
  * @param scope - Scope to assign to found skills
+ * @param location - Optional relative location path (for nested skills)
  * @returns Array of installed skills found in the directory
  * @throws FileSystemError for permission errors
  */
 async function listSkillsInDirectory(
   skillsDir: string,
-  scope: InstalledSkillScope
+  scope: InstalledSkillScope,
+  location?: string
 ): Promise<InstalledSkill[]> {
   const skills: InstalledSkill[] = [];
 
@@ -121,13 +135,20 @@ async function listSkillsInDirectory(
       if (entryStats.isDirectory() && (await isSkillDirectory(entryPath))) {
         const metadata = await readSkillMetadata(entryPath);
 
-        skills.push({
+        const skill: InstalledSkill = {
           name: entry,
           path: entryPath,
           scope,
           version: metadata.version,
           description: metadata.description,
-        });
+        };
+
+        // Add location field for nested skills
+        if (location) {
+          skill.location = path.join(location, entry);
+        }
+
+        skills.push(skill);
       }
     } catch {
       // Skip entries we can't read
@@ -167,6 +188,12 @@ async function listSkillsInDirectory(
  * // List skills in a custom directory
  * const customSkills = await list({ targetPath: '/custom/skills/path' });
  *
+ * // List skills recursively in nested directories
+ * const nestedSkills = await list({ recursive: true });
+ *
+ * // Limit recursive search depth
+ * const shallowSkills = await list({ recursive: true, depth: 2 });
+ *
  * // Print skill information
  * for (const skill of allSkills) {
  *   console.log(`${skill.name} (${skill.scope})`);
@@ -179,8 +206,8 @@ async function listSkillsInDirectory(
  * }
  * ```
  */
-export async function list(options: ListOptions = {}): Promise<InstalledSkill[]> {
-  const { scope = 'all', targetPath } = options;
+export async function list(options: RecursiveListOptions = {}): Promise<InstalledSkill[]> {
+  const { scope = 'all', targetPath, recursive = false, depth = DEFAULT_RECURSIVE_DEPTH } = options;
 
   // If a custom target path is provided, use it exclusively
   if (targetPath) {
@@ -196,13 +223,62 @@ export async function list(options: ListOptions = {}): Promise<InstalledSkill[]>
   for (const scopeToSearch of scopesToSearch) {
     if (scopeToSearch === 'project') {
       const projectDir = getProjectSkillsDir();
-      const projectSkills = await listSkillsInDirectory(projectDir, 'project');
-      allSkills.push(...projectSkills);
+      const projectRoot = process.cwd();
+
+      if (recursive) {
+        // Recursive mode: scan nested directories
+        const skills = await listProjectSkillsRecursively(projectRoot, projectDir, depth);
+        allSkills.push(...skills);
+      } else {
+        // Standard mode: only scan root project skills directory
+        const projectSkills = await listSkillsInDirectory(projectDir, 'project');
+        allSkills.push(...projectSkills);
+      }
     } else if (scopeToSearch === 'personal') {
+      // Personal scope is never recursively scanned (no nested projects in home)
       const personalDir = getPersonalSkillsDir();
       const personalSkills = await listSkillsInDirectory(personalDir, 'personal');
       allSkills.push(...personalSkills);
     }
+  }
+
+  return allSkills;
+}
+
+/**
+ * Lists project skills recursively, including nested `.claude/skills` directories.
+ *
+ * @param projectRoot - Project root directory
+ * @param rootSkillsDir - Root `.claude/skills` directory
+ * @param maxDepth - Maximum depth to traverse
+ * @returns Array of installed skills from all discovered directories
+ */
+async function listProjectSkillsRecursively(
+  projectRoot: string,
+  rootSkillsDir: string,
+  maxDepth: number
+): Promise<InstalledSkill[]> {
+  const allSkills: InstalledSkill[] = [];
+
+  // Load gitignore patterns for filtering
+  const ignore = await loadGitignore(projectRoot);
+
+  // Find all nested skill directories
+  for await (const skillsDir of findNestedSkillDirectories(projectRoot, maxDepth, {
+    ignore: ignore ?? undefined,
+  })) {
+    // Calculate relative location from project root
+    // e.g., "/project/packages/api/.claude/skills" -> "packages/api/.claude/skills"
+    const relativePath = path.relative(projectRoot, skillsDir);
+
+    // Determine location for display
+    // Root skills dir has no location prefix, nested dirs show their relative path
+    const isRootSkillsDir = skillsDir === rootSkillsDir;
+    const location = isRootSkillsDir ? undefined : relativePath;
+
+    // List skills in this directory
+    const skills = await listSkillsInDirectory(skillsDir, 'project', location);
+    allSkills.push(...skills);
   }
 
   return allSkills;
