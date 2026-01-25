@@ -11,6 +11,31 @@ export interface SkillTemplateParams {
 }
 
 /**
+ * Template types for different skill patterns.
+ * - basic: Default template with general guidance
+ * - forked: Template for skills that run in forked (isolated) context
+ * - with-hooks: Template demonstrating hook configuration
+ * - internal: Template for non-user-invocable helper skills
+ */
+export type TemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
+
+/**
+ * Options for customizing generated skill templates.
+ */
+export interface TemplateOptions {
+  /** Which template variant to generate */
+  templateType?: TemplateType;
+  /** Set context: fork in frontmatter for isolated execution */
+  context?: 'fork';
+  /** Set the agent field in frontmatter */
+  agent?: string;
+  /** Set user-invocable: false if false (default is true/omitted) */
+  userInvocable?: boolean;
+  /** Include commented hook examples in frontmatter */
+  includeHooks?: boolean;
+}
+
+/**
  * Escape a string for use in YAML values.
  * Wraps in double quotes if it contains special characters.
  */
@@ -41,7 +66,7 @@ function escapeYamlString(value: string): string {
 /**
  * Generate YAML frontmatter for the skill
  */
-function generateFrontmatter(params: SkillTemplateParams): string {
+function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOptions): string {
   const lines: string[] = ['---'];
 
   lines.push(`name: ${escapeYamlString(params.name)}`);
@@ -67,6 +92,21 @@ function generateFrontmatter(params: SkillTemplateParams): string {
     lines.push('#   - Grep');
   }
 
+  // Add context field if specified
+  if (options?.context === 'fork') {
+    lines.push('context: fork');
+  }
+
+  // Add agent field if specified
+  if (options?.agent) {
+    lines.push(`agent: ${escapeYamlString(options.agent)}`);
+  }
+
+  // Add user-invocable: false if explicitly set to false
+  if (options?.userInvocable === false) {
+    lines.push('user-invocable: false');
+  }
+
   lines.push('---');
   return lines.join('\n');
 }
@@ -74,7 +114,8 @@ function generateFrontmatter(params: SkillTemplateParams): string {
 /**
  * Generate the markdown body with guidance and TODO placeholders
  */
-function generateBody(params: SkillTemplateParams): string {
+function generateBody(params: SkillTemplateParams, _templateType: TemplateType): string {
+  // Note: templateType is used in Phase 2 for variant-specific guidance
   return `
 # ${params.name}
 
@@ -109,12 +150,32 @@ SKILL DEVELOPMENT GUIDANCE
 This file defines a Claude Code skill. Skills are markdown files with YAML
 frontmatter that teach Claude how to perform specific tasks.
 
-FRONTMATTER FIELDS:
+FRONTMATTER FIELDS (Open Agent Skills Spec):
 - name: (required) Unique identifier for this skill
 - description: (required) Brief description shown in skill listings. This is the
   PRIMARY triggering mechanism - include all "when to use" information here.
 - allowed-tools: (optional) List of tools this skill can use
 - license: (optional) License for the skill (e.g., "MIT", "Apache-2.0")
+
+FRONTMATTER FIELDS (Claude Code Extensions):
+- context: Set to "fork" to run skill in isolated context (no state persistence)
+- agent: Specify which agent type should handle this skill (e.g., "Explore", "Plan")
+- user-invocable: Set to false for internal helper skills not directly invocable
+- hooks: Configure lifecycle hooks (PreToolUse, PostToolUse, SessionStart, Stop)
+
+ALLOWED TOOLS - WILDCARD PATTERNS:
+You can use wildcards for more granular tool permissions:
+- Bash(git *): Allow any git command
+- Bash(npm install): Allow only npm install
+- Bash(npm test*): Allow npm test and npm test:unit, etc.
+- Read(/path/to/dir/*): Restrict reads to a specific directory
+
+ARGUMENT SHORTHAND SYNTAX:
+Access skill arguments in your template:
+- $0 or $ARGUMENTS[0]: First argument passed to the skill
+- $1 or $ARGUMENTS[1]: Second argument
+- \${CLAUDE_SESSION_ID}: Current session identifier
+- Use ARGUMENTS array for programmatic access in scripts
 
 BEST PRACTICES:
 1. Keep skills focused on a single task or related set of tasks
@@ -139,6 +200,7 @@ Common tools you can specify in allowed-tools:
 - Grep: Search file contents
 - WebFetch: Fetch web content
 - WebSearch: Search the web
+- Task: Launch subagents for complex operations
 
 If no allowed-tools are specified, the skill inherits default tool access.
 
@@ -154,9 +216,13 @@ For more information, see: https://docs.anthropic.com/en/docs/claude-code
 
 /**
  * Generate the complete SKILL.md content
+ * @param params - Basic skill parameters (name, description, allowedTools)
+ * @param options - Optional template customization options
  */
-export function generateSkillMd(params: SkillTemplateParams): string {
-  const frontmatter = generateFrontmatter(params);
-  const body = generateBody(params);
+export function generateSkillMd(params: SkillTemplateParams, options?: TemplateOptions): string {
+  // Default to basic template if no options provided
+  const templateType = options?.templateType ?? 'basic';
+  const frontmatter = generateFrontmatter(params, options);
+  const body = generateBody(params, templateType);
   return frontmatter + '\n' + body;
 }

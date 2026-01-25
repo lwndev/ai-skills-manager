@@ -1,4 +1,9 @@
-import { generateSkillMd, SkillTemplateParams } from '../../../src/templates/skill-md';
+import {
+  generateSkillMd,
+  SkillTemplateParams,
+  TemplateType,
+  TemplateOptions,
+} from '../../../src/templates/skill-md';
 
 describe('generateSkillMd', () => {
   describe('frontmatter generation', () => {
@@ -154,6 +159,157 @@ describe('generateSkillMd', () => {
 
       // Check body follows frontmatter
       expect(result).toContain('---\n\n# code-reviewer');
+    });
+  });
+
+  describe('template options', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('maintains backward compatibility when no options provided', () => {
+      const result = generateSkillMd({ name: 'my-skill' });
+      const frontmatter = getFrontmatter(result);
+
+      // Should produce same output as before
+      expect(frontmatter).toContain('name: my-skill');
+      expect(frontmatter).toContain('description: "TODO:');
+      // These should not appear in frontmatter when no options provided
+      expect(frontmatter).not.toMatch(/^context:/m);
+      expect(frontmatter).not.toMatch(/^agent:/m);
+      expect(frontmatter).not.toMatch(/^user-invocable:/m);
+    });
+
+    it('accepts templateType option', () => {
+      const options: TemplateOptions = { templateType: 'basic' };
+      const result = generateSkillMd({ name: 'my-skill' }, options);
+
+      expect(result).toContain('name: my-skill');
+      expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('adds context: fork when context option is fork', () => {
+      const options: TemplateOptions = { context: 'fork' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('context: fork');
+    });
+
+    it('adds agent field when agent option is provided', () => {
+      const options: TemplateOptions = { agent: 'Explore' };
+      const result = generateSkillMd({ name: 'explorer-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('agent: Explore');
+    });
+
+    it('escapes agent field with special characters', () => {
+      const options: TemplateOptions = { agent: 'My Custom: Agent' };
+      const result = generateSkillMd({ name: 'custom-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('agent: "My Custom: Agent"');
+    });
+
+    it('adds user-invocable: false when userInvocable is false', () => {
+      const options: TemplateOptions = { userInvocable: false };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('user-invocable: false');
+    });
+
+    it('does not add user-invocable when userInvocable is true', () => {
+      const options: TemplateOptions = { userInvocable: true };
+      const result = generateSkillMd({ name: 'public-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toMatch(/^user-invocable:/m);
+    });
+
+    it('does not add user-invocable when userInvocable is undefined', () => {
+      const options: TemplateOptions = { templateType: 'basic' };
+      const result = generateSkillMd({ name: 'default-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toMatch(/^user-invocable:/m);
+    });
+
+    it('combines multiple options correctly', () => {
+      const options: TemplateOptions = {
+        templateType: 'basic',
+        context: 'fork',
+        agent: 'Plan',
+        userInvocable: false,
+      };
+      const result = generateSkillMd({ name: 'combined-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('name: combined-skill');
+      expect(frontmatter).toContain('context: fork');
+      expect(frontmatter).toContain('agent: Plan');
+      expect(frontmatter).toContain('user-invocable: false');
+    });
+  });
+
+  describe('enhanced guidance content', () => {
+    it('includes Claude Code extension fields documentation', () => {
+      const result = generateSkillMd({ name: 'my-skill' });
+
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+      expect(result).toContain('context:');
+      expect(result).toContain('agent:');
+      expect(result).toContain('user-invocable:');
+      expect(result).toContain('hooks:');
+    });
+
+    it('includes wildcard tool patterns documentation', () => {
+      const result = generateSkillMd({ name: 'my-skill' });
+
+      expect(result).toContain('WILDCARD PATTERNS');
+      expect(result).toContain('Bash(git *)');
+      expect(result).toContain('Bash(npm install)');
+    });
+
+    it('includes argument shorthand syntax documentation', () => {
+      const result = generateSkillMd({ name: 'my-skill' });
+
+      expect(result).toContain('ARGUMENT SHORTHAND SYNTAX');
+      expect(result).toContain('$0');
+      expect(result).toContain('$ARGUMENTS[0]');
+      expect(result).toContain('${CLAUDE_SESSION_ID}');
+    });
+
+    it('distinguishes Open Agent Skills Spec from Claude Code Extensions', () => {
+      const result = generateSkillMd({ name: 'my-skill' });
+
+      expect(result).toContain('FRONTMATTER FIELDS (Open Agent Skills Spec)');
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+    });
+  });
+
+  describe('TemplateType values', () => {
+    it('accepts basic template type', () => {
+      const templateType: TemplateType = 'basic';
+      expect(templateType).toBe('basic');
+    });
+
+    it('accepts forked template type', () => {
+      const templateType: TemplateType = 'forked';
+      expect(templateType).toBe('forked');
+    });
+
+    it('accepts with-hooks template type', () => {
+      const templateType: TemplateType = 'with-hooks';
+      expect(templateType).toBe('with-hooks');
+    });
+
+    it('accepts internal template type', () => {
+      const templateType: TemplateType = 'internal';
+      expect(templateType).toBe('internal');
     });
   });
 });
