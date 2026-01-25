@@ -415,6 +415,81 @@ describe('Nested Discovery Utilities', () => {
         expect(results).toContain(path.join(testRoot, 'included-pkg', '.claude', 'skills'));
         expect(results).not.toContain(path.join(testRoot, 'ignored-pkg', '.claude', 'skills'));
       });
+
+      it('skips directories matching gitignore patterns', async () => {
+        const testRoot = await createDir('gitignore-patterns-root');
+        await createSkillsDir('gitignore-patterns-root');
+        await createSkillsDir('gitignore-patterns-root', 'packages', 'api');
+        await createSkillsDir('gitignore-patterns-root', 'packages', 'web');
+        // These should be ignored
+        await createDir('gitignore-patterns-root', 'temp-build', '.claude', 'skills');
+        await createDir('gitignore-patterns-root', 'output', '.claude', 'skills');
+
+        const mockIgnore = {
+          ignores: (relativePath: string) =>
+            relativePath.startsWith('temp-build') || relativePath.startsWith('output'),
+        };
+
+        const results = await collectNestedSkillDirectories(testRoot, 3, {
+          ignore: mockIgnore as import('ignore').Ignore,
+        });
+
+        expect(results).toHaveLength(3);
+        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(results).toContain(path.join(testRoot, 'packages', 'api', '.claude', 'skills'));
+        expect(results).toContain(path.join(testRoot, 'packages', 'web', '.claude', 'skills'));
+      });
+
+      it('skips nested directories inside gitignored parent', async () => {
+        const testRoot = await createDir('gitignore-nested-root');
+        await createSkillsDir('gitignore-nested-root');
+        // Create skills inside ignored directory structure
+        await createDir('gitignore-nested-root', 'ignored', 'deep', 'nested', '.claude', 'skills');
+
+        const mockIgnore = {
+          ignores: (relativePath: string) => relativePath.startsWith('ignored'),
+        };
+
+        const results = await collectNestedSkillDirectories(testRoot, 5, {
+          ignore: mockIgnore as import('ignore').Ignore,
+        });
+
+        expect(results).toHaveLength(1);
+        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
+      });
+
+      it('works without ignore option (all directories scanned)', async () => {
+        const testRoot = await createDir('no-ignore-root');
+        await createSkillsDir('no-ignore-root');
+        await createSkillsDir('no-ignore-root', 'pkg1');
+        await createSkillsDir('no-ignore-root', 'pkg2');
+
+        // No ignore option provided
+        const results = await collectNestedSkillDirectories(testRoot, 3);
+
+        expect(results).toHaveLength(3);
+      });
+
+      it('handles glob-style patterns via ignore instance', async () => {
+        const testRoot = await createDir('gitignore-glob-root');
+        await createSkillsDir('gitignore-glob-root');
+        await createSkillsDir('gitignore-glob-root', 'src', 'main');
+        await createDir('gitignore-glob-root', 'test-output', '.claude', 'skills');
+        await createDir('gitignore-glob-root', 'test-fixtures', '.claude', 'skills');
+
+        // Simulate a pattern like "test-*/"
+        const mockIgnore = {
+          ignores: (relativePath: string) => relativePath.match(/^test-[^/]+\//) !== null,
+        };
+
+        const results = await collectNestedSkillDirectories(testRoot, 3, {
+          ignore: mockIgnore as import('ignore').Ignore,
+        });
+
+        expect(results).toHaveLength(2);
+        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(results).toContain(path.join(testRoot, 'src', 'main', '.claude', 'skills'));
+      });
     });
   });
 

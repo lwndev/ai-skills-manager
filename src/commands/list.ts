@@ -30,6 +30,10 @@ export interface ListCommandOptions {
   json?: boolean;
   /** Quiet mode - minimal output */
   quiet?: boolean;
+  /** Enable recursive discovery of nested skills */
+  recursive?: boolean;
+  /** Maximum depth for recursive discovery (0-10) */
+  depth?: string;
 }
 
 /**
@@ -47,6 +51,8 @@ export function registerListCommand(program: Command): void {
     )
     .option('-j, --json', 'Output as JSON')
     .option('-q, --quiet', 'Quiet mode - show only skill names')
+    .option('-r, --recursive', 'Discover skills in nested .claude/skills directories')
+    .option('-d, --depth <number>', 'Maximum depth for recursive discovery (0-10, default: 3)', '3')
     .addHelpText(
       'after',
       `
@@ -57,15 +63,24 @@ Examples:
   $ asm list --json
   $ asm list --quiet
   $ asm ls
+  $ asm list --recursive
+  $ asm list --recursive --depth 2
 
 Scopes:
   all         List skills from both project and personal directories (default)
   project     List skills from .claude/skills/ in current directory
   personal    List skills from ~/.claude/skills/ for all projects
 
+Recursive Discovery:
+  --recursive    Scan for skills in nested .claude/skills directories
+                 (e.g., packages/api/.claude/skills/, libs/shared/.claude/skills/)
+  --depth        Maximum directory depth to traverse (default: 3)
+                 Depth 0 = only root, 1 = root + children, etc.
+  Note: Personal scope is never recursively scanned.
+
 Output Formats:
   Normal (default): Table with name, scope, and description
-  --json: JSON array of skill objects
+  --json: JSON array of skill objects (includes location for nested skills)
   --quiet: One skill name per line
 
 Exit Codes:
@@ -87,7 +102,7 @@ Exit Codes:
  * @returns Exit code
  */
 async function handleList(options: ListCommandOptions): Promise<number> {
-  const { scope, json, quiet } = options;
+  const { scope, json, quiet, recursive, depth: depthStr } = options;
 
   try {
     // Validate scope
@@ -101,9 +116,22 @@ async function handleList(options: ListCommandOptions): Promise<number> {
       return EXIT_CODES.FILESYSTEM_ERROR;
     }
 
+    // Parse and validate depth
+    const depth = depthStr !== undefined ? parseInt(depthStr, 10) : 3;
+    if (isNaN(depth) || depth < 0 || depth > 10) {
+      if (!quiet) {
+        output.displayError('Invalid depth', 'Depth must be a number between 0 and 10');
+      } else {
+        console.log('FAIL: Invalid depth: must be a number between 0 and 10');
+      }
+      return EXIT_CODES.FILESYSTEM_ERROR;
+    }
+
     // Call the API
     const skills = await list({
       scope: scope === 'all' || !scope ? 'all' : (scope as 'project' | 'personal'),
+      recursive,
+      depth,
     });
 
     // Output results
@@ -114,7 +142,7 @@ async function handleList(options: ListCommandOptions): Promise<number> {
         console.log(skill.name);
       }
     } else {
-      formatNormalOutput(skills);
+      formatNormalOutput(skills, recursive);
     }
 
     return EXIT_CODES.SUCCESS;
@@ -125,8 +153,11 @@ async function handleList(options: ListCommandOptions): Promise<number> {
 
 /**
  * Format normal output for list command
+ *
+ * @param skills - Array of installed skills
+ * @param recursive - Whether recursive mode is enabled (affects grouping)
  */
-function formatNormalOutput(skills: InstalledSkill[]): void {
+function formatNormalOutput(skills: InstalledSkill[], recursive?: boolean): void {
   if (skills.length === 0) {
     console.log('No skills installed.');
     console.log('');
@@ -140,17 +171,22 @@ function formatNormalOutput(skills: InstalledSkill[]): void {
   console.log(`Found ${skills.length} installed skill${skills.length === 1 ? '' : 's'}:`);
   console.log('');
 
-  // Group by scope
+  // Group by scope first
   const projectSkills = skills.filter((s) => s.scope === 'project');
   const personalSkills = skills.filter((s) => s.scope === 'personal');
   const customSkills = skills.filter((s) => s.scope === 'custom');
 
   if (projectSkills.length > 0) {
-    console.log('Project skills (.claude/skills/):');
-    for (const skill of projectSkills) {
-      formatSkillEntry(skill);
+    if (recursive) {
+      // Group project skills by location for recursive mode
+      formatProjectSkillsGrouped(projectSkills);
+    } else {
+      console.log('Project skills (.claude/skills/):');
+      for (const skill of projectSkills) {
+        formatSkillEntry(skill);
+      }
+      console.log('');
     }
-    console.log('');
   }
 
   if (personalSkills.length > 0) {
@@ -164,6 +200,56 @@ function formatNormalOutput(skills: InstalledSkill[]): void {
   if (customSkills.length > 0) {
     console.log('Custom path skills:');
     for (const skill of customSkills) {
+      formatSkillEntry(skill);
+    }
+    console.log('');
+  }
+}
+
+/**
+ * Format project skills grouped by location (for recursive mode)
+ *
+ * @param skills - Array of project skills
+ */
+function formatProjectSkillsGrouped(skills: InstalledSkill[]): void {
+  // Group skills by their location directory
+  const groups = new Map<string, InstalledSkill[]>();
+
+  for (const skill of skills) {
+    // Extract directory from location (remove skill name at end)
+    // e.g., "packages/api/.claude/skills/my-skill" -> "packages/api/.claude/skills"
+    const location = skill.location;
+    let groupKey: string;
+
+    if (location) {
+      // Get parent directory of the skill (the .claude/skills dir)
+      const parts = location.split('/');
+      parts.pop(); // Remove skill name
+      groupKey = parts.join('/');
+    } else {
+      // Root skills have no location
+      groupKey = '.claude/skills';
+    }
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
+    }
+    groups.get(groupKey)!.push(skill);
+  }
+
+  // Sort groups: root first, then alphabetically
+  const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+    // Root comes first
+    if (a === '.claude/skills') return -1;
+    if (b === '.claude/skills') return 1;
+    return a.localeCompare(b);
+  });
+
+  // Output each group
+  for (const key of sortedKeys) {
+    const groupSkills = groups.get(key)!;
+    console.log(`Project skills (${key}/):`.replace('//', '/'));
+    for (const skill of groupSkills) {
       formatSkillEntry(skill);
     }
     console.log('');

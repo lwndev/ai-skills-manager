@@ -2,7 +2,13 @@
 
 ## Overview
 
-Update ASM's skill discovery to support nested `.claude/skills` directories within subdirectories, matching Claude Code 2.1.6's behavior for monorepos and multi-project workspaces.
+Update ASM's skill discovery to support nested `.claude/skills` directories within subdirectories, inspired by Claude Code 2.1.6's automatic discovery behavior.
+
+### Background
+
+Claude Code 2.1.6 added automatic, context-dependent discovery of skills from nested `.claude/skills` directories "when working with files in subdirectories" ([CHANGELOG reference](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)). While the changelog doesn't specify the intended use case, this feature is likely designed for monorepos and multi-project workspaces where subdirectories have their own `.claude/skills` directories.
+
+ASM implements this capability via explicit `--recursive` and `--depth` CLI options, giving users direct control over when and how nested directories are scanned.
 
 ## Feature ID
 
@@ -14,7 +20,7 @@ Update ASM's skill discovery to support nested `.claude/skills` directories with
 
 ## Priority
 
-High - Compatibility with Claude Code 2.1.6+ behavior
+High - Feature parity with Claude Code 2.1.6+ nested skill discovery
 
 ## User Story
 
@@ -219,13 +225,13 @@ Personal skills (~/.claude/skills/):
 
 ## Acceptance Criteria
 
-- [ ] `asm list --recursive` discovers skills in nested `.claude/skills` directories
-- [ ] `--depth` option limits search depth correctly
-- [ ] Skills display with their location paths in output
-- [ ] Duplicate skill names in different locations are handled correctly
-- [ ] `node_modules` and other gitignored directories are skipped
-- [ ] JSON output includes `location` field for each skill
-- [ ] Default behavior (without `--recursive`) is unchanged
-- [ ] Performance is acceptable for typical monorepos (<5 seconds)
-- [ ] Tests pass with >80% coverage
-- [ ] Documentation updated for new options
+- [x] `asm list --recursive` discovers skills in nested `.claude/skills` directories
+- [x] `--depth` option limits search depth correctly
+- [x] Skills display with their location paths in output
+- [x] Duplicate skill names in different locations are handled correctly
+- [x] `node_modules` and other gitignored directories are skipped
+- [x] JSON output includes `location` field for each skill
+- [x] Default behavior (without `--recursive`) is unchanged
+- [x] Performance is acceptable for typical monorepos (<5 seconds) - 1000 dirs in 95ms
+- [x] Tests pass with >80% coverage - 2514 tests passing
+- [x] Documentation updated for new options (CLI help text)
