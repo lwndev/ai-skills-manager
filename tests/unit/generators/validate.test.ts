@@ -732,7 +732,9 @@ Content.
 
         expect(result.valid).toBe(false);
         expect(result.checks.hooksFormat.passed).toBe(false);
-        expect(result.checks.hooksFormat.error).toContain('string or array of strings');
+        expect(result.checks.hooksFormat.error).toContain(
+          'string, array of strings, or array of hook config objects'
+        );
       });
     });
 

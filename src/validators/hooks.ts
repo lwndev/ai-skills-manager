@@ -5,8 +5,21 @@
  * - Optional field (absence is valid)
  * - Must be an object when present (not array, not primitive)
  * - Known hook keys: PreToolUse, PostToolUse, Stop
- * - Each hook value must be a string or array of strings
+ * - Each hook value can be:
+ *   - A string (simple script path)
+ *   - An array of strings (multiple simple script paths)
+ *   - An array of hook config objects (Claude Code nested format with matcher/hooks)
  * - Unknown keys generate warnings, not errors (future-proofing)
+ *
+ * The Claude Code nested format looks like:
+ * ```yaml
+ * hooks:
+ *   PreToolUse:
+ *     - matcher: "*"
+ *       hooks:
+ *         - type: command
+ *           command: echo "..."
+ * ```
  */
 
 /**
@@ -19,14 +32,50 @@ export type HooksValidationResult =
 const KNOWN_HOOKS = ['PreToolUse', 'PostToolUse', 'Stop'];
 
 /**
- * Check if a value is a valid hook value (string or array of strings)
+ * Check if an object looks like a Claude Code hook config entry
+ * (has type, command, matcher, hooks, or other hook config fields)
+ */
+function isHookConfigObject(obj: unknown): boolean {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    return false;
+  }
+  const record = obj as Record<string, unknown>;
+  // Look for common hook config fields
+  return (
+    'type' in record ||
+    'command' in record ||
+    'matcher' in record ||
+    'hooks' in record ||
+    'once' in record
+  );
+}
+
+/**
+ * Check if a value is a valid hook value
+ * Supports:
+ * - string (simple script path)
+ * - array of strings (multiple simple script paths)
+ * - array of objects (Claude Code nested format)
  */
 function isValidHookValue(value: unknown): boolean {
   if (typeof value === 'string') {
     return true;
   }
   if (Array.isArray(value)) {
-    return value.every((item) => typeof item === 'string');
+    // Empty array is valid
+    if (value.length === 0) {
+      return true;
+    }
+    // Check if it's an array of strings (simple format)
+    if (value.every((item) => typeof item === 'string')) {
+      return true;
+    }
+    // Check if it's an array of hook config objects (Claude Code format)
+    if (value.every((item) => isHookConfigObject(item))) {
+      return true;
+    }
+    // Mixed or invalid array content
+    return false;
   }
   return false;
 }
@@ -65,7 +114,7 @@ export function validateHooks(value: unknown): HooksValidationResult {
     if (!isValidHookValue(hookValue)) {
       return {
         valid: false,
-        error: `Hook '${key}' must be a string or array of strings.`,
+        error: `Hook '${key}' must be a string, array of strings, or array of hook config objects.`,
       };
     }
   }

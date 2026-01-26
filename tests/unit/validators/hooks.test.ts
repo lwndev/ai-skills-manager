@@ -99,6 +99,83 @@ describe('validateHooks', () => {
       const result = validateHooks({ PreToolUse: [] });
       expect(result.valid).toBe(true);
     });
+
+    // Claude Code nested format tests
+    it('returns valid for Claude Code nested format with matcher and hooks', () => {
+      const result = validateHooks({
+        PreToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'echo "test"' }],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('returns valid for Claude Code nested format with multiple matchers', () => {
+      const result = validateHooks({
+        PreToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'echo "pre"' }],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [{ type: 'command', command: 'echo "post bash"' }],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('returns valid for Claude Code Stop hook format (no matcher)', () => {
+      const result = validateHooks({
+        Stop: [
+          {
+            hooks: [{ type: 'command', command: 'echo "stopping"' }],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('returns valid for hook config with once option', () => {
+      const result = validateHooks({
+        PreToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'echo "once"', once: true }],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('returns valid for complete Claude Code hooks structure', () => {
+      const result = validateHooks({
+        PreToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'echo "Starting tool execution..."' }],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: '*',
+            hooks: [{ type: 'command', command: 'echo "Tool execution complete"' }],
+          },
+        ],
+        Stop: [
+          {
+            hooks: [{ type: 'command', command: 'echo "Skill stopped"' }],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('invalid cases', () => {
@@ -138,7 +215,9 @@ describe('validateHooks', () => {
       const result = validateHooks({ PreToolUse: 123 });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toBe("Hook 'PreToolUse' must be a string or array of strings.");
+        expect(result.error).toBe(
+          "Hook 'PreToolUse' must be a string, array of strings, or array of hook config objects."
+        );
       }
     });
 
@@ -146,15 +225,19 @@ describe('validateHooks', () => {
       const result = validateHooks({ PostToolUse: true });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toBe("Hook 'PostToolUse' must be a string or array of strings.");
+        expect(result.error).toBe(
+          "Hook 'PostToolUse' must be a string, array of strings, or array of hook config objects."
+        );
       }
     });
 
-    it('returns invalid for hook with object value', () => {
+    it('returns invalid for hook with invalid object value (no hook config fields)', () => {
       const result = validateHooks({ Stop: { script: './stop.sh' } });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toBe("Hook 'Stop' must be a string or array of strings.");
+        expect(result.error).toBe(
+          "Hook 'Stop' must be a string, array of strings, or array of hook config objects."
+        );
       }
     });
 
@@ -162,7 +245,9 @@ describe('validateHooks', () => {
       const result = validateHooks({ PreToolUse: ['./script.sh', 123] });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toBe("Hook 'PreToolUse' must be a string or array of strings.");
+        expect(result.error).toBe(
+          "Hook 'PreToolUse' must be a string, array of strings, or array of hook config objects."
+        );
       }
     });
 
@@ -170,7 +255,9 @@ describe('validateHooks', () => {
       const result = validateHooks({ PreToolUse: null });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toBe("Hook 'PreToolUse' must be a string or array of strings.");
+        expect(result.error).toBe(
+          "Hook 'PreToolUse' must be a string, array of strings, or array of hook config objects."
+        );
       }
     });
   });

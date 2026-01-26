@@ -163,6 +163,48 @@ export interface ValidateOptions {
 // ============================================================================
 
 /**
+ * Template types for different skill patterns.
+ * - basic: Default template with general guidance
+ * - forked: Template for skills that run in forked (isolated) context
+ * - with-hooks: Template demonstrating hook configuration
+ * - internal: Template for non-user-invocable helper skills
+ */
+export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
+
+/**
+ * Template-specific options for scaffolding.
+ */
+export interface ScaffoldTemplateOptions {
+  /**
+   * Which template variant to generate.
+   * Defaults to 'basic'.
+   */
+  templateType?: ScaffoldTemplateType;
+
+  /**
+   * Set context: fork in frontmatter for isolated execution.
+   * Can be used independently or with a template.
+   */
+  context?: 'fork';
+
+  /**
+   * Set the agent field in frontmatter.
+   */
+  agent?: string;
+
+  /**
+   * Set user-invocable: false if false.
+   * Defaults to true (omitted from frontmatter).
+   */
+  userInvocable?: boolean;
+
+  /**
+   * Include commented hook examples in frontmatter.
+   */
+  includeHooks?: boolean;
+}
+
+/**
  * Options for scaffolding a new skill.
  */
 export interface ScaffoldOptions {
@@ -200,6 +242,12 @@ export interface ScaffoldOptions {
    * Defaults to `false`.
    */
   force?: boolean;
+
+  /**
+   * Template-specific options for customizing the generated skill.
+   * These options control the structure and content of the SKILL.md file.
+   */
+  template?: ScaffoldTemplateOptions;
 }
 
 /**

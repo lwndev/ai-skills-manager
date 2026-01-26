@@ -126,7 +126,7 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 ### Phase 4: CLI Flag Support
 **Feature:** [FEAT-013](../features/FEAT-013-skill-template-enhancements.md) | [#36](https://github.com/lwndev/ai-skills-manager/issues/36)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **User flexibility**: Individual flags allow custom combinations beyond predefined templates
@@ -157,15 +157,15 @@ This plan covers the implementation of enhanced template variants and CLI option
 10. Add integration tests for complete workflows
 
 #### Deliverables
-- [ ] CLI options in `src/commands/scaffold.ts`
-- [ ] Template option validation
-- [ ] Flag override logic
-- [ ] Updated `src/api/scaffold.ts` with template options
-- [ ] Updated scaffold output messages
-- [ ] Error messages for invalid options
-- [ ] Unit tests for CLI option parsing
-- [ ] Unit tests for flag combinations
-- [ ] Integration tests for scaffold with templates
+- [x] CLI options in `src/commands/scaffold.ts`
+- [x] Template option validation
+- [x] Flag override logic
+- [x] Updated `src/api/scaffold.ts` with template options
+- [x] Updated scaffold output messages
+- [x] Error messages for invalid options
+- [x] Unit tests for CLI option parsing
+- [x] Unit tests for flag combinations
+- [x] Integration tests for scaffold with templates
 
 ---
 
