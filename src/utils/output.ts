@@ -82,3 +82,10 @@ export function displayValidationError(field: string, errorMessage: string): voi
   console.error(error(`Invalid ${field}`));
   console.error(`  ${errorMessage}`);
 }
+
+/**
+ * Display an info message
+ */
+export function displayInfo(message: string): void {
+  console.log(info(message));
+}

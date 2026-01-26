@@ -15,7 +15,7 @@ import { FileSystemError, SecurityError } from '../errors';
 import { hasErrorCode } from '../utils/error-helpers';
 import { validateName } from '../validators/name';
 import { getProjectSkillsDir, getPersonalSkillsDir } from '../utils/scope-resolver';
-import { generateSkillMd, SkillTemplateParams } from '../templates/skill-md';
+import { generateSkillMd, SkillTemplateParams, TemplateOptions } from '../templates/skill-md';
 
 /**
  * Resolves the output directory path based on options.
@@ -144,7 +144,19 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
       description,
       allowedTools,
     };
-    const skillMdContent = generateSkillMd(templateParams);
+
+    // Map API template options to internal template options
+    const templateOptions: TemplateOptions | undefined = options.template
+      ? {
+          templateType: options.template.templateType,
+          context: options.template.context,
+          agent: options.template.agent,
+          userInvocable: options.template.userInvocable,
+          includeHooks: options.template.includeHooks,
+        }
+      : undefined;
+
+    const skillMdContent = generateSkillMd(templateParams, templateOptions);
     const skillMdPath = path.join(skillPath, 'SKILL.md');
     await fs.writeFile(skillMdPath, skillMdContent, 'utf-8');
     filesCreated.push('SKILL.md');

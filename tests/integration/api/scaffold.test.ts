@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { scaffold } from '../../../src/api/scaffold';
@@ -438,6 +439,514 @@ describe('scaffold API integration', () => {
           .catch(() => false);
         expect(exists).toBe(true);
       }
+    });
+  });
+
+  describe('template variants pass validation (FEAT-013 Phase 2)', () => {
+    // These tests verify that skills generated with template options pass validation.
+    // We manually create the SKILL.md using generateSkillMd with template options
+    // since the scaffold API doesn't support template options until Phase 4.
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { generateSkillMd } = require('../../../src/templates/skill-md');
+
+    /**
+     * Helper to create a skill directory with generated SKILL.md
+     */
+    async function createSkillWithTemplate(
+      skillName: string,
+      baseDir: string,
+      templateOptions: { templateType?: string; context?: string; userInvocable?: boolean }
+    ): Promise<string> {
+      const skillPath = path.join(baseDir, skillName);
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.mkdir(path.join(skillPath, 'scripts'), { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'scripts', '.gitkeep'), '');
+
+      const content = generateSkillMd({ name: skillName }, templateOptions);
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), content, 'utf-8');
+
+      return skillPath;
+    }
+
+    it('forked template skill passes validation', async () => {
+      const skillPath = await createSkillWithTemplate('forked-test-skill', tempDir, {
+        templateType: 'forked',
+      });
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      // Verify frontmatter contains expected fields
+      const content = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).toContain('allowed-tools:');
+      expect(content).toContain('- Read');
+      expect(content).toContain('- Glob');
+      expect(content).toContain('- Grep');
+    });
+
+    it('internal template skill passes validation', async () => {
+      const skillPath = await createSkillWithTemplate('internal-test-skill', tempDir, {
+        templateType: 'internal',
+      });
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      // Verify frontmatter contains expected fields
+      const content = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+      expect(content).toContain('allowed-tools:');
+      expect(content).toContain('- Read');
+      expect(content).toContain('- Grep');
+    });
+
+    it('forked template with custom tools passes validation', async () => {
+      const skillPath = path.join(tempDir, 'forked-custom-tools');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.mkdir(path.join(skillPath, 'scripts'), { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'scripts', '.gitkeep'), '');
+
+      const content = generateSkillMd(
+        {
+          name: 'forked-custom-tools',
+          description: 'A forked skill with custom tools',
+          allowedTools: ['Read', 'Grep', 'WebFetch'],
+        },
+        { templateType: 'forked' }
+      );
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), content, 'utf-8');
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+    });
+
+    it('internal template with description passes validation', async () => {
+      const skillPath = path.join(tempDir, 'internal-with-desc');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.mkdir(path.join(skillPath, 'scripts'), { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'scripts', '.gitkeep'), '');
+
+      const content = generateSkillMd(
+        {
+          name: 'internal-with-desc',
+          description: 'An internal helper for validation logic',
+        },
+        { templateType: 'internal' }
+      );
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), content, 'utf-8');
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+    });
+
+    it('combined forked and internal flags passes validation', async () => {
+      const skillPath = path.join(tempDir, 'forked-internal-combo');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.mkdir(path.join(skillPath, 'scripts'), { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'scripts', '.gitkeep'), '');
+
+      // Combining forked template with explicit userInvocable: false
+      const content = generateSkillMd(
+        { name: 'forked-internal-combo' },
+        { templateType: 'forked', userInvocable: false }
+      );
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), content, 'utf-8');
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      // Verify both fields are present
+      const fileContent = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(fileContent).toContain('context: fork');
+      expect(fileContent).toContain('user-invocable: false');
+    });
+
+    it('basic template with explicit context: fork passes validation', async () => {
+      const skillPath = path.join(tempDir, 'basic-with-fork');
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.mkdir(path.join(skillPath, 'scripts'), { recursive: true });
+      await fs.writeFile(path.join(skillPath, 'scripts', '.gitkeep'), '');
+
+      // Basic template with explicit fork context
+      const content = generateSkillMd({ name: 'basic-with-fork' }, { context: 'fork' });
+      await fs.writeFile(path.join(skillPath, 'SKILL.md'), content, 'utf-8');
+
+      const validateResult = await validate(skillPath);
+
+      expect(validateResult.valid).toBe(true);
+
+      // Should have context: fork but NOT forked template guidance
+      const fileContent = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(fileContent).toContain('context: fork');
+      expect(fileContent).not.toContain('FORKED CONTEXT SKILL');
+    });
+
+    it('skills generated by templates are discoverable by list', async () => {
+      // Create forked skill
+      await createSkillWithTemplate('list-forked-skill', tempDir, {
+        templateType: 'forked',
+      });
+
+      // Create internal skill
+      await createSkillWithTemplate('list-internal-skill', tempDir, {
+        templateType: 'internal',
+      });
+
+      const skills = await list({ targetPath: tempDir });
+
+      expect(skills.length).toBeGreaterThanOrEqual(2);
+      const names = skills.map((s) => s.name);
+      expect(names).toContain('list-forked-skill');
+      expect(names).toContain('list-internal-skill');
+    });
+  });
+
+  describe('scaffold API with template options (FEAT-013 Phase 4)', () => {
+    // These tests verify the scaffold API function accepts and properly applies
+    // template options to generated skills.
+
+    it('scaffold with forked template option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-forked-skill',
+        output: tempDir,
+        template: { templateType: 'forked' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+    });
+
+    it('scaffold with internal template option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-internal-skill',
+        output: tempDir,
+        template: { templateType: 'internal' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+    });
+
+    it('scaffold with with-hooks template option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-hooks-skill',
+        output: tempDir,
+        template: { templateType: 'with-hooks' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+      expect(content).toContain('PreToolUse:');
+      expect(content).toContain('PostToolUse:');
+    });
+
+    it('scaffold with context fork option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-context-skill',
+        output: tempDir,
+        template: { context: 'fork' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+    });
+
+    it('scaffold with agent option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-agent-skill',
+        output: tempDir,
+        template: { agent: 'Explore' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('agent: Explore');
+    });
+
+    it('scaffold with userInvocable false passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-noinvoke-skill',
+        output: tempDir,
+        template: { userInvocable: false },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+    });
+
+    it('scaffold with includeHooks option passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-hooks-flag-skill',
+        output: tempDir,
+        template: { includeHooks: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+    });
+
+    it('scaffold with combined template options passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-combined-skill',
+        output: tempDir,
+        template: {
+          templateType: 'forked',
+          agent: 'Plan',
+          includeHooks: true,
+        },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).toContain('agent: Plan');
+      expect(content).toContain('hooks:');
+    });
+
+    it('template allowedTools defaults are overridden by explicit allowedTools', async () => {
+      const result = await scaffold({
+        name: 'api-tools-override',
+        output: tempDir,
+        allowedTools: ['Bash', 'Write'],
+        template: { templateType: 'forked' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      // Extract frontmatter to check allowed-tools precisely
+      const frontmatter = content.match(/^---\n([\s\S]*?)\n---/)?.[1] || '';
+      expect(frontmatter).toContain('context: fork');
+      // Explicit tools override template defaults
+      expect(frontmatter).toContain('- Bash');
+      expect(frontmatter).toContain('- Write');
+      // Template default tools should not be present in frontmatter
+      expect(frontmatter).not.toContain('- Glob');
+      expect(frontmatter).not.toContain('- Grep');
+    });
+
+    it('scaffold with no template options maintains backward compatibility', async () => {
+      const result = await scaffold({
+        name: 'api-backward-compat',
+        description: 'A backward compatible skill',
+        output: tempDir,
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('name: api-backward-compat');
+      expect(content).toContain('description: A backward compatible skill');
+      // Should not have template-specific fields
+      expect(content).not.toMatch(/^context:/m);
+      expect(content).not.toMatch(/^agent:/m);
+      expect(content).not.toMatch(/^user-invocable:/m);
+    });
+
+    it('skills created with templates are discoverable by list', async () => {
+      await scaffold({
+        name: 'list-api-forked',
+        output: tempDir,
+        template: { templateType: 'forked' },
+      });
+
+      await scaffold({
+        name: 'list-api-internal',
+        output: tempDir,
+        template: { templateType: 'internal' },
+      });
+
+      await scaffold({
+        name: 'list-api-hooks',
+        output: tempDir,
+        template: { templateType: 'with-hooks' },
+      });
+
+      const skills = await list({ targetPath: tempDir });
+
+      expect(skills.length).toBeGreaterThanOrEqual(3);
+      const names = skills.map((s) => s.name);
+      expect(names).toContain('list-api-forked');
+      expect(names).toContain('list-api-internal');
+      expect(names).toContain('list-api-hooks');
+    });
+  });
+
+  describe('CLI scaffold with template options (FEAT-013 Phase 4)', () => {
+    // These tests verify the CLI command correctly passes template options
+    // to the API and produces valid skills.
+
+    it('CLI scaffold --template forked creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-forked-skill --output "${tempDir}" --template forked --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-forked-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+    });
+
+    it('CLI scaffold --template with-hooks creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-hooks-skill --output "${tempDir}" --template with-hooks --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-hooks-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+      expect(content).toContain('PreToolUse:');
+    });
+
+    it('CLI scaffold --template internal creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-internal-skill --output "${tempDir}" --template internal --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-internal-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+    });
+
+    it('CLI scaffold --context fork creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-context-skill --output "${tempDir}" --context fork --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-context-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+    });
+
+    it('CLI scaffold --agent creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-agent-skill --output "${tempDir}" --agent Explore --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-agent-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('agent: Explore');
+    });
+
+    it('CLI scaffold --no-user-invocable creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-noinvoke-skill --output "${tempDir}" --no-user-invocable --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-noinvoke-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+    });
+
+    it('CLI scaffold --hooks creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-hooks-flag-skill --output "${tempDir}" --hooks --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-hooks-flag-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+    });
+
+    it('CLI scaffold with combined options creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-combined-skill --output "${tempDir}" --template forked --agent Plan --hooks --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-combined-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).toContain('agent: Plan');
+      expect(content).toContain('hooks:');
+    });
+
+    it('CLI scaffold rejects invalid template type', () => {
+      expect(() => {
+        execSync(
+          `node "${cliPath}" scaffold invalid-template-skill --output "${tempDir}" --template invalid 2>&1`,
+          { encoding: 'utf-8' }
+        );
+      }).toThrow();
+    });
+
+    it('CLI scaffold rejects invalid context value', () => {
+      expect(() => {
+        execSync(
+          `node "${cliPath}" scaffold invalid-context-skill --output "${tempDir}" --context invalid 2>&1`,
+          { encoding: 'utf-8' }
+        );
+      }).toThrow();
+    });
+
+    it('CLI scaffold output shows template type for non-basic templates', () => {
+      const output = execSync(
+        `node "${cliPath}" scaffold output-template-skill --output "${tempDir}" --template forked --force`,
+        { encoding: 'utf-8' }
+      );
+
+      expect(output).toContain('"forked" template');
+    });
+
+    it('CLI scaffold without template options maintains backward compatibility', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-backward-compat --output "${tempDir}" --description "A backward compatible skill" --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-backward-compat');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('name: cli-backward-compat');
+      expect(content).toContain('description: A backward compatible skill');
+      // Should not have template-specific fields
+      expect(content).not.toMatch(/^context:/m);
+      expect(content).not.toMatch(/^agent:/m);
+      expect(content).not.toMatch(/^user-invocable:/m);
     });
   });
 });

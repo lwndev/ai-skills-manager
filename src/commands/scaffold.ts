@@ -2,8 +2,10 @@ import { Command } from 'commander';
 import { scaffold } from '../api';
 import { validateDescription } from '../validators';
 import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
-import type { ApiScope } from '../types/api';
+import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
+
+const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
 
 export function registerScaffoldCommand(program: Command): void {
   program
@@ -15,6 +17,11 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--personal', 'Create as a personal skill in ~/.claude/skills/')
     .option('-a, --allowed-tools <tools>', 'Comma-separated list of allowed tools')
     .option('-f, --force', 'Overwrite existing directory without prompting')
+    .option('-t, --template <type>', 'Template variant (basic, forked, with-hooks, internal)')
+    .option('--context <context>', 'Set context in frontmatter (fork)')
+    .option('--agent <name>', 'Set agent field in frontmatter')
+    .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
+    .option('--hooks', 'Include commented hook examples in frontmatter')
     .addHelpText(
       'after',
       `
@@ -27,10 +34,28 @@ Examples:
   $ asm scaffold my-skill --allowed-tools "Read,Write,Bash"
   $ asm scaffold my-skill --force
 
+Template options:
+  $ asm scaffold my-skill --template forked
+  $ asm scaffold my-skill --template with-hooks
+  $ asm scaffold my-skill --template internal
+  $ asm scaffold my-skill --context fork
+  $ asm scaffold my-skill --agent Explore
+  $ asm scaffold my-skill --no-user-invocable
+  $ asm scaffold my-skill --hooks
+  $ asm scaffold my-skill --template basic --context fork --hooks
+
 Note:
   By default, skills are created in .claude/skills/ (project scope).
   Use --personal to create in ~/.claude/skills/ (user scope).
-  Use --output to specify a custom directory.`
+  Use --output to specify a custom directory.
+
+Template types:
+  basic       - Default template with general guidance
+  forked      - For skills running in isolated (forked) context
+  with-hooks  - Template demonstrating hook configuration
+  internal    - For non-user-invocable helper skills
+
+Flags can be combined with templates. Explicit flags override template defaults.`
     )
     .action(async (name: string, options: CliScaffoldOptions) => {
       try {
@@ -49,6 +74,99 @@ interface CliScaffoldOptions {
   personal?: boolean;
   allowedTools?: string;
   force?: boolean;
+  template?: string;
+  context?: string;
+  agent?: string;
+  userInvocable?: boolean;
+  hooks?: boolean;
+}
+
+/**
+ * Validates template type against allowed values.
+ */
+function validateTemplateType(template: string): ScaffoldTemplateType {
+  if (!VALID_TEMPLATE_TYPES.includes(template as ScaffoldTemplateType)) {
+    throw new ValidationError(
+      `Invalid template type: "${template}". Valid types are: ${VALID_TEMPLATE_TYPES.join(', ')}`,
+      [
+        {
+          code: 'INVALID_TEMPLATE_TYPE',
+          message: `Invalid template type: "${template}". Valid types are: ${VALID_TEMPLATE_TYPES.join(', ')}`,
+        },
+      ]
+    );
+  }
+  return template as ScaffoldTemplateType;
+}
+
+/**
+ * Validates context value.
+ */
+function validateContext(context: string): 'fork' {
+  if (context !== 'fork') {
+    throw new ValidationError(`Invalid context value: "${context}". Only "fork" is supported.`, [
+      {
+        code: 'INVALID_CONTEXT',
+        message: `Invalid context value: "${context}". Only "fork" is supported.`,
+      },
+    ]);
+  }
+  return 'fork';
+}
+
+/**
+ * Validates agent value.
+ */
+function validateAgent(agent: string): string {
+  const trimmed = agent.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('Agent name cannot be empty', [
+      { code: 'EMPTY_AGENT', message: 'Agent name cannot be empty' },
+    ]);
+  }
+  return trimmed;
+}
+
+/**
+ * Builds template options from CLI flags.
+ * Returns undefined if no template options were specified.
+ */
+function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOptions | undefined {
+  const templateOptions: ScaffoldTemplateOptions = {};
+  let hasOptions = false;
+
+  // Validate and set template type
+  if (options.template) {
+    templateOptions.templateType = validateTemplateType(options.template);
+    hasOptions = true;
+  }
+
+  // Validate and set context
+  if (options.context) {
+    templateOptions.context = validateContext(options.context);
+    hasOptions = true;
+  }
+
+  // Validate and set agent (check for undefined/null, not just truthy, to allow validation of empty string)
+  if (options.agent !== undefined && options.agent !== null) {
+    templateOptions.agent = validateAgent(options.agent);
+    hasOptions = true;
+  }
+
+  // Set userInvocable (commander uses --no-user-invocable which negates to false)
+  // userInvocable defaults to true in commander when --no-user-invocable is not passed
+  if (options.userInvocable === false) {
+    templateOptions.userInvocable = false;
+    hasOptions = true;
+  }
+
+  // Set includeHooks
+  if (options.hooks) {
+    templateOptions.includeHooks = true;
+    hasOptions = true;
+  }
+
+  return hasOptions ? templateOptions : undefined;
 }
 
 async function handleScaffold(name: string, options: CliScaffoldOptions): Promise<void> {
@@ -77,6 +195,9 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
     }
   }
 
+  // Build template options from CLI flags (validates inputs)
+  const template = buildTemplateOptions(options);
+
   // Map CLI options to API scope
   const scope: ApiScope | undefined = options.personal
     ? 'personal'
@@ -92,10 +213,14 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
     output: options.output,
     scope,
     force: options.force,
+    template,
   });
 
-  // Display success message
+  // Display success message with template info
   output.displayCreatedFiles(result.path, result.files);
+  if (template?.templateType && template.templateType !== 'basic') {
+    output.displayInfo(`Using "${template.templateType}" template`);
+  }
   output.displayNextSteps(result.path, name);
 }
 
