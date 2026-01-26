@@ -74,10 +74,45 @@ function getDefaultAllowedTools(templateType: TemplateType): string[] | undefine
     case 'internal':
       // Minimal tools for helper skills
       return ['Read', 'Grep'];
+    case 'with-hooks':
+      // Tools commonly used with hook workflows
+      return ['Bash', 'Read', 'Write'];
     default:
-      // No defaults for basic and with-hooks (user specifies or commented placeholder)
+      // No defaults for basic (user specifies or commented placeholder)
       return undefined;
   }
+}
+
+/**
+ * Generate YAML for the hooks section of frontmatter.
+ * Produces properly indented YAML with PreToolUse and PostToolUse examples,
+ * plus commented Stop example.
+ *
+ * Note: Skills only support PreToolUse, PostToolUse, and Stop hooks.
+ * The format follows Claude Code's nested structure with matcher and hooks array.
+ * For PreToolUse/PostToolUse, use "*" matcher for all tools or specific tool names.
+ * Stop hooks don't use matchers.
+ */
+function generateHooksYaml(): string {
+  const lines: string[] = [];
+
+  lines.push('hooks:');
+  lines.push('  PreToolUse:');
+  lines.push('    - matcher: "*"');
+  lines.push('      hooks:');
+  lines.push('        - type: command');
+  lines.push('          command: echo "Starting tool execution..."');
+  lines.push('  PostToolUse:');
+  lines.push('    - matcher: "*"');
+  lines.push('      hooks:');
+  lines.push('        - type: command');
+  lines.push('          command: echo "Tool execution complete"');
+  lines.push('  # Stop:');
+  lines.push('  #   - hooks:');
+  lines.push('  #       - type: command');
+  lines.push('  #         command: echo "Skill stopped"');
+
+  return lines.join('\n');
 }
 
 /**
@@ -126,6 +161,11 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
   // Add user-invocable: false for internal template or if explicitly set to false
   if (templateType === 'internal' || options?.userInvocable === false) {
     lines.push('user-invocable: false');
+  }
+
+  // Add hooks section for with-hooks template or if includeHooks option is true
+  if (templateType === 'with-hooks' || options?.includeHooks) {
+    lines.push(generateHooksYaml());
   }
 
   lines.push('---');
@@ -199,6 +239,87 @@ EXAMPLE USE CASES:
 DEFAULT TOOLS:
 This template defaults to minimal tools (Read, Grep). Modify allowed-tools
 based on what operations your helper needs to perform.
+`;
+
+    case 'with-hooks':
+      return `
+SKILL WITH HOOKS
+================================================================================
+
+This skill demonstrates Claude Code hook configuration. Hooks allow you to run
+commands at specific points during skill execution.
+
+SUPPORTED HOOK TYPES FOR SKILLS:
+Skills only support these three hook types:
+- PreToolUse: Fires BEFORE each tool call (validation, logging, setup)
+- PostToolUse: Fires AFTER each tool call (cleanup, logging, verification)
+- Stop: Fires when Claude finishes responding (cleanup, final checks)
+
+HOOK CONFIGURATION FORMAT:
+Skills use a nested structure with matcher and hooks array:
+
+  hooks:
+    PreToolUse:
+      - matcher: "*"           # Match all tools, or use specific tool name
+        hooks:
+          - type: command
+            command: <shell command to execute>
+    Stop:
+      - hooks:                 # Stop hooks don't use matchers
+          - type: command
+            command: <shell command>
+
+MATCHERS:
+PreToolUse and PostToolUse hooks can target specific tools:
+- "*" or "" matches ALL tools
+- "Bash" matches only the Bash tool
+- "Edit|Write" matches Edit OR Write tools (regex supported)
+
+EXAMPLE USE CASES:
+
+Validation before Bash commands:
+  hooks:
+    PreToolUse:
+      - matcher: "Bash"
+        hooks:
+          - type: command
+            command: ./scripts/validate-command.sh
+
+Logging after file writes:
+  hooks:
+    PostToolUse:
+      - matcher: "Edit|Write"
+        hooks:
+          - type: command
+            command: echo "$(date): File modified" >> /tmp/skill.log
+
+Cleanup on stop:
+  hooks:
+    Stop:
+      - hooks:
+          - type: command
+            command: ./scripts/cleanup.sh
+
+SKILL-SPECIFIC OPTIONS:
+- once: Set to true to run the hook only once per session
+    hooks:
+      PreToolUse:
+        - matcher: "*"
+          hooks:
+            - type: command
+              command: ./scripts/one-time-setup.sh
+              once: true
+
+DEFAULT TOOLS:
+This template defaults to tools commonly used with hooks (Bash, Read, Write).
+Modify allowed-tools based on your specific workflow needs.
+
+IMPORTANT NOTES:
+- Hook commands run in the shell environment, not in Claude's context
+- Keep hook commands fast to avoid slowing down the skill
+- Use the scripts/ directory for complex hook logic
+- Test hooks thoroughly before deployment
+- Hooks in skills are automatically cleaned up when the skill finishes
 `;
 
     default:

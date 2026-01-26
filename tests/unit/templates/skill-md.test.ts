@@ -505,6 +505,247 @@ describe('generateSkillMd', () => {
     });
   });
 
+  describe('with-hooks template', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('includes hooks section with PreToolUse and PostToolUse in frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('hooks:');
+      expect(frontmatter).toContain('PreToolUse:');
+      expect(frontmatter).toContain('PostToolUse:');
+    });
+
+    it('includes PreToolUse hook with matcher and nested hooks array', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('PreToolUse:');
+      expect(frontmatter).toContain('matcher: "*"');
+      expect(frontmatter).toContain('- type: command');
+      expect(frontmatter).toContain('command: echo "Starting tool execution..."');
+    });
+
+    it('includes PostToolUse hook with matcher and nested hooks array', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('PostToolUse:');
+      expect(frontmatter).toContain('command: echo "Tool execution complete"');
+    });
+
+    it('includes commented Stop hook example without matcher', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('# Stop:');
+      expect(frontmatter).toContain('#   - hooks:');
+      expect(frontmatter).toContain('#       - type: command');
+      expect(frontmatter).toContain('#         command: echo "Skill stopped"');
+    });
+
+    it('sets default allowed-tools to Bash, Read, Write', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('allowed-tools:');
+      expect(frontmatter).toContain('  - Bash');
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Write');
+    });
+
+    it('allows explicit allowedTools to override defaults', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd(
+        { name: 'custom-hooks', allowedTools: ['Bash', 'Edit'] },
+        options
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('  - Bash');
+      expect(frontmatter).toContain('  - Edit');
+      // Should NOT contain defaults since overridden
+      expect(frontmatter).not.toContain('  - Read');
+      expect(frontmatter).not.toContain('  - Write');
+    });
+
+    it('includes hooks guidance in body', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('SKILL WITH HOOKS');
+      expect(result).toContain('SUPPORTED HOOK TYPES FOR SKILLS');
+      expect(result).toContain('EXAMPLE USE CASES');
+      expect(result).toContain('HOOK CONFIGURATION FORMAT');
+    });
+
+    it('documents when each hook type fires', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('PreToolUse: Fires BEFORE each tool call');
+      expect(result).toContain('PostToolUse: Fires AFTER each tool call');
+      expect(result).toContain('Stop: Fires when Claude finishes responding');
+    });
+
+    it('documents that skills only support three hook types', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('SUPPORTED HOOK TYPES FOR SKILLS');
+      expect(result).toContain('Skills only support these three hook types');
+    });
+
+    it('provides example use cases for hooks', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('Validation before Bash commands:');
+      expect(result).toContain('Logging after file writes:');
+      expect(result).toContain('Cleanup on stop:');
+    });
+
+    it('documents hook configuration format', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('HOOK CONFIGURATION FORMAT');
+      expect(result).toContain('matcher: "*"');
+      expect(result).toContain('- type: command');
+      expect(result).toContain('command: <shell command to execute>');
+    });
+
+    it('documents hook matchers for targeting specific tools', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('MATCHERS:');
+      expect(result).toContain('"Bash" matches only the Bash tool');
+      expect(result).toContain('"Edit|Write" matches Edit OR Write tools');
+    });
+
+    it('documents the once option for skills', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      expect(result).toContain('SKILL-SPECIFIC OPTIONS');
+      expect(result).toContain('once: true');
+    });
+
+    it('still includes standard guidance sections', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+
+      // Should still have standard guidance
+      expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(result).toContain('FRONTMATTER FIELDS (Open Agent Skills Spec)');
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+      expect(result).toContain('BEST PRACTICES');
+    });
+
+    it('uses proper YAML indentation for nested hook structures', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Check proper indentation for nested structure:
+      // hooks: (0 spaces)
+      //   PreToolUse: (2 spaces)
+      //     - matcher: "*" (4 spaces)
+      //       hooks: (6 spaces)
+      //         - type: command (8 spaces)
+      //           command: ... (10 spaces)
+      expect(frontmatter).toMatch(/^hooks:/m);
+      expect(frontmatter).toMatch(/^[ ]{2}PreToolUse:/m);
+      expect(frontmatter).toMatch(/^[ ]{4}- matcher:/m);
+      expect(frontmatter).toMatch(/^[ ]{6}hooks:/m);
+      expect(frontmatter).toMatch(/^[ ]{8}- type: command/m);
+      expect(frontmatter).toMatch(/^[ ]{10}command:/m);
+    });
+  });
+
+  describe('includeHooks option', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('adds hooks section to basic template when includeHooks is true', () => {
+      const options: TemplateOptions = { templateType: 'basic', includeHooks: true };
+      const result = generateSkillMd({ name: 'basic-with-hooks' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('hooks:');
+      expect(frontmatter).toContain('PreToolUse:');
+      expect(frontmatter).toContain('PostToolUse:');
+      // Should NOT have hooks guidance (it's basic template)
+      expect(result).not.toContain('SKILL WITH HOOKS');
+    });
+
+    it('adds hooks section to forked template when includeHooks is true', () => {
+      const options: TemplateOptions = { templateType: 'forked', includeHooks: true };
+      const result = generateSkillMd({ name: 'forked-with-hooks' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('context: fork');
+      expect(frontmatter).toContain('hooks:');
+      expect(frontmatter).toContain('PreToolUse:');
+      // Should have forked guidance, not hooks guidance
+      expect(result).toContain('FORKED CONTEXT SKILL');
+      expect(result).not.toContain('SKILL WITH HOOKS');
+    });
+
+    it('adds hooks section to internal template when includeHooks is true', () => {
+      const options: TemplateOptions = { templateType: 'internal', includeHooks: true };
+      const result = generateSkillMd({ name: 'internal-with-hooks' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('user-invocable: false');
+      expect(frontmatter).toContain('hooks:');
+      expect(frontmatter).toContain('PreToolUse:');
+      // Should have internal guidance, not hooks guidance
+      expect(result).toContain('INTERNAL HELPER SKILL');
+      expect(result).not.toContain('SKILL WITH HOOKS');
+    });
+
+    it('does not add hooks section when includeHooks is false', () => {
+      const options: TemplateOptions = { templateType: 'basic', includeHooks: false };
+      const result = generateSkillMd({ name: 'basic-no-hooks' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toContain('hooks:');
+    });
+
+    it('does not add hooks section when includeHooks is undefined', () => {
+      const options: TemplateOptions = { templateType: 'basic' };
+      const result = generateSkillMd({ name: 'basic-default' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toContain('hooks:');
+    });
+
+    it('does not duplicate hooks when with-hooks template also has includeHooks', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks', includeHooks: true };
+      const result = generateSkillMd({ name: 'hooks-redundant' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Count occurrences of 'hooks:' - should only appear once
+      const hooksCount = (frontmatter.match(/^hooks:/gm) || []).length;
+      expect(hooksCount).toBe(1);
+    });
+  });
+
   describe('template type and explicit option interactions', () => {
     // Helper to extract frontmatter from generated output
     const getFrontmatter = (result: string): string => {

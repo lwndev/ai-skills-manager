@@ -91,7 +91,7 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 ### Phase 3: Hooks Template
 **Feature:** [FEAT-013](../features/FEAT-013-skill-template-enhancements.md) | [#36](https://github.com/lwndev/ai-skills-manager/issues/36)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Most complex template**: Hooks require nested YAML structure with multiple hook types
@@ -113,10 +113,10 @@ This plan covers the implementation of enhanced template variants and CLI option
 6. Add unit tests for hooks YAML generation edge cases
 
 #### Deliverables
-- [ ] Hooks template implementation in `src/templates/skill-md.ts`
-- [ ] `generateHooksYaml()` helper function
-- [ ] Unit tests for hooks template generation
-- [ ] Unit tests for YAML indentation and structure
+- [x] Hooks template implementation in `src/templates/skill-md.ts`
+- [x] `generateHooksYaml()` helper function
+- [x] Unit tests for hooks template generation
+- [x] Unit tests for YAML indentation and structure
 
 ---
 
