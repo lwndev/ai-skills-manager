@@ -95,7 +95,9 @@ Body should include guidance specific to forked contexts:
 
 ### FR-3: Hooks Template (`--template with-hooks`)
 
-Generate a skill template demonstrating hook usage:
+Generate a skill template demonstrating hook usage. Skills only support three hook types: `PreToolUse`, `PostToolUse`, and `Stop`.
+
+The hooks format uses a nested structure with `matcher` (for PreToolUse/PostToolUse) and `hooks` array:
 
 ```yaml
 ---
@@ -103,17 +105,19 @@ name: skill-name
 description: "TODO: Add description"
 hooks:
   PreToolUse:
-    - type: command
-      command: echo "Starting tool execution..."
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: echo "Starting tool execution..."
   PostToolUse:
-    - type: command
-      command: echo "Tool execution complete"
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: echo "Tool execution complete"
   # Stop:
-  #   - type: command
-  #     command: echo "Skill stopped"
-  # SessionStart:
-  #   - type: command
-  #     command: echo "Session initialized"
+  #   - hooks:
+  #       - type: command
+  #         command: echo "Skill stopped"
 allowed-tools:
   - Bash
   - Read
@@ -121,10 +125,14 @@ allowed-tools:
 ---
 ```
 
+**Note:** Stop hooks don't use matchers. PreToolUse/PostToolUse can use `"*"` for all tools or specific patterns like `"Bash"` or `"Edit|Write"`.
+
 Body should include:
-- Hook types and when they fire
+- Hook types supported in skills and when they fire
+- Matcher patterns for targeting specific tools
 - Example use cases (validation, logging, cleanup)
 - Hook configuration format
+- The `once` option for running hooks only once per session
 
 ### FR-4: Internal Helper Template (`--template internal`)
 

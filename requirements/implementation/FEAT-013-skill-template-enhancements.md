@@ -100,14 +100,18 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 #### Implementation Steps
 1. Implement `with-hooks` template generation:
-   - Add hooks section to frontmatter with PreToolUse and PostToolUse examples
-   - Include commented Stop and SessionStart hook examples
+   - Add hooks section to frontmatter using Claude Code's nested structure with `matcher` and `hooks` array
+   - Include PreToolUse and PostToolUse examples with `"*"` matcher
+   - Include commented Stop hook example (Stop hooks don't use matchers)
+   - Note: Skills only support PreToolUse, PostToolUse, and Stop hooks (NOT SessionStart)
    - Set appropriate allowed-tools including `Bash`, `Read`, `Write`
 2. Create helper function `generateHooksYaml()` for hooks section formatting
 3. Add body guidance for hooks:
-   - Hook types and when they fire
+   - Document the three hook types supported in skills and when they fire
+   - Matcher patterns (`"*"`, `"Bash"`, `"Edit|Write"`)
    - Example use cases (validation, logging, cleanup)
-   - Hook configuration format
+   - Hook configuration format with nested structure
+   - The `once` option for running hooks only once per session
 4. Ensure proper YAML indentation for nested hook structures
 5. Add unit tests for hooks template
 6. Add unit tests for hooks YAML generation edge cases
