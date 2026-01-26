@@ -312,4 +312,272 @@ describe('generateSkillMd', () => {
       expect(templateType).toBe('internal');
     });
   });
+
+  describe('forked template', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('automatically adds context: fork to frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'analyzer-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('context: fork');
+    });
+
+    it('sets default allowed-tools to read-only tools', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'analyzer-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('allowed-tools:');
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Glob');
+      expect(frontmatter).toContain('  - Grep');
+      // Should NOT contain write tools by default
+      expect(frontmatter).not.toContain('  - Write');
+      expect(frontmatter).not.toContain('  - Edit');
+      expect(frontmatter).not.toContain('  - Bash');
+    });
+
+    it('allows explicit allowedTools to override defaults', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd(
+        { name: 'custom-forked', allowedTools: ['Read', 'Write'] },
+        options
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Write');
+      // Should NOT contain default Glob/Grep since overridden
+      expect(frontmatter).not.toContain('  - Glob');
+      expect(frontmatter).not.toContain('  - Grep');
+    });
+
+    it('includes forked context guidance in body', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+
+      expect(result).toContain('FORKED CONTEXT SKILL');
+      expect(result).toContain('WHEN TO USE FORKED CONTEXTS');
+      expect(result).toContain('LIMITATIONS');
+      expect(result).toContain('BEST PRACTICES FOR DATA RETURN');
+    });
+
+    it('explains isolated analysis use case', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+
+      expect(result).toContain('Isolated analysis');
+      expect(result).toContain('Exploratory operations');
+    });
+
+    it('documents state persistence limitations', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+
+      expect(result).toContain('No state persistence');
+      expect(result).toContain("don't persist to parent");
+    });
+
+    it('includes data return best practices', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+
+      expect(result).toContain('Structure your output clearly');
+      expect(result).toContain('actionable summaries');
+    });
+
+    it('still includes standard guidance sections', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-skill' }, options);
+
+      // Should still have standard guidance
+      expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(result).toContain('FRONTMATTER FIELDS (Open Agent Skills Spec)');
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+      expect(result).toContain('BEST PRACTICES');
+    });
+  });
+
+  describe('internal template', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('automatically adds user-invocable: false to frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'helper-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('user-invocable: false');
+    });
+
+    it('sets default allowed-tools to minimal read tools', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'helper-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('allowed-tools:');
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Grep');
+      // Should NOT contain other tools by default
+      expect(frontmatter).not.toContain('  - Glob');
+      expect(frontmatter).not.toContain('  - Write');
+      expect(frontmatter).not.toContain('  - Edit');
+      expect(frontmatter).not.toContain('  - Bash');
+    });
+
+    it('allows explicit allowedTools to override defaults', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd(
+        { name: 'custom-internal', allowedTools: ['Read', 'Glob', 'Bash'] },
+        options
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Glob');
+      expect(frontmatter).toContain('  - Bash');
+      // Should NOT contain default Grep since overridden
+      expect(frontmatter).not.toContain('  - Grep');
+    });
+
+    it('includes internal helper guidance in body', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      expect(result).toContain('INTERNAL HELPER SKILL');
+      expect(result).toContain('WHAT THIS MEANS');
+      expect(result).toContain('HOW OTHER SKILLS REFERENCE THIS SKILL');
+      expect(result).toContain('COMMON PATTERNS FOR HELPER SKILLS');
+    });
+
+    it('explains user-invocable: false behavior', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      expect(result).toContain('Users CANNOT directly invoke this skill');
+      expect(result).toContain('Other skills CAN reference');
+      expect(result).toContain('hidden from user-facing skill listings');
+    });
+
+    it('documents how other skills can reference helpers', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      expect(result).toContain('Skills can reference internal helpers');
+    });
+
+    it('provides common helper skill patterns', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      expect(result).toContain('Shared validation logic');
+      expect(result).toContain('Common output formatting');
+      expect(result).toContain('Standard error handling');
+    });
+
+    it('includes example use cases', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      expect(result).toContain('EXAMPLE USE CASES');
+      expect(result).toContain('formatting-helper');
+      expect(result).toContain('validation-helper');
+    });
+
+    it('still includes standard guidance sections', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-skill' }, options);
+
+      // Should still have standard guidance
+      expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(result).toContain('FRONTMATTER FIELDS (Open Agent Skills Spec)');
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+      expect(result).toContain('BEST PRACTICES');
+    });
+  });
+
+  describe('template type and explicit option interactions', () => {
+    // Helper to extract frontmatter from generated output
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('explicit context: fork on basic template only adds context without forked guidance', () => {
+      const options: TemplateOptions = { templateType: 'basic', context: 'fork' };
+      const result = generateSkillMd({ name: 'basic-forked' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Should have context: fork
+      expect(frontmatter).toContain('context: fork');
+      // Should NOT have forked template guidance (it's basic template)
+      expect(result).not.toContain('FORKED CONTEXT SKILL');
+      // Should have commented allowed-tools (basic template default)
+      expect(frontmatter).toContain('# allowed-tools:');
+    });
+
+    it('explicit userInvocable: false on basic template only adds field without internal guidance', () => {
+      const options: TemplateOptions = { templateType: 'basic', userInvocable: false };
+      const result = generateSkillMd({ name: 'basic-internal' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Should have user-invocable: false
+      expect(frontmatter).toContain('user-invocable: false');
+      // Should NOT have internal template guidance (it's basic template)
+      expect(result).not.toContain('INTERNAL HELPER SKILL');
+    });
+
+    it('forked template does not add user-invocable field by default', () => {
+      const options: TemplateOptions = { templateType: 'forked' };
+      const result = generateSkillMd({ name: 'forked-only' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('context: fork');
+      expect(frontmatter).not.toContain('user-invocable');
+    });
+
+    it('internal template does not add context: fork by default', () => {
+      const options: TemplateOptions = { templateType: 'internal' };
+      const result = generateSkillMd({ name: 'internal-only' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('user-invocable: false');
+      expect(frontmatter).not.toContain('context: fork');
+    });
+
+    it('can combine internal template with explicit context: fork', () => {
+      const options: TemplateOptions = { templateType: 'internal', context: 'fork' };
+      const result = generateSkillMd({ name: 'internal-forked' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Should have both fields
+      expect(frontmatter).toContain('user-invocable: false');
+      expect(frontmatter).toContain('context: fork');
+      // Should have internal guidance (primary template)
+      expect(result).toContain('INTERNAL HELPER SKILL');
+      expect(result).not.toContain('FORKED CONTEXT SKILL');
+    });
+
+    it('can combine forked template with explicit userInvocable: false', () => {
+      const options: TemplateOptions = { templateType: 'forked', userInvocable: false };
+      const result = generateSkillMd({ name: 'forked-internal' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Should have both fields
+      expect(frontmatter).toContain('context: fork');
+      expect(frontmatter).toContain('user-invocable: false');
+      // Should have forked guidance (primary template)
+      expect(result).toContain('FORKED CONTEXT SKILL');
+      expect(result).not.toContain('INTERNAL HELPER SKILL');
+    });
+  });
 });

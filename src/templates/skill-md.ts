@@ -64,10 +64,28 @@ function escapeYamlString(value: string): string {
 }
 
 /**
+ * Get default allowed-tools based on template type
+ */
+function getDefaultAllowedTools(templateType: TemplateType): string[] | undefined {
+  switch (templateType) {
+    case 'forked':
+      // Read-only tools for isolated analysis
+      return ['Read', 'Glob', 'Grep'];
+    case 'internal':
+      // Minimal tools for helper skills
+      return ['Read', 'Grep'];
+    default:
+      // No defaults for basic and with-hooks (user specifies or commented placeholder)
+      return undefined;
+  }
+}
+
+/**
  * Generate YAML frontmatter for the skill
  */
 function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOptions): string {
   const lines: string[] = ['---'];
+  const templateType = options?.templateType ?? 'basic';
 
   lines.push(`name: ${escapeYamlString(params.name)}`);
 
@@ -77,9 +95,12 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push('description: "TODO: Add a short description of what this skill does"');
   }
 
-  if (params.allowedTools && params.allowedTools.length > 0) {
+  // Determine allowed-tools: explicit params override template defaults
+  const allowedTools = params.allowedTools ?? getDefaultAllowedTools(templateType);
+
+  if (allowedTools && allowedTools.length > 0) {
     lines.push('allowed-tools:');
-    for (const tool of params.allowedTools) {
+    for (const tool of allowedTools) {
       lines.push(`  - ${escapeYamlString(tool.trim())}`);
     }
   } else {
@@ -92,8 +113,8 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push('#   - Grep');
   }
 
-  // Add context field if specified
-  if (options?.context === 'fork') {
+  // Add context: fork for forked template or if explicitly specified
+  if (templateType === 'forked' || options?.context === 'fork') {
     lines.push('context: fork');
   }
 
@@ -102,8 +123,8 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push(`agent: ${escapeYamlString(options.agent)}`);
   }
 
-  // Add user-invocable: false if explicitly set to false
-  if (options?.userInvocable === false) {
+  // Add user-invocable: false for internal template or if explicitly set to false
+  if (templateType === 'internal' || options?.userInvocable === false) {
     lines.push('user-invocable: false');
   }
 
@@ -112,10 +133,87 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
 }
 
 /**
+ * Generate template-specific guidance section
+ */
+function getTemplateGuidance(templateType: TemplateType): string {
+  switch (templateType) {
+    case 'forked':
+      return `
+FORKED CONTEXT SKILL
+================================================================================
+
+This skill runs in a FORKED (isolated) context. Key characteristics:
+
+WHEN TO USE FORKED CONTEXTS:
+- Isolated analysis that shouldn't affect the main conversation state
+- Exploratory operations where you want to try things without side effects
+- Parallel investigation tasks that run independently
+- Read-only operations that gather information
+
+LIMITATIONS:
+- No state persistence: Changes made in the fork don't persist to parent
+- Tool restrictions: Only allowed-tools listed in frontmatter are available
+- Memory isolation: The fork cannot access or modify parent conversation state
+- No file writes: Forked contexts typically use read-only tools
+
+BEST PRACTICES FOR DATA RETURN:
+- Structure your output clearly so results can be used by the parent context
+- Return actionable summaries rather than raw data when possible
+- Use consistent output formats for programmatic consumption
+- Include relevant file paths, line numbers, or identifiers for follow-up
+
+DEFAULT TOOLS:
+This template defaults to read-only tools (Read, Glob, Grep). Modify
+allowed-tools if you need additional capabilities.
+`;
+
+    case 'internal':
+      return `
+INTERNAL HELPER SKILL
+================================================================================
+
+This skill has \`user-invocable: false\`, making it an internal helper.
+
+WHAT THIS MEANS:
+- Users CANNOT directly invoke this skill with /skill-name
+- Other skills CAN reference and use this skill's functionality
+- The skill is loaded but hidden from user-facing skill listings
+- Useful for shared utilities, common patterns, or implementation details
+
+HOW OTHER SKILLS REFERENCE THIS SKILL:
+Skills can reference internal helpers by including guidance in their body
+that tells Claude to follow the patterns defined in the helper skill.
+
+COMMON PATTERNS FOR HELPER SKILLS:
+- Shared validation logic used by multiple skills
+- Common output formatting templates
+- Reusable analysis or processing steps
+- Standard error handling patterns
+- Configuration or setup procedures
+
+EXAMPLE USE CASES:
+- A "formatting-helper" that defines standard output formats
+- A "validation-helper" that checks common preconditions
+- A "git-patterns" helper with standard git workflow steps
+
+DEFAULT TOOLS:
+This template defaults to minimal tools (Read, Grep). Modify allowed-tools
+based on what operations your helper needs to perform.
+`;
+
+    default:
+      // Basic template - return empty string (uses standard guidance)
+      return '';
+  }
+}
+
+/**
  * Generate the markdown body with guidance and TODO placeholders
  */
-function generateBody(params: SkillTemplateParams, _templateType: TemplateType): string {
-  // Note: templateType is used in Phase 2 for variant-specific guidance
+function generateBody(params: SkillTemplateParams, templateType: TemplateType): string {
+  const templateGuidance = getTemplateGuidance(templateType);
+  const hasTemplateGuidance = templateGuidance.length > 0;
+
   return `
 # ${params.name}
 
@@ -146,7 +244,7 @@ TODO: Add any implementation details, edge cases, or important considerations.
 ================================================================================
 SKILL DEVELOPMENT GUIDANCE
 ================================================================================
-
+${hasTemplateGuidance ? templateGuidance : ''}
 This file defines a Claude Code skill. Skills are markdown files with YAML
 frontmatter that teach Claude how to perform specific tasks.
 

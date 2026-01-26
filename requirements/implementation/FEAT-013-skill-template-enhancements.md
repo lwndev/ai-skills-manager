@@ -54,7 +54,7 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 ### Phase 2: Forked Context and Internal Templates
 **Feature:** [FEAT-013](../features/FEAT-013-skill-template-enhancements.md) | [#36](https://github.com/lwndev/ai-skills-manager/issues/36)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Simple additions**: Both templates add single frontmatter fields (`context: fork` and `user-invocable: false`)
@@ -81,11 +81,11 @@ This plan covers the implementation of enhanced template variants and CLI option
 5. Add integration tests verifying generated skills pass `asm validate`
 
 #### Deliverables
-- [ ] Forked template implementation in `src/templates/skill-md.ts`
-- [ ] Internal template implementation in `src/templates/skill-md.ts`
-- [ ] Unit tests for forked template generation
-- [ ] Unit tests for internal template generation
-- [ ] Integration tests for template validation
+- [x] Forked template implementation in `src/templates/skill-md.ts`
+- [x] Internal template implementation in `src/templates/skill-md.ts`
+- [x] Unit tests for forked template generation
+- [x] Unit tests for internal template generation
+- [x] Integration tests for template validation
 
 ---
 
