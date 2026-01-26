@@ -8,7 +8,7 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-013 | [#36](https://github.com/lwndev/ai-skills-manager/issues/36) | [FEAT-013-skill-template-enhancements.md](../features/FEAT-013-skill-template-enhancements.md) | Medium | Medium | Pending |
+| FEAT-013 | [#36](https://github.com/lwndev/ai-skills-manager/issues/36) | [FEAT-013-skill-template-enhancements.md](../features/FEAT-013-skill-template-enhancements.md) | Medium | Medium | ✅ Complete |
 
 ## Recommended Build Sequence
 
@@ -171,7 +171,7 @@ This plan covers the implementation of enhanced template variants and CLI option
 
 ### Phase 5: Documentation and Final Validation
 **Feature:** [FEAT-013](../features/FEAT-013-skill-template-enhancements.md) | [#36](https://github.com/lwndev/ai-skills-manager/issues/36)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Quality assurance**: Final verification that all templates work correctly in Claude Code
@@ -191,11 +191,11 @@ This plan covers the implementation of enhanced template variants and CLI option
 7. Final cleanup and code review
 
 #### Deliverables
-- [ ] Updated CLI help text
-- [ ] All tests passing
-- [ ] `npm run quality` passing
-- [ ] Manual testing completed
-- [ ] Code review completed
+- [x] Updated CLI help text
+- [x] All tests passing
+- [x] `npm run quality` passing
+- [x] Manual testing completed
+- [x] Code review completed
 
 ---
 
@@ -268,21 +268,21 @@ interface TemplateOptions {
 - `npm run quality` passing
 
 ### Overall Success
-- [ ] `--template basic` produces current default output
-- [ ] `--template forked` adds `context: fork` and appropriate guidance
-- [ ] `--template with-hooks` includes hook configuration examples
-- [ ] `--template internal` adds `user-invocable: false`
-- [ ] `--context fork` flag works independently
-- [ ] `--agent <name>` flag sets agent field
-- [ ] `--no-user-invocable` flag sets `user-invocable: false`
-- [ ] `--hooks` flag adds commented hook examples
-- [ ] Flags can be combined with templates
-- [ ] Basic template updated with Claude Code 2.1.x documentation
-- [ ] Wildcard tool patterns documented in templates
-- [ ] Argument shorthand syntax documented
-- [ ] Claude Code-specific vs. open spec fields clearly marked
-- [ ] All existing scaffold tests continue to pass
-- [ ] Error messages for invalid options are clear
+- [x] `--template basic` produces current default output
+- [x] `--template forked` adds `context: fork` and appropriate guidance
+- [x] `--template with-hooks` includes hook configuration examples
+- [x] `--template internal` adds `user-invocable: false`
+- [x] `--context fork` flag works independently
+- [x] `--agent <name>` flag sets agent field
+- [x] `--no-user-invocable` flag sets `user-invocable: false`
+- [x] `--hooks` flag adds commented hook examples
+- [x] Flags can be combined with templates
+- [x] Basic template updated with Claude Code 2.1.x documentation
+- [x] Wildcard tool patterns documented in templates
+- [x] Argument shorthand syntax documented
+- [x] Claude Code-specific vs. open spec fields clearly marked
+- [x] All existing scaffold tests continue to pass
+- [x] Error messages for invalid options are clear
 
 ## Code Organization
 
