@@ -23,20 +23,20 @@ When using `asm list --recursive --depth N`, add a warning to inform users if th
 
 ## Acceptance Criteria
 
-- [ ] `findNestedSkillDirectories` returns whether any directories were skipped due to depth limits
-- [ ] `asm list --recursive --depth N` displays a warning when depth limit prevents scanning subdirectories
-- [ ] Warning message includes suggestion to increase depth (e.g., "Use --depth <N> to increase the search depth")
-- [ ] No warning displayed when all directories are fully scanned
-- [ ] Existing tests continue to pass
-- [ ] New tests added for depth-limit warning behavior
+- [x] `findNestedSkillDirectories` returns whether any directories were skipped due to depth limits
+- [x] `asm list --recursive --depth N` displays a warning when depth limit prevents scanning subdirectories
+- [x] Warning message includes suggestion to increase depth (e.g., "Use --depth <N> to increase the search depth")
+- [x] No warning displayed when all directories are fully scanned
+- [x] Existing tests continue to pass
+- [x] New tests added for depth-limit warning behavior
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-01-30
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#46](https://github.com/lwndev/ai-skills-manager/pull/46)
 
 ## Notes
 
