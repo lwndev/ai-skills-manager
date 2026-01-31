@@ -149,4 +149,4 @@ export type {
 export { isUninstallSuccess, isUninstallNotFound, isUninstallDryRunPreview } from './api/uninstall';
 
 // List types
-export type { ListOptions, InstalledSkill } from './types/api';
+export type { ListOptions, InstalledSkill, ListResult, RecursiveListOptions } from './types/api';

@@ -89,3 +89,10 @@ export function displayValidationError(field: string, errorMessage: string): voi
 export function displayInfo(message: string): void {
   console.log(info(message));
 }
+
+/**
+ * Display a warning message
+ */
+export function displayWarning(message: string): void {
+  console.log(warning(message));
+}

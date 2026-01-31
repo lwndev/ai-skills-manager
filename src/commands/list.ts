@@ -128,11 +128,13 @@ async function handleList(options: ListCommandOptions): Promise<number> {
     }
 
     // Call the API
-    const skills = await list({
+    const result = await list({
       scope: scope === 'all' || !scope ? 'all' : (scope as 'project' | 'personal'),
       recursive,
       depth,
     });
+
+    const { skills, depthLimitReached } = result;
 
     // Output results
     if (json) {
@@ -143,6 +145,13 @@ async function handleList(options: ListCommandOptions): Promise<number> {
       }
     } else {
       formatNormalOutput(skills, recursive);
+    }
+
+    // Display depth limit warning if applicable
+    if (depthLimitReached && !json && !quiet) {
+      console.log('');
+      output.displayWarning(`Some directories were not scanned due to depth limit (${depth}).`);
+      console.log(`  Use --depth ${depth + 1} to increase the search depth.`);
     }
 
     return EXIT_CODES.SUCCESS;

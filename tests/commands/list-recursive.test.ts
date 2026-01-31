@@ -349,4 +349,83 @@ description: ${options.description || `Description for ${name}`}${metadata}
       expect(stdout).toContain('No skills installed');
     });
   });
+
+  describe('depth limit warning', () => {
+    it('shows warning when depth limit prevents scanning subdirectories', async () => {
+      // Create skills at depths 0, 1, 2
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      // Create a directory at depth 2 that would be skipped with depth 1
+      const level2Dir = await createSkillsDir('level1', 'level2');
+      await createSkill(level2Dir, 'depth-2');
+
+      // Depth 1 should trigger warning because level2 exists
+      const { stdout } = runCli('list --recursive --depth 1 --scope project');
+
+      expect(stdout).toContain('Some directories were not scanned due to depth limit');
+      expect(stdout).toContain('--depth 2');
+    });
+
+    it('does not show warning when all directories are scanned', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      // Depth 2 should be enough to scan everything
+      const { stdout } = runCli('list --recursive --depth 2 --scope project');
+
+      expect(stdout).not.toContain('Some directories were not scanned due to depth limit');
+    });
+
+    it('does not show warning in JSON mode', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      const level2Dir = await createSkillsDir('level1', 'level2');
+      await createSkill(level2Dir, 'depth-2');
+
+      const { stdout } = runCli('list --recursive --depth 1 --scope project --json');
+
+      // JSON output should be valid JSON, not contain the warning
+      expect(stdout).not.toContain('Some directories were not scanned');
+      expect(() => JSON.parse(stdout)).not.toThrow();
+    });
+
+    it('does not show warning in quiet mode', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      const level2Dir = await createSkillsDir('level1', 'level2');
+      await createSkill(level2Dir, 'depth-2');
+
+      const { stdout } = runCli('list --recursive --depth 1 --scope project --quiet');
+
+      expect(stdout).not.toContain('Some directories were not scanned');
+    });
+
+    it('does not show warning when not using recursive mode', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      // Nested directories exist but not using --recursive
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      const { stdout } = runCli('list --scope project');
+
+      expect(stdout).not.toContain('Some directories were not scanned');
+    });
+  });
 });

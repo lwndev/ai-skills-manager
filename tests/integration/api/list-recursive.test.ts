@@ -69,11 +69,11 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'api');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project', recursive: false });
+      const { skills } = await list({ scope: 'project', recursive: false });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('root-skill');
-      expect(result[0].location).toBeUndefined();
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('root-skill');
+      expect(skills[0].location).toBeUndefined();
     });
 
     it('default behavior (no recursive option) is non-recursive', async () => {
@@ -83,10 +83,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'web');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project' });
+      const { skills } = await list({ scope: 'project' });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('root-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('root-skill');
     });
   });
 
@@ -101,10 +101,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const webSkillsDir = await createSkillsDir('packages', 'web');
       await createSkill(webSkillsDir, 'component-gen');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      expect(result).toHaveLength(3);
-      const names = result.map((s) => s.name);
+      expect(skills).toHaveLength(3);
+      const names = skills.map((s) => s.name);
       expect(names).toContain('root-skill');
       expect(names).toContain('api-helpers');
       expect(names).toContain('component-gen');
@@ -117,10 +117,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'api');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      const rootSkill = result.find((s) => s.name === 'root-skill');
-      const nestedSkill = result.find((s) => s.name === 'nested-skill');
+      const rootSkill = skills.find((s) => s.name === 'root-skill');
+      const nestedSkill = skills.find((s) => s.name === 'nested-skill');
 
       // Root skill has no location
       expect(rootSkill?.location).toBeUndefined();
@@ -141,10 +141,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const webSkillsDir = await createSkillsDir('packages', 'web');
       await createSkill(webSkillsDir, 'shared-utils', { version: '3.0.0' });
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
       // All three instances should be found
-      const sharedUtils = result.filter((s) => s.name === 'shared-utils');
+      const sharedUtils = skills.filter((s) => s.name === 'shared-utils');
       expect(sharedUtils).toHaveLength(3);
 
       // They should have different versions
@@ -161,10 +161,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const webSkillsDir = await createSkillsDir('packages', 'web');
       await createSkill(webSkillsDir, 'web-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      expect(result).toHaveLength(2);
-      const names = result.map((s) => s.name);
+      expect(skills).toHaveLength(2);
+      const names = skills.map((s) => s.name);
       expect(names).toContain('api-skill');
       expect(names).toContain('web-skill');
     });
@@ -186,14 +186,14 @@ description: ${options.description || `Description for ${name}`}${metadata}
 
       // Depth 1 should find root and level1
       const result1 = await list({ scope: 'project', recursive: true, depth: 1 });
-      const names1 = result1.map((s) => s.name);
+      const names1 = result1.skills.map((s) => s.name);
       expect(names1).toContain('depth-0');
       expect(names1).toContain('depth-1');
       expect(names1).not.toContain('depth-2');
 
       // Depth 2 should find root, level1, and level2
       const result2 = await list({ scope: 'project', recursive: true, depth: 2 });
-      const names2 = result2.map((s) => s.name);
+      const names2 = result2.skills.map((s) => s.name);
       expect(names2).toContain('depth-0');
       expect(names2).toContain('depth-1');
       expect(names2).toContain('depth-2');
@@ -207,10 +207,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'api');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project', recursive: true, depth: 0 });
+      const { skills } = await list({ scope: 'project', recursive: true, depth: 0 });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('root-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('root-skill');
     });
 
     it('default depth is 3', async () => {
@@ -225,14 +225,45 @@ description: ${options.description || `Description for ${name}`}${metadata}
       }
 
       // Default should find depth 0-3 but not depth 4
-      const result = await list({ scope: 'project', recursive: true });
-      const names = result.map((s) => s.name);
+      const { skills } = await list({ scope: 'project', recursive: true });
+      const names = skills.map((s) => s.name);
 
       expect(names).toContain('depth-0');
       expect(names).toContain('depth-1');
       expect(names).toContain('depth-2');
       expect(names).toContain('depth-3');
       expect(names).not.toContain('depth-4');
+    });
+
+    it('returns depthLimitReached true when directories are skipped', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      // Create skills at depths 1, 2, 3, 4
+      for (let i = 1; i <= 4; i++) {
+        const parts = Array.from({ length: i }, (_, j) => `level${j + 1}`);
+        const dir = await createSkillsDir(...parts);
+        await createSkill(dir, `depth-${i}`);
+      }
+
+      // Default depth 3 should trigger depthLimitReached
+      const result = await list({ scope: 'project', recursive: true });
+
+      expect(result.depthLimitReached).toBe(true);
+    });
+
+    it('returns depthLimitReached false when all directories are scanned', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      // Create only at depth 1 - no deeper subdirectories
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      // Depth 2 should be enough to scan everything (level1 has no subdirs)
+      const result = await list({ scope: 'project', recursive: true, depth: 2 });
+
+      expect(result.depthLimitReached).toBe(false);
     });
   });
 
@@ -250,9 +281,9 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const ignoredDir = await createSkillsDir('ignored-pkg');
       await createSkill(ignoredDir, 'ignored-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      const names = result.map((s) => s.name);
+      const names = skills.map((s) => s.name);
       expect(names).toContain('root-skill');
       expect(names).toContain('included-skill');
       expect(names).not.toContain('ignored-skill');
@@ -266,10 +297,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nodeModulesDir = await createSkillsDir('node_modules', 'some-package');
       await createSkill(nodeModulesDir, 'pkg-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('root-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('root-skill');
     });
 
     it('works without .gitignore file', async () => {
@@ -281,9 +312,9 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'api');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      expect(result).toHaveLength(2);
+      expect(skills).toHaveLength(2);
     });
   });
 
@@ -300,10 +331,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       await createSkill(nestedPersonal, 'nested-personal');
 
       // Use targetPath to test personal-like behavior
-      const result = await list({ targetPath: personalDir });
+      const { skills } = await list({ targetPath: personalDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('personal-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('personal-skill');
     });
   });
 
@@ -317,9 +348,9 @@ description: ${options.description || `Description for ${name}`}${metadata}
 
       // Note: Can't easily test personal scope in integration without mocking home dir
       // This test verifies project recursive works with scope: 'all'
-      const result = await list({ scope: 'all', recursive: true });
+      const { skills } = await list({ scope: 'all', recursive: true });
 
-      const projectSkills = result.filter((s) => s.scope === 'project');
+      const projectSkills = skills.filter((s) => s.scope === 'project');
       const names = projectSkills.map((s) => s.name);
 
       expect(names).toContain('project-root');
@@ -334,10 +365,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const nestedSkillsDir = await createSkillsDir('packages', 'api');
       await createSkill(nestedSkillsDir, 'nested-skill');
 
-      const result = await list({ scope: 'project', recursive: true });
+      const { skills } = await list({ scope: 'project', recursive: true });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('nested-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('nested-skill');
     });
   });
 
@@ -352,7 +383,7 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const result = await list({ scope: 'project', recursive: true });
 
       // Verify the structure is JSON-serializable with location
-      const json = JSON.stringify(result);
+      const json = JSON.stringify(result.skills);
       const parsed = JSON.parse(json);
 
       expect(parsed).toHaveLength(2);

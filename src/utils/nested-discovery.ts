@@ -42,6 +42,23 @@ export interface NestedDiscoveryOptions {
 }
 
 /**
+ * Result of nested skill directory discovery.
+ */
+export interface NestedDiscoveryResult {
+  /**
+   * Array of absolute paths to `.claude/skills` directories found.
+   */
+  directories: string[];
+
+  /**
+   * Whether the search was limited by the maxDepth parameter.
+   * True if there were directories that could have been explored
+   * but were skipped due to reaching the depth limit.
+   */
+  depthLimitReached: boolean;
+}
+
+/**
  * Entry in the directory traversal stack.
  */
 interface StackEntry {
@@ -49,6 +66,15 @@ interface StackEntry {
   dirPath: string;
   /** Current depth from root (0 = root) */
   depth: number;
+}
+
+/**
+ * Mutable state for tracking discovery metadata.
+ * Used internally to propagate information from the generator.
+ */
+interface DiscoveryState {
+  /** Set to true if any directories were skipped due to depth limit */
+  depthLimitReached: boolean;
 }
 
 /**
@@ -98,6 +124,7 @@ function shouldSkipDirectory(name: string): boolean {
  * @param rootDir - Absolute path to the root directory to search
  * @param maxDepth - Maximum depth to traverse (0 = only root level)
  * @param options - Optional discovery options including gitignore
+ * @param state - Optional mutable state object for tracking metadata (internal use)
  * @yields Absolute paths to `.claude/skills` directories found
  *
  * @example
@@ -111,7 +138,8 @@ function shouldSkipDirectory(name: string): boolean {
 export async function* findNestedSkillDirectories(
   rootDir: string,
   maxDepth: number,
-  options?: NestedDiscoveryOptions
+  options?: NestedDiscoveryOptions,
+  state?: DiscoveryState
 ): AsyncGenerator<string> {
   // Validate inputs
   if (maxDepth < 0) {
@@ -156,12 +184,7 @@ export async function* findNestedSkillDirectories(
       // .claude/skills doesn't exist in this directory - that's fine
     }
 
-    // Don't descend further if we've hit max depth
-    if (depth >= maxDepth) {
-      continue;
-    }
-
-    // Read subdirectories
+    // Read subdirectories (needed for both depth check and traversal)
     let entries;
     try {
       entries = await fs.readdir(dirPath, { withFileTypes: true });
@@ -170,11 +193,23 @@ export async function* findNestedSkillDirectories(
       continue;
     }
 
-    // Process subdirectories in reverse order so they come off stack in alphabetical order
+    // Filter to valid subdirectories we would explore
+    // Exclude .claude since we already check for .claude/skills at each level
+    // and exploring inside .claude wouldn't find additional nested project skills
     const subdirs = entries
       .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
       .filter((entry) => !shouldSkipDirectory(entry.name))
+      .filter((entry) => entry.name !== '.claude')
       .sort((a, b) => b.name.localeCompare(a.name));
+
+    // Don't descend further if we've hit max depth
+    if (depth >= maxDepth) {
+      // Track if we're skipping directories that could contain skills
+      if (state && subdirs.length > 0) {
+        state.depthLimitReached = true;
+      }
+      continue;
+    }
 
     for (const subdir of subdirs) {
       const subdirPath = path.join(dirPath, subdir.name);
@@ -213,23 +248,27 @@ export async function* findNestedSkillDirectories(
  * @param rootDir - Absolute path to the root directory to search
  * @param maxDepth - Maximum depth to traverse (0 = only root level)
  * @param options - Optional discovery options including gitignore
- * @returns Promise resolving to array of absolute paths to `.claude/skills` directories
+ * @returns Promise resolving to result object with directories and metadata
  *
  * @example
  * ```typescript
- * const skillsDirs = await collectNestedSkillDirectories('/project', 3);
- * console.log(skillsDirs);
+ * const result = await collectNestedSkillDirectories('/project', 3);
+ * console.log(result.directories);
  * // ['/project/.claude/skills', '/project/packages/api/.claude/skills']
+ * if (result.depthLimitReached) {
+ *   console.log('Some directories were not scanned due to depth limit');
+ * }
  * ```
  */
 export async function collectNestedSkillDirectories(
   rootDir: string,
   maxDepth: number,
   options?: NestedDiscoveryOptions
-): Promise<string[]> {
-  const results: string[] = [];
-  for await (const dir of findNestedSkillDirectories(rootDir, maxDepth, options)) {
-    results.push(dir);
+): Promise<NestedDiscoveryResult> {
+  const state: DiscoveryState = { depthLimitReached: false };
+  const directories: string[] = [];
+  for await (const dir of findNestedSkillDirectories(rootDir, maxDepth, options, state)) {
+    directories.push(dir);
   }
-  return results;
+  return { directories, depthLimitReached: state.depthLimitReached };
 }

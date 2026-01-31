@@ -102,7 +102,7 @@ describe('scaffold API integration', () => {
         output: tempDir,
       });
 
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       expect(skills).toHaveLength(1);
       expect(skills[0].name).toBe('listable-skill');
@@ -123,7 +123,7 @@ describe('scaffold API integration', () => {
         output: tempDir,
       });
 
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       expect(skills).toHaveLength(3);
       const names = skills.map((s) => s.name);
@@ -376,7 +376,7 @@ describe('scaffold API integration', () => {
       expect(validateResult.errors).toHaveLength(0);
 
       // Step 3: List
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
       expect(skills).toHaveLength(1);
       expect(skills[0].name).toBe('workflow-skill');
       expect(skills[0].description).toBe('A skill for testing the workflow');
@@ -398,7 +398,7 @@ describe('scaffold API integration', () => {
       }
 
       // All should be listed
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
       expect(skills).toHaveLength(3);
     });
   });
@@ -604,7 +604,7 @@ describe('scaffold API integration', () => {
         templateType: 'internal',
       });
 
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       expect(skills.length).toBeGreaterThanOrEqual(2);
       const names = skills.map((s) => s.name);
@@ -801,7 +801,7 @@ describe('scaffold API integration', () => {
         template: { templateType: 'with-hooks' },
       });
 
-      const skills = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       expect(skills.length).toBeGreaterThanOrEqual(3);
       const names = skills.map((s) => s.name);
