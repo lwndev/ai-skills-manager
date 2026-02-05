@@ -870,6 +870,77 @@ tests/
   fixtures/           # Test fixtures and sample skills
 ```
 
+## ASMR Mode
+
+ASMR Mode provides calming, satisfying animations for a more soothing CLI experience. When enabled, commands display smooth spinners, typewriter effects, and gentle completion sequences.
+
+### Enabling ASMR Mode
+
+ASMR mode can be enabled in several ways (in order of precedence):
+
+1. **CLI flag** (per-command):
+   ```bash
+   asm install my-skill.skill --asmr
+   asm validate ./my-skill --asmr
+   ```
+
+2. **Environment variable** (session-wide):
+   ```bash
+   export ASM_ASMR=1
+   asm install my-skill.skill
+   ```
+
+3. **Configuration file** (persistent):
+   Create `~/.asm/config.json`:
+   ```json
+   {
+     "asmr": true,
+     "asmrTheme": "wave",
+     "asmrSounds": false
+   }
+   ```
+
+### Disabling ASMR Mode
+
+Use the `--no-asmr` flag to disable ASMR mode even if it's enabled via environment or config:
+
+```bash
+asm install my-skill.skill --no-asmr
+```
+
+### Configuration Options
+
+| Option | Values | Default | Description |
+|--------|--------|---------|-------------|
+| `asmr` | `true`/`false` | `false` | Enable/disable ASMR animations |
+| `asmrTheme` | `wave`, `pulse`, `breathe`, `cascade`, `orbit` | `wave` | Spinner animation theme |
+| `asmrSounds` | `true`/`false` | `false` | Enable terminal bell on completion |
+
+### Spinner Themes
+
+| Theme | Description |
+|-------|-------------|
+| `wave` | Gentle dots moving left to right |
+| `pulse` | Circle that pulses in and out |
+| `breathe` | Dots that appear and fade like breathing |
+| `cascade` | Vertical bars that rise and fall |
+| `orbit` | Corner markers rotating around |
+
+### Automatic Disabling
+
+ASMR animations are automatically disabled in these environments:
+
+- Non-TTY output (piped commands)
+- CI environments (`CI=true`, `GITHUB_ACTIONS`, etc.)
+- `NO_COLOR=1` environment variable
+- Terminal width below 40 characters
+
+This ensures scripts and automation work correctly without visual artifacts.
+
+### ASCII Fallback
+
+On terminals that don't support Unicode, ASMR mode automatically uses ASCII-safe character sets for all animations.
+
 ## Contributing
 
 Contributions are welcome! Please ensure:
