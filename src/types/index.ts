@@ -120,3 +120,14 @@ export type {
   UpdateExitCode,
 } from './update';
 export { UpdateExitCodes } from './update';
+
+// ASMR mode types (FEAT-014)
+export type {
+  AsmrTheme,
+  AsmrConfig,
+  AsmrConfigFile,
+  AsmrConfigSource,
+  AsmrConfigResolution,
+  TerminalCapabilities,
+} from './asmr';
+export { DEFAULT_ASMR_CONFIG, ASMR_THEMES, isAsmrTheme } from './asmr';
