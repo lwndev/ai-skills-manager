@@ -101,8 +101,8 @@ describe('uninstall API integration', () => {
       await createTestSkill(skillName);
 
       // Verify skill is in list
-      const beforeList = await list({ targetPath: skillsDir });
-      expect(beforeList.some((s) => s.name === skillName)).toBe(true);
+      const beforeResult = await list({ targetPath: skillsDir });
+      expect(beforeResult.skills.some((s) => s.name === skillName)).toBe(true);
 
       // Uninstall
       await uninstall({
@@ -112,8 +112,8 @@ describe('uninstall API integration', () => {
       });
 
       // Verify skill is not in list
-      const afterList = await list({ targetPath: skillsDir });
-      expect(afterList.some((s) => s.name === skillName)).toBe(false);
+      const afterResult = await list({ targetPath: skillsDir });
+      expect(afterResult.skills.some((s) => s.name === skillName)).toBe(false);
     });
   });
 

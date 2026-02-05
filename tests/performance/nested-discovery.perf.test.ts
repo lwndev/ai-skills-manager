@@ -61,10 +61,10 @@ description: Test skill
       }
 
       const startTime = Date.now();
-      const results = await collectNestedSkillDirectories(testRoot, 3);
+      const result = await collectNestedSkillDirectories(testRoot, 3);
       const duration = Date.now() - startTime;
 
-      expect(results).toHaveLength(1);
+      expect(result.directories).toHaveLength(1);
       expect(duration).toBeLessThan(2000);
     });
 
@@ -83,11 +83,11 @@ description: Test skill
       }
 
       const startTime = Date.now();
-      const results = await collectNestedSkillDirectories(testRoot, 3);
+      const result = await collectNestedSkillDirectories(testRoot, 3);
       const duration = Date.now() - startTime;
 
       // Should find root + 10 package skills
-      expect(results).toHaveLength(11);
+      expect(result.directories).toHaveLength(11);
       expect(duration).toBeLessThan(3000);
     });
 
@@ -106,11 +106,11 @@ description: Test skill
       }
 
       const startTime = Date.now();
-      const results = await collectNestedSkillDirectories(testRoot, 3);
+      const result = await collectNestedSkillDirectories(testRoot, 3);
       const duration = Date.now() - startTime;
 
       // Should find root + 20 package skills
-      expect(results).toHaveLength(21);
+      expect(result.directories).toHaveLength(21);
       expect(duration).toBeLessThan(5000);
     });
   });

@@ -65,11 +65,11 @@ description: ${options.description || `Description for ${name}`}${metadata}
       );
 
       // List skills
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('scaffolded-skill');
-      expect(result[0].description).toBe('Scaffolded skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('scaffolded-skill');
+      expect(skills[0].description).toBe('Scaffolded skill');
     });
 
     it('lists multiple scaffolded skills', async () => {
@@ -88,10 +88,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       );
 
       // List skills
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(3);
-      const names = result.map((s) => s.name);
+      expect(skills).toHaveLength(3);
+      const names = skills.map((s) => s.name);
       expect(names).toContain('skill-one');
       expect(names).toContain('skill-two');
       expect(names).toContain('skill-three');
@@ -104,9 +104,9 @@ description: ${options.description || `Description for ${name}`}${metadata}
         description: 'A detailed description of the skill',
       });
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result[0].description).toBe('A detailed description of the skill');
+      expect(skills[0].description).toBe('A detailed description of the skill');
     });
 
     it('extracts version from metadata', async () => {
@@ -114,18 +114,18 @@ description: ${options.description || `Description for ${name}`}${metadata}
         version: '2.1.0',
       });
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result[0].version).toBe('2.1.0');
+      expect(skills[0].version).toBe('2.1.0');
     });
 
     it('handles skills without optional metadata', async () => {
       await createSkill(tempDir, 'minimal-skill');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result[0].name).toBe('minimal-skill');
-      expect(result[0].version).toBeUndefined();
+      expect(skills[0].name).toBe('minimal-skill');
+      expect(skills[0].version).toBeUndefined();
     });
   });
 
@@ -144,10 +144,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       // Create hidden directory
       await fs.mkdir(path.join(tempDir, '.hidden-dir'));
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('valid-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('valid-skill');
     });
 
     it('handles nested skill directories correctly', async () => {
@@ -159,27 +159,27 @@ description: ${options.description || `Description for ${name}`}${metadata}
       await fs.mkdir(nestedDir, { recursive: true });
       await createSkill(nestedDir, 'nested-skill');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       // Should only find top-level skill
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('top-level-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('top-level-skill');
     });
   });
 
   describe('handles edge cases', () => {
     it('returns empty array for empty directory', async () => {
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toEqual([]);
+      expect(skills).toEqual([]);
     });
 
     it('returns empty array for nonexistent directory', async () => {
       const nonexistent = path.join(tempDir, 'does-not-exist');
 
-      const result = await list({ targetPath: nonexistent });
+      const { skills } = await list({ targetPath: nonexistent });
 
-      expect(result).toEqual([]);
+      expect(skills).toEqual([]);
     });
 
     it('handles skills with malformed SKILL.md', async () => {
@@ -188,12 +188,12 @@ description: ${options.description || `Description for ${name}`}${metadata}
       await fs.mkdir(skillDir);
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'not valid yaml: [[[');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       // Skill is still found, but metadata extraction fails gracefully
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('malformed-skill');
-      expect(result[0].description).toBeUndefined();
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('malformed-skill');
+      expect(skills[0].description).toBeUndefined();
     });
 
     it('handles skills with empty SKILL.md', async () => {
@@ -201,10 +201,10 @@ description: ${options.description || `Description for ${name}`}${metadata}
       await fs.mkdir(skillDir);
       await fs.writeFile(path.join(skillDir, 'SKILL.md'), '');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('empty-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('empty-skill');
     });
 
     it('handles directory names with spaces', async () => {
@@ -219,10 +219,10 @@ description: Test
 `
       );
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('skill with spaces');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('skill with spaces');
     });
 
     it('handles unicode directory names', async () => {
@@ -237,10 +237,10 @@ description: Unicode test
 `
       );
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('skill-日本語');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('skill-日本語');
     });
   });
 
@@ -248,9 +248,9 @@ description: Unicode test
     it('assigns custom scope when using targetPath', async () => {
       await createSkill(tempDir, 'custom-path-skill');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result[0].scope).toBe('custom');
+      expect(skills[0].scope).toBe('custom');
     });
   });
 
@@ -258,18 +258,18 @@ description: Unicode test
     it('returns absolute paths', async () => {
       await createSkill(tempDir, 'path-test-skill');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(path.isAbsolute(result[0].path)).toBe(true);
+      expect(path.isAbsolute(skills[0].path)).toBe(true);
     });
 
     it('returns correct path to skill directory', async () => {
       await createSkill(tempDir, 'correct-path');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
       const expectedPath = path.join(tempDir, 'correct-path');
-      expect(result[0].path).toBe(expectedPath);
+      expect(skills[0].path).toBe(expectedPath);
     });
   });
 
@@ -282,10 +282,10 @@ description: Unicode test
       }
 
       const startTime = Date.now();
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
       const duration = Date.now() - startTime;
 
-      expect(result).toHaveLength(skillCount);
+      expect(skills).toHaveLength(skillCount);
       // Should complete reasonably quickly (under 5 seconds)
       expect(duration).toBeLessThan(5000);
     });
@@ -306,10 +306,10 @@ description: Has reference files
       );
       await fs.writeFile(path.join(refsDir, 'example.md'), '# Example');
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('skill-with-refs');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('skill-with-refs');
     });
 
     it('handles skills with multiple subdirectories', async () => {
@@ -326,10 +326,10 @@ description: Complex structure
 `
       );
 
-      const result = await list({ targetPath: tempDir });
+      const { skills } = await list({ targetPath: tempDir });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('complex-skill');
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('complex-skill');
     });
   });
 });

@@ -967,3 +967,20 @@ export interface RecursiveListOptions extends ListOptions {
    */
   depth?: number;
 }
+
+/**
+ * Result of listing installed skills.
+ */
+export interface ListResult {
+  /**
+   * Array of installed skills found.
+   */
+  skills: InstalledSkill[];
+
+  /**
+   * Whether the search was limited by the depth parameter during recursive discovery.
+   * Only populated when `recursive: true` was used.
+   * When true, some directories were not scanned because they exceeded the depth limit.
+   */
+  depthLimitReached?: boolean;
+}

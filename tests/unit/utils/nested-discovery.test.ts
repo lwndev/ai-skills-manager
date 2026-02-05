@@ -46,10 +46,10 @@ describe('Nested Discovery Utilities', () => {
         const testRoot = await createDir('basic-root');
         await createSkillsDir('basic-root');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('finds skills directories in subdirectories', async () => {
@@ -58,29 +58,33 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('subdir-root', 'packages', 'api');
         await createSkillsDir('subdir-root', 'packages', 'web');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(3);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'packages', 'api', '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'packages', 'web', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(3);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(
+          path.join(testRoot, 'packages', 'api', '.claude', 'skills')
+        );
+        expect(result.directories).toContain(
+          path.join(testRoot, 'packages', 'web', '.claude', 'skills')
+        );
       });
 
       it('returns empty array when no skills directories found', async () => {
         const testRoot = await createDir('empty-root');
         await createDir('empty-root', 'some', 'dirs');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(0);
+        expect(result.directories).toHaveLength(0);
       });
 
       it('handles root directory that does not exist', async () => {
         const nonExistent = path.join(tempDir, 'does-not-exist');
 
-        const results = await collectNestedSkillDirectories(nonExistent, 3);
+        const result = await collectNestedSkillDirectories(nonExistent, 3);
 
-        expect(results).toHaveLength(0);
+        expect(result.directories).toHaveLength(0);
       });
     });
 
@@ -91,10 +95,10 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('depth-0-root', 'level1');
         await createSkillsDir('depth-0-root', 'level1', 'level2');
 
-        const results = await collectNestedSkillDirectories(testRoot, 0);
+        const result = await collectNestedSkillDirectories(testRoot, 0);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('depth 1 finds root and immediate subdirectories', async () => {
@@ -103,11 +107,11 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('depth-1-root', 'level1');
         await createSkillsDir('depth-1-root', 'level1', 'level2');
 
-        const results = await collectNestedSkillDirectories(testRoot, 1);
+        const result = await collectNestedSkillDirectories(testRoot, 1);
 
-        expect(results).toHaveLength(2);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'level1', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(2);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(path.join(testRoot, 'level1', '.claude', 'skills'));
       });
 
       it('depth 2 finds up to two levels deep', async () => {
@@ -117,12 +121,14 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('depth-2-root', 'level1', 'level2');
         await createSkillsDir('depth-2-root', 'level1', 'level2', 'level3');
 
-        const results = await collectNestedSkillDirectories(testRoot, 2);
+        const result = await collectNestedSkillDirectories(testRoot, 2);
 
-        expect(results).toHaveLength(3);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'level1', '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'level1', 'level2', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(3);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(path.join(testRoot, 'level1', '.claude', 'skills'));
+        expect(result.directories).toContain(
+          path.join(testRoot, 'level1', 'level2', '.claude', 'skills')
+        );
       });
 
       it('depth 3 finds up to three levels deep', async () => {
@@ -133,10 +139,10 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('depth-3-root', 'level1', 'level2', 'level3');
         await createSkillsDir('depth-3-root', 'level1', 'level2', 'level3', 'level4');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(4);
-        expect(results).not.toContain(
+        expect(result.directories).toHaveLength(4);
+        expect(result.directories).not.toContain(
           path.join(testRoot, 'level1', 'level2', 'level3', 'level4', '.claude', 'skills')
         );
       });
@@ -145,9 +151,9 @@ describe('Nested Discovery Utilities', () => {
         const testRoot = await createDir('negative-depth-root');
         await createSkillsDir('negative-depth-root');
 
-        const results = await collectNestedSkillDirectories(testRoot, -1);
+        const result = await collectNestedSkillDirectories(testRoot, -1);
 
-        expect(results).toHaveLength(0);
+        expect(result.directories).toHaveLength(0);
       });
     });
 
@@ -158,21 +164,21 @@ describe('Nested Discovery Utilities', () => {
         await createDir('hidden-root', '.hidden', '.claude', 'skills');
         await createDir('hidden-root', '.another-hidden', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('finds .claude/skills inside .claude directory', async () => {
         const testRoot = await createDir('claude-inside-root');
         await createSkillsDir('claude-inside-root');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
         // The .claude directory itself should be traversed to find skills
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
     });
 
@@ -182,10 +188,10 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('node-modules-root');
         await createDir('node-modules-root', 'node_modules', 'some-pkg', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('skips dist directories', async () => {
@@ -193,9 +199,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('dist-root');
         await createDir('dist-root', 'dist', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips build directories', async () => {
@@ -203,9 +209,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('build-root');
         await createDir('build-root', 'build', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips .git directories', async () => {
@@ -213,9 +219,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('git-root');
         await createDir('git-root', '.git', 'hooks', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips vendor directories', async () => {
@@ -223,9 +229,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('vendor-root');
         await createDir('vendor-root', 'vendor', 'some-lib', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips coverage directories', async () => {
@@ -233,9 +239,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('coverage-root');
         await createDir('coverage-root', 'coverage', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips __pycache__ directories', async () => {
@@ -243,9 +249,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('pycache-root');
         await createDir('pycache-root', '__pycache__', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
+        expect(result.directories).toHaveLength(1);
       });
 
       it('skips all hardcoded patterns in same tree', async () => {
@@ -259,10 +265,10 @@ describe('Nested Discovery Utilities', () => {
         await createDir('all-skip-root', 'coverage', '.claude', 'skills');
         await createDir('all-skip-root', '__pycache__', '.claude', 'skills');
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
     });
 
@@ -282,10 +288,10 @@ describe('Nested Discovery Utilities', () => {
         }
 
         // Should complete without hanging
-        const results = await collectNestedSkillDirectories(testRoot, 10);
+        const result = await collectNestedSkillDirectories(testRoot, 10);
 
         // Should find the root skills dir without getting stuck in loop
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('handles symlink to sibling directory', async () => {
@@ -302,11 +308,11 @@ describe('Nested Discovery Utilities', () => {
           return;
         }
 
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
         // Should only find the skills dir once, not twice via symlink
         const skillsDir = path.join(testRoot, 'real-dir', '.claude', 'skills');
-        expect(results.filter((r) => r === skillsDir)).toHaveLength(1);
+        expect(result.directories.filter((r) => r === skillsDir)).toHaveLength(1);
       });
 
       it('handles broken symlinks gracefully', async () => {
@@ -324,10 +330,10 @@ describe('Nested Discovery Utilities', () => {
         }
 
         // Should complete without error
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
     });
 
@@ -348,11 +354,13 @@ describe('Nested Discovery Utilities', () => {
         }
 
         try {
-          const results = await collectNestedSkillDirectories(testRoot, 3);
+          const result = await collectNestedSkillDirectories(testRoot, 3);
 
           // Should find skills in accessible directories
-          expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-          expect(results).toContain(path.join(testRoot, 'accessible', '.claude', 'skills'));
+          expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+          expect(result.directories).toContain(
+            path.join(testRoot, 'accessible', '.claude', 'skills')
+          );
         } finally {
           // Restore permissions for cleanup
           await fs.chmod(restrictedDir, 0o755);
@@ -406,14 +414,18 @@ describe('Nested Discovery Utilities', () => {
           ignores: (relativePath: string) => relativePath.startsWith('ignored-pkg'),
         };
 
-        const results = await collectNestedSkillDirectories(testRoot, 3, {
+        const result = await collectNestedSkillDirectories(testRoot, 3, {
           ignore: mockIgnore as import('ignore').Ignore,
         });
 
-        expect(results).toHaveLength(2);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'included-pkg', '.claude', 'skills'));
-        expect(results).not.toContain(path.join(testRoot, 'ignored-pkg', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(2);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(
+          path.join(testRoot, 'included-pkg', '.claude', 'skills')
+        );
+        expect(result.directories).not.toContain(
+          path.join(testRoot, 'ignored-pkg', '.claude', 'skills')
+        );
       });
 
       it('skips directories matching gitignore patterns', async () => {
@@ -430,14 +442,18 @@ describe('Nested Discovery Utilities', () => {
             relativePath.startsWith('temp-build') || relativePath.startsWith('output'),
         };
 
-        const results = await collectNestedSkillDirectories(testRoot, 3, {
+        const result = await collectNestedSkillDirectories(testRoot, 3, {
           ignore: mockIgnore as import('ignore').Ignore,
         });
 
-        expect(results).toHaveLength(3);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'packages', 'api', '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'packages', 'web', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(3);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(
+          path.join(testRoot, 'packages', 'api', '.claude', 'skills')
+        );
+        expect(result.directories).toContain(
+          path.join(testRoot, 'packages', 'web', '.claude', 'skills')
+        );
       });
 
       it('skips nested directories inside gitignored parent', async () => {
@@ -450,12 +466,12 @@ describe('Nested Discovery Utilities', () => {
           ignores: (relativePath: string) => relativePath.startsWith('ignored'),
         };
 
-        const results = await collectNestedSkillDirectories(testRoot, 5, {
+        const result = await collectNestedSkillDirectories(testRoot, 5, {
           ignore: mockIgnore as import('ignore').Ignore,
         });
 
-        expect(results).toHaveLength(1);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
       });
 
       it('works without ignore option (all directories scanned)', async () => {
@@ -465,9 +481,9 @@ describe('Nested Discovery Utilities', () => {
         await createSkillsDir('no-ignore-root', 'pkg2');
 
         // No ignore option provided
-        const results = await collectNestedSkillDirectories(testRoot, 3);
+        const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(results).toHaveLength(3);
+        expect(result.directories).toHaveLength(3);
       });
 
       it('handles glob-style patterns via ignore instance', async () => {
@@ -482,36 +498,143 @@ describe('Nested Discovery Utilities', () => {
           ignores: (relativePath: string) => relativePath.match(/^test-[^/]+\//) !== null,
         };
 
-        const results = await collectNestedSkillDirectories(testRoot, 3, {
+        const result = await collectNestedSkillDirectories(testRoot, 3, {
           ignore: mockIgnore as import('ignore').Ignore,
         });
 
-        expect(results).toHaveLength(2);
-        expect(results).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(results).toContain(path.join(testRoot, 'src', 'main', '.claude', 'skills'));
+        expect(result.directories).toHaveLength(2);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).toContain(
+          path.join(testRoot, 'src', 'main', '.claude', 'skills')
+        );
       });
     });
   });
 
   describe('collectNestedSkillDirectories', () => {
-    it('returns array of all found directories', async () => {
+    it('returns result object with directories array', async () => {
       const testRoot = await createDir('collect-root');
       await createSkillsDir('collect-root');
       await createSkillsDir('collect-root', 'pkg1');
 
-      const results = await collectNestedSkillDirectories(testRoot, 3);
+      const result = await collectNestedSkillDirectories(testRoot, 3);
 
-      expect(Array.isArray(results)).toBe(true);
-      expect(results).toHaveLength(2);
+      expect(result).toHaveProperty('directories');
+      expect(result).toHaveProperty('depthLimitReached');
+      expect(Array.isArray(result.directories)).toBe(true);
+      expect(result.directories).toHaveLength(2);
     });
 
-    it('returns empty array for no matches', async () => {
+    it('returns empty directories array for no matches', async () => {
       const testRoot = await createDir('collect-empty-root');
 
-      const results = await collectNestedSkillDirectories(testRoot, 3);
+      const result = await collectNestedSkillDirectories(testRoot, 3);
 
-      expect(Array.isArray(results)).toBe(true);
-      expect(results).toHaveLength(0);
+      expect(Array.isArray(result.directories)).toBe(true);
+      expect(result.directories).toHaveLength(0);
+    });
+  });
+
+  describe('depthLimitReached tracking', () => {
+    it('returns false when all directories are fully scanned', async () => {
+      const testRoot = await createDir('full-scan-root');
+      await createSkillsDir('full-scan-root');
+      await createSkillsDir('full-scan-root', 'pkg1');
+
+      // Depth 3 should be enough to scan everything
+      const result = await collectNestedSkillDirectories(testRoot, 3);
+
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('returns true when depth limit prevents scanning subdirectories', async () => {
+      const testRoot = await createDir('depth-limit-root');
+      await createSkillsDir('depth-limit-root');
+      // Create a subdirectory structure that would be explored at depth 1
+      await createDir('depth-limit-root', 'level1', 'level2');
+
+      // Depth 0 should trigger depthLimitReached since level1 exists
+      const result = await collectNestedSkillDirectories(testRoot, 0);
+
+      expect(result.depthLimitReached).toBe(true);
+    });
+
+    it('returns false when no subdirectories exist at depth limit', async () => {
+      const testRoot = await createDir('no-subdirs-root');
+      await createSkillsDir('no-subdirs-root');
+      // No subdirectories at root level
+
+      const result = await collectNestedSkillDirectories(testRoot, 0);
+
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('returns true when nested directories exist beyond depth limit', async () => {
+      const testRoot = await createDir('nested-beyond-root');
+      await createSkillsDir('nested-beyond-root');
+      await createSkillsDir('nested-beyond-root', 'level1');
+      await createSkillsDir('nested-beyond-root', 'level1', 'level2');
+      await createSkillsDir('nested-beyond-root', 'level1', 'level2', 'level3');
+
+      // Depth 2 should find up to level2, but level3 should trigger warning
+      const result = await collectNestedSkillDirectories(testRoot, 2);
+
+      expect(result.directories).toHaveLength(3); // root, level1, level2
+      expect(result.depthLimitReached).toBe(true); // level3 exists but not scanned
+    });
+
+    it('returns false when all nested directories are within depth limit', async () => {
+      const testRoot = await createDir('within-limit-root');
+      await createSkillsDir('within-limit-root');
+      await createSkillsDir('within-limit-root', 'level1');
+      await createSkillsDir('within-limit-root', 'level1', 'level2');
+
+      // Depth 3 should be enough to scan everything
+      const result = await collectNestedSkillDirectories(testRoot, 3);
+
+      expect(result.directories).toHaveLength(3);
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('ignores hidden directories when determining depthLimitReached', async () => {
+      const testRoot = await createDir('hidden-depth-root');
+      await createSkillsDir('hidden-depth-root');
+      // Create hidden subdirectories that should be skipped
+      await createDir('hidden-depth-root', '.hidden1', 'nested');
+      await createDir('hidden-depth-root', '.hidden2', 'deep');
+
+      // Depth 0 with only hidden subdirs should not trigger depthLimitReached
+      const result = await collectNestedSkillDirectories(testRoot, 0);
+
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('ignores hardcoded skip directories when determining depthLimitReached', async () => {
+      const testRoot = await createDir('skip-depth-root');
+      await createSkillsDir('skip-depth-root');
+      // Create directories that should be skipped
+      await createDir('skip-depth-root', 'node_modules', 'nested');
+      await createDir('skip-depth-root', 'dist', 'output');
+      await createDir('skip-depth-root', 'build', 'artifacts');
+
+      // Depth 0 with only skipped subdirs should not trigger depthLimitReached
+      const result = await collectNestedSkillDirectories(testRoot, 0);
+
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('returns true when both valid and skipped directories exist at depth limit', async () => {
+      const testRoot = await createDir('mixed-depth-root');
+      await createSkillsDir('mixed-depth-root');
+      // Create a valid subdirectory
+      await createDir('mixed-depth-root', 'valid-subdir', 'nested');
+      // Create skipped directories
+      await createDir('mixed-depth-root', 'node_modules', 'nested');
+
+      // Depth 0 should trigger depthLimitReached due to valid-subdir
+      const result = await collectNestedSkillDirectories(testRoot, 0);
+
+      expect(result.depthLimitReached).toBe(true);
     });
   });
 });
