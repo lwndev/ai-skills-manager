@@ -12,6 +12,13 @@ import { validate } from '../api/validate';
 import { formatValidationOutput } from '../formatters/validate-formatter';
 import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+} from '../utils/asmr-output';
 
 /**
  * Options for the validate command
@@ -72,17 +79,31 @@ Output Formats:
  * Handle the validate command
  */
 async function handleValidate(skillPath: string, options: ValidateOptions): Promise<void> {
+  const { quiet, json } = options;
+
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet || json ? undefined : asmrConfig);
+
   // Validate that path was provided
   if (!skillPath || skillPath.trim() === '') {
     throw new FileSystemError('Skill path is required', skillPath || '');
   }
 
+  showBannerIfEnabled(asmrCtx);
+
   // Run validation using public API with detailed: true for check-by-check output
-  const result = await validate(skillPath, { detailed: true });
+  const result = asmrCtx.enabled
+    ? await withSpinner('validate', () => validate(skillPath, { detailed: true }), asmrCtx)
+    : await validate(skillPath, { detailed: true });
 
   // Format output
   const formattedOutput = formatValidationOutput(result, options);
   console.log(formattedOutput);
+
+  // Show success animation if valid
+  if (result.valid && asmrCtx.enabled) {
+    await showSuccess('Validation passed', asmrCtx).catch(() => {});
+  }
 
   // Exit with appropriate code
   if (!result.valid) {

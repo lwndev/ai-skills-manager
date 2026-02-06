@@ -43,6 +43,13 @@ import {
 import { success, warning } from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
 import * as output from '../utils/output';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+} from '../utils/asmr-output';
 
 const debug = createDebugLogger('update-command');
 
@@ -168,6 +175,9 @@ async function handleUpdate(
 ): Promise<number> {
   const { scope, force, dryRun, quiet, noBackup, keepBackup } = options;
 
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
+
   debug('Update request', {
     skillName,
     packagePath,
@@ -206,6 +216,7 @@ async function handleUpdate(
 
     // Show progress
     if (!quiet) {
+      showBannerIfEnabled(asmrCtx);
       console.log(formatUpdateProgress('validating-package'));
     }
 
@@ -248,16 +259,25 @@ async function handleUpdate(
     }
 
     // For actual updates, use the API
-    const apiResult = await update({
-      name: skillName,
-      file: resolvedPackagePath,
-      scope:
-        validatedScope === 'project' || validatedScope === 'personal' ? validatedScope : undefined,
-      targetPath:
-        validatedScope !== 'project' && validatedScope !== 'personal' ? validatedScope : undefined,
-      force: force || false,
-      keepBackup: keepBackup || false,
-    });
+    const updateTask = () =>
+      update({
+        name: skillName,
+        file: resolvedPackagePath,
+        scope:
+          validatedScope === 'project' || validatedScope === 'personal'
+            ? validatedScope
+            : undefined,
+        targetPath:
+          validatedScope !== 'project' && validatedScope !== 'personal'
+            ? validatedScope
+            : undefined,
+        force: force || false,
+        keepBackup: keepBackup || false,
+      });
+
+    const apiResult = asmrCtx.enabled
+      ? await withSpinner('update', updateTask, asmrCtx)
+      : await updateTask();
 
     // Output success
     if (quiet) {
@@ -282,6 +302,9 @@ async function handleUpdate(
       console.log(warning('Security note:'));
       console.log('  Review the updated SKILL.md to understand any changes.');
       console.log('');
+      if (asmrCtx.enabled) {
+        await showSuccess('Skill updated', asmrCtx).catch(() => {});
+      }
     }
 
     return EXIT_CODES.SUCCESS;

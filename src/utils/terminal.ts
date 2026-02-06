@@ -106,6 +106,31 @@ export function isForceColor(): boolean {
 }
 
 /**
+ * Check if a screen reader is likely active
+ *
+ * Detection is best-effort via environment variables. Screen reader
+ * detection is inherently unreliable, so this defaults to false.
+ * Users can set ACCESSIBILITY_ENABLED=1 or SCREEN_READER=1 to signal
+ * their environment explicitly.
+ */
+export function isScreenReaderActive(): boolean {
+  if (process.env.ACCESSIBILITY_ENABLED === '1') {
+    return true;
+  }
+
+  const screenReader = process.env.SCREEN_READER;
+  if (screenReader === '1' || screenReader === 'true') {
+    return true;
+  }
+
+  if (process.env.ORCA_RUNNING === '1') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Get all terminal capabilities in one call
  */
 export function getTerminalCapabilities(): TerminalCapabilities {
@@ -115,6 +140,7 @@ export function getTerminalCapabilities(): TerminalCapabilities {
     supportsUnicode: supportsUnicode(),
     width: getTerminalWidth(),
     noColor: isNoColor(),
+    screenReader: isScreenReaderActive(),
   };
 }
 
@@ -151,6 +177,11 @@ export function shouldEnableAnimations(
 
   // Disable in CI environments
   if (caps.isCI) {
+    return false;
+  }
+
+  // Disable when screen reader is detected
+  if (caps.screenReader) {
     return false;
   }
 

@@ -9,6 +9,7 @@ import {
   getTerminalWidth,
   isNoColor,
   isForceColor,
+  isScreenReaderActive,
   getTerminalCapabilities,
   shouldEnableAnimations,
   shouldUseAscii,
@@ -39,6 +40,10 @@ describe('terminal utilities', () => {
     delete process.env.TERM;
     delete process.env.LANG;
     delete process.env.LC_ALL;
+    // Clear screen reader env vars
+    delete process.env.ACCESSIBILITY_ENABLED;
+    delete process.env.SCREEN_READER;
+    delete process.env.ORCA_RUNNING;
   });
 
   afterEach(() => {
@@ -202,6 +207,37 @@ describe('terminal utilities', () => {
     });
   });
 
+  describe('isScreenReaderActive', () => {
+    it('returns false when no screen reader env vars set', () => {
+      expect(isScreenReaderActive()).toBe(false);
+    });
+
+    it('returns true when ACCESSIBILITY_ENABLED=1', () => {
+      process.env.ACCESSIBILITY_ENABLED = '1';
+      expect(isScreenReaderActive()).toBe(true);
+    });
+
+    it('returns true when SCREEN_READER=1', () => {
+      process.env.SCREEN_READER = '1';
+      expect(isScreenReaderActive()).toBe(true);
+    });
+
+    it('returns true when SCREEN_READER=true', () => {
+      process.env.SCREEN_READER = 'true';
+      expect(isScreenReaderActive()).toBe(true);
+    });
+
+    it('returns true when ORCA_RUNNING=1', () => {
+      process.env.ORCA_RUNNING = '1';
+      expect(isScreenReaderActive()).toBe(true);
+    });
+
+    it('returns false when ACCESSIBILITY_ENABLED=0', () => {
+      process.env.ACCESSIBILITY_ENABLED = '0';
+      expect(isScreenReaderActive()).toBe(false);
+    });
+  });
+
   describe('getTerminalCapabilities', () => {
     it('returns all capability flags', () => {
       const caps = getTerminalCapabilities();
@@ -211,6 +247,7 @@ describe('terminal utilities', () => {
       expect(typeof caps.supportsUnicode).toBe('boolean');
       expect(typeof caps.width).toBe('number');
       expect(typeof caps.noColor).toBe('boolean');
+      expect(typeof caps.screenReader).toBe('boolean');
     });
 
     it('reflects CI environment', () => {
@@ -244,6 +281,7 @@ describe('terminal utilities', () => {
       supportsUnicode: true,
       width: 120,
       noColor: false,
+      screenReader: false,
     };
 
     it('returns false when ASMR mode is disabled', () => {
@@ -257,6 +295,11 @@ describe('terminal utilities', () => {
 
     it('returns false when in CI', () => {
       const caps = { ...fullCapabilities, isCI: true };
+      expect(shouldEnableAnimations(enabledConfig, caps)).toBe(false);
+    });
+
+    it('returns false when screen reader is active', () => {
+      const caps = { ...fullCapabilities, screenReader: true };
       expect(shouldEnableAnimations(enabledConfig, caps)).toBe(false);
     });
 
@@ -294,6 +337,7 @@ describe('terminal utilities', () => {
         supportsUnicode: false,
         width: 80,
         noColor: false,
+        screenReader: false,
       };
       expect(shouldUseAscii(caps)).toBe(true);
     });
@@ -305,6 +349,7 @@ describe('terminal utilities', () => {
         supportsUnicode: true,
         width: 80,
         noColor: true,
+        screenReader: false,
       };
       expect(shouldUseAscii(caps)).toBe(true);
     });
@@ -316,6 +361,7 @@ describe('terminal utilities', () => {
         supportsUnicode: true,
         width: 80,
         noColor: false,
+        screenReader: false,
       };
       expect(shouldUseAscii(caps)).toBe(false);
     });

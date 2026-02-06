@@ -9,6 +9,8 @@ import { list } from '../api';
 import type { InstalledSkill } from '../types/api';
 import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
+import { resolveAsmrConfig } from '../config/asmr';
+import { createAsmrContext, showBannerIfEnabled, withSpinner } from '../utils/asmr-output';
 
 /**
  * Exit codes for the list command
@@ -104,6 +106,9 @@ Exit Codes:
 async function handleList(options: ListCommandOptions): Promise<number> {
   const { scope, json, quiet, recursive, depth: depthStr } = options;
 
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet || json ? undefined : asmrConfig);
+
   try {
     // Validate scope
     const validScopes = ['all', 'project', 'personal'];
@@ -127,12 +132,19 @@ async function handleList(options: ListCommandOptions): Promise<number> {
       return EXIT_CODES.FILESYSTEM_ERROR;
     }
 
+    showBannerIfEnabled(asmrCtx);
+
     // Call the API
-    const skills = await list({
-      scope: scope === 'all' || !scope ? 'all' : (scope as 'project' | 'personal'),
-      recursive,
-      depth,
-    });
+    const listTask = () =>
+      list({
+        scope: scope === 'all' || !scope ? 'all' : (scope as 'project' | 'personal'),
+        recursive,
+        depth,
+      });
+
+    const skills = asmrCtx.enabled
+      ? await withSpinner('list', listTask, asmrCtx)
+      : await listTask();
 
     // Output results
     if (json) {

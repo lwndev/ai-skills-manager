@@ -4,6 +4,13 @@ import { validateDescription } from '../validators';
 import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+} from '../utils/asmr-output';
 
 const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
 
@@ -170,6 +177,9 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
 }
 
 async function handleScaffold(name: string, options: CliScaffoldOptions): Promise<void> {
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(asmrConfig);
+
   // Validate description if provided
   if (options.description) {
     const descValidation = validateDescription(options.description);
@@ -205,16 +215,23 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
       ? 'project'
       : undefined;
 
+  showBannerIfEnabled(asmrCtx);
+
   // Call the API function
-  const result = await scaffold({
-    name,
-    description: options.description,
-    allowedTools,
-    output: options.output,
-    scope,
-    force: options.force,
-    template,
-  });
+  const scaffoldTask = () =>
+    scaffold({
+      name,
+      description: options.description,
+      allowedTools,
+      output: options.output,
+      scope,
+      force: options.force,
+      template,
+    });
+
+  const result = asmrCtx.enabled
+    ? await withSpinner('scaffold', scaffoldTask, asmrCtx)
+    : await scaffoldTask();
 
   // Display success message with template info
   output.displayCreatedFiles(result.path, result.files);
@@ -222,6 +239,10 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
     output.displayInfo(`Using "${template.templateType}" template`);
   }
   output.displayNextSteps(result.path, name);
+
+  if (asmrCtx.enabled) {
+    await showSuccess('Skill scaffolded', asmrCtx).catch(() => {});
+  }
 }
 
 function handleError(error: unknown): void {

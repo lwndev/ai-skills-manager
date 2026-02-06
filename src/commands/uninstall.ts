@@ -64,6 +64,14 @@ import type {
 // API error types imported for potential future use in error handling
 // Currently using internal uninstall error types for backward compatibility
 import { createDebugLogger } from '../utils/debug';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+  AsmrOutputContext,
+} from '../utils/asmr-output';
 
 const debug = createDebugLogger('uninstall-command');
 
@@ -169,6 +177,9 @@ async function handleUninstall(
 ): Promise<number> {
   const { scope, force, dryRun, quiet } = options;
 
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
+
   // Set up signal handler for graceful interruption
   setupInterruptHandler(async () => {
     if (!quiet) {
@@ -190,6 +201,8 @@ async function handleUninstall(
 
     const validatedScope: UninstallScope = scopeValidation.scope;
     const scopePath = getScopePath(validatedScope);
+
+    showBannerIfEnabled(asmrCtx);
 
     debug('Uninstall request', { skillNames, scope: validatedScope, force, dryRun, quiet });
 
@@ -226,9 +239,15 @@ async function handleUninstall(
 
     // Handle single skill vs multiple skills
     if (skillNames.length === 1) {
-      return await handleSingleUninstall(skillNames[0], validatedScope, scopePath, options);
+      return await handleSingleUninstall(
+        skillNames[0],
+        validatedScope,
+        scopePath,
+        options,
+        asmrCtx
+      );
     } else {
-      return await handleMultiUninstall(skillNames, validatedScope, scopePath, options);
+      return await handleMultiUninstall(skillNames, validatedScope, scopePath, options, asmrCtx);
     }
   } catch (error) {
     debug('Unexpected error', error);
@@ -250,7 +269,8 @@ async function handleSingleUninstall(
   skillName: string,
   scope: UninstallScope,
   scopePath: string,
-  options: UninstallCommandOptions
+  options: UninstallCommandOptions,
+  asmrCtx: AsmrOutputContext
 ): Promise<number> {
   const { force, dryRun, quiet } = options;
 
@@ -363,12 +383,17 @@ async function handleSingleUninstall(
   }
 
   // Execute uninstall
-  const result = await uninstallSkill(skillName, {
-    scope,
-    force: true, // Already confirmed
-    dryRun: false,
-    quiet: quiet || false,
-  });
+  const uninstallTask = () =>
+    uninstallSkill(skillName, {
+      scope,
+      force: true, // Already confirmed
+      dryRun: false,
+      quiet: quiet || false,
+    });
+
+  const result = asmrCtx.enabled
+    ? await withSpinner('uninstall', uninstallTask, asmrCtx)
+    : await uninstallTask();
 
   // Handle result
   if (isDryRunPreview(result)) {
@@ -383,6 +408,9 @@ async function handleSingleUninstall(
       console.log(formatQuietOutput(successResult, scope));
     } else {
       console.log(formatSuccess(successResult));
+      if (asmrCtx.enabled) {
+        await showSuccess('Skill uninstalled', asmrCtx).catch(() => {});
+      }
     }
     return EXIT_CODES.SUCCESS;
   }
@@ -397,7 +425,8 @@ async function handleMultiUninstall(
   skillNames: string[],
   scope: UninstallScope,
   scopePath: string,
-  options: UninstallCommandOptions
+  options: UninstallCommandOptions,
+  asmrCtx: AsmrOutputContext
 ): Promise<number> {
   const { force, dryRun, quiet } = options;
 
@@ -518,15 +547,20 @@ async function handleMultiUninstall(
   }
 
   // Execute uninstalls
-  const result = await uninstallMultipleSkills(
-    skillInfos.map((s) => s.name),
-    {
-      scope,
-      force: true, // Already confirmed
-      dryRun: false,
-      quiet: quiet || false,
-    }
-  );
+  const multiUninstallTask = () =>
+    uninstallMultipleSkills(
+      skillInfos.map((s) => s.name),
+      {
+        scope,
+        force: true, // Already confirmed
+        dryRun: false,
+        quiet: quiet || false,
+      }
+    );
+
+  const result = asmrCtx.enabled
+    ? await withSpinner('uninstall', multiUninstallTask, asmrCtx)
+    : await multiUninstallTask();
 
   // Handle results
   if (result.failed.length === 0) {

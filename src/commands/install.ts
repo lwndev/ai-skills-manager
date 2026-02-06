@@ -37,6 +37,13 @@ import {
 } from '../errors';
 import * as output from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+} from '../utils/asmr-output';
 
 const debug = createDebugLogger('install-command');
 
@@ -155,9 +162,13 @@ Debugging:
 async function handleInstall(packagePath: string, options: InstallCommandOptions): Promise<number> {
   const { scope, force, dryRun, quiet, thorough } = options;
 
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
+
   try {
     // Validate package file first
     if (!quiet) {
+      showBannerIfEnabled(asmrCtx);
       console.log(formatInstallProgress('opening'));
     }
 
@@ -224,7 +235,9 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
     };
 
     // Attempt installation (generator returns detailed result)
-    let result = await installSkill(resolvedPath, installOptions);
+    let result = asmrCtx.enabled
+      ? await withSpinner('install', () => installSkill(resolvedPath, installOptions), asmrCtx)
+      : await installSkill(resolvedPath, installOptions);
 
     // Handle overwrite scenario
     if (isOverwriteRequired(result)) {
@@ -271,6 +284,9 @@ async function handleInstall(packagePath: string, options: InstallCommandOptions
     } else {
       // Use the formatter for consistent output
       console.log(formatInstallSuccess(result));
+      if (asmrCtx.enabled) {
+        await showSuccess('Skill installed', asmrCtx).catch(() => {});
+      }
     }
 
     return EXIT_CODES.SUCCESS;

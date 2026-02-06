@@ -17,6 +17,13 @@ import {
 } from '../errors';
 import type { PackageResult } from '../types/api';
 import * as output from '../utils/output';
+import { resolveAsmrConfig } from '../config/asmr';
+import {
+  createAsmrContext,
+  showBannerIfEnabled,
+  withSpinner,
+  showSuccess,
+} from '../utils/asmr-output';
 
 /**
  * Exit codes for the package command
@@ -110,22 +117,31 @@ Output Formats:
 async function handlePackage(skillPath: string, options: PackageCommandOptions): Promise<number> {
   const { output: outputPath, force, skipValidation, quiet } = options;
 
+  const { config: asmrConfig } = resolveAsmrConfig();
+  const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
+
   try {
     // Show progress unless in quiet mode
     if (!quiet) {
+      showBannerIfEnabled(asmrCtx);
       console.log(formatPackageProgress('validating'));
     }
 
     // First attempt - may fail if package exists
     let result: PackageResult;
 
-    try {
-      result = await createPackage({
+    const packageTask = () =>
+      createPackage({
         path: skillPath,
         output: outputPath,
         skipValidation,
         force,
       });
+
+    try {
+      result = asmrCtx.enabled
+        ? await withSpinner('package', packageTask, asmrCtx)
+        : await packageTask();
     } catch (error) {
       // Handle overwrite scenario - FileSystemError with "already exists" message
       if (error instanceof FileSystemError && error.message.includes('already exists') && !force) {
@@ -146,12 +162,16 @@ async function handlePackage(skillPath: string, options: PackageCommandOptions):
         if (!quiet) {
           console.log(formatPackageProgress('creating'));
         }
-        result = await createPackage({
-          path: skillPath,
-          output: outputPath,
-          skipValidation,
-          force: true,
-        });
+        const retryTask = () =>
+          createPackage({
+            path: skillPath,
+            output: outputPath,
+            skipValidation,
+            force: true,
+          });
+        result = asmrCtx.enabled
+          ? await withSpinner('package', retryTask, asmrCtx)
+          : await retryTask();
       } else {
         throw error;
       }
@@ -170,6 +190,9 @@ async function handlePackage(skillPath: string, options: PackageCommandOptions):
         errors: [] as string[],
       };
       console.log(formatPackageSuccess(formatterResult));
+      if (asmrCtx.enabled) {
+        await showSuccess('Package created', asmrCtx).catch(() => {});
+      }
     }
 
     return EXIT_CODES.SUCCESS;

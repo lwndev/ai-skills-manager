@@ -25,12 +25,14 @@ jest.mock('../../src/utils/terminal', () => ({
   supportsUnicode: jest.fn(() => true),
   isNoColor: jest.fn(() => false),
   isForceColor: jest.fn(() => false),
+  isScreenReaderActive: jest.fn(() => false),
   getTerminalCapabilities: jest.fn(() => ({
     isTTY: true,
     isCI: false,
     supportsUnicode: true,
     width: 80,
     noColor: false,
+    screenReader: false,
   })),
   MIN_TERMINAL_WIDTH: 40,
   DEFAULT_TERMINAL_WIDTH: 80,
@@ -322,6 +324,25 @@ describe('ASMR Mode Integration', () => {
       expect(spinner.spinning).toBe(false);
 
       spinner.stop();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('disables animations when screen reader is detected', () => {
+      (shouldEnableAnimations as jest.Mock).mockReturnValue(false);
+
+      const config: AsmrConfig = { enabled: true, theme: 'wave', sounds: false };
+      const ctx = createAsmrContext(config);
+
+      expect(ctx.config.enabled).toBe(true); // Config says enabled
+      expect(ctx.enabled).toBe(false); // Terminal overrides
+
+      const spinner = createAsmrSpinner(ctx);
+      spinner.start('Test');
+      expect(spinner.spinning).toBe(false);
+      spinner.stop();
+
+      expect(showBannerIfEnabled(ctx)).toBe(false);
     });
   });
 });

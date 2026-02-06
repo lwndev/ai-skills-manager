@@ -58,6 +58,8 @@ export interface TerminalCapabilities {
   width: number;
   /** Whether NO_COLOR env var is set */
   noColor: boolean;
+  /** Whether a screen reader is detected */
+  screenReader: boolean;
 }
 
 /**
