@@ -220,7 +220,7 @@ describe('ASMR Mode Integration', () => {
         sounds: false,
       });
 
-      const result = await withSpinner(
+      const resultPromise = withSpinner(
         'install',
         async () => {
           return { success: true, value: 42 };
@@ -228,6 +228,10 @@ describe('ASMR Mode Integration', () => {
         ctx
       );
 
+      // Advance past minimum spinner display time (fake timers)
+      await jest.advanceTimersByTimeAsync(1500);
+
+      const result = await resultPromise;
       expect(result).toEqual({ success: true, value: 42 });
     });
 
@@ -238,6 +242,7 @@ describe('ASMR Mode Integration', () => {
         sounds: false,
       });
 
+      // Promise.all short-circuits on rejection, so no timer advancement needed
       await expect(
         withSpinner(
           'install',

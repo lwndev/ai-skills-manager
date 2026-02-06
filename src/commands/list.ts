@@ -9,7 +9,7 @@ import { list } from '../api';
 import type { InstalledSkill } from '../types/api';
 import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import { createAsmrContext, showBannerIfEnabled, withSpinner } from '../utils/asmr-output';
 
 /**
@@ -106,7 +106,7 @@ Exit Codes:
 async function handleList(options: ListCommandOptions): Promise<number> {
   const { scope, json, quiet, recursive, depth: depthStr } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet || json ? undefined : asmrConfig);
 
   try {

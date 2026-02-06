@@ -37,7 +37,7 @@ import {
 } from '../errors';
 import * as output from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -162,7 +162,7 @@ Debugging:
 async function handleInstall(packagePath: string, options: InstallCommandOptions): Promise<number> {
   const { scope, force, dryRun, quiet, thorough } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
 
   try {

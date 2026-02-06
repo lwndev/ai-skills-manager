@@ -10,16 +10,12 @@ import { registerInstallCommand } from './commands/install';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpdateCommand } from './commands/update';
 import { registerListCommand } from './commands/list';
-import { resolveAsmrConfig } from './config/asmr';
-import { AsmrConfigResolution } from './types/asmr';
+import { resolveAsmrConfig, setResolvedAsmrConfig } from './config/asmr';
 
 const program = new Command();
 
 // Read version from package.json to ensure single source of truth
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
-
-// Global ASMR config resolved after parsing
-let resolvedAsmrConfig: AsmrConfigResolution | null = null;
 
 program
   .name('asm')
@@ -32,7 +28,7 @@ program
     const opts = thisCommand.opts();
     // Commander sets opts.asmr to true for --asmr, false for --no-asmr, undefined if neither
     const cliFlag = opts.asmr as boolean | undefined;
-    resolvedAsmrConfig = resolveAsmrConfig({ cliFlag });
+    setResolvedAsmrConfig(resolveAsmrConfig({ cliFlag }));
   });
 
 registerScaffoldCommand(program);
@@ -44,15 +40,3 @@ registerUpdateCommand(program);
 registerListCommand(program);
 
 program.parse();
-
-/**
- * Get the resolved ASMR configuration
- * Must be called after program.parse()
- */
-export function getResolvedAsmrConfig(): AsmrConfigResolution {
-  if (resolvedAsmrConfig === null) {
-    // Fallback if called before parse (shouldn't happen in normal use)
-    return resolveAsmrConfig();
-  }
-  return resolvedAsmrConfig;
-}

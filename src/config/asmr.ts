@@ -181,3 +181,34 @@ export function saveAsmrConfig(config: Partial<AsmrConfig>): void {
 export function getAsmrConfig(): AsmrConfig {
   return resolveAsmrConfig().config;
 }
+
+// --- Resolved config store ---
+// The CLI preAction hook stores the resolved config here so commands
+// can access it without importing cli.ts (which causes circular deps).
+
+let _resolvedConfig: AsmrConfigResolution | null = null;
+
+/**
+ * Store the resolved ASMR config (called from cli.ts preAction hook)
+ */
+export function setResolvedAsmrConfig(config: AsmrConfigResolution): void {
+  _resolvedConfig = config;
+}
+
+/**
+ * Get the resolved ASMR config stored by the CLI preAction hook.
+ * Falls back to resolveAsmrConfig() if called before the hook runs.
+ */
+export function getResolvedAsmrConfig(): AsmrConfigResolution {
+  if (_resolvedConfig === null) {
+    return resolveAsmrConfig();
+  }
+  return _resolvedConfig;
+}
+
+/**
+ * Reset the stored config (for testing purposes)
+ */
+export function resetResolvedAsmrConfig(): void {
+  _resolvedConfig = null;
+}

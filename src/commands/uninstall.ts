@@ -64,7 +64,7 @@ import type {
 // API error types imported for potential future use in error handling
 // Currently using internal uninstall error types for backward compatibility
 import { createDebugLogger } from '../utils/debug';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -177,7 +177,7 @@ async function handleUninstall(
 ): Promise<number> {
   const { scope, force, dryRun, quiet } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
 
   // Set up signal handler for graceful interruption

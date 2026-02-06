@@ -23,6 +23,12 @@ export const CHARACTER_DELAY_MS = 15;
 export const TYPEWRITER_MAX_LENGTH = 60;
 
 /**
+ * Minimum display time for spinners (1000ms)
+ * Ensures fast operations still show a visible animation cycle
+ */
+export const MIN_SPINNER_DISPLAY_MS = 1000;
+
+/**
  * Promise-based delay function
  * @param ms Milliseconds to wait
  */

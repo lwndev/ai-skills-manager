@@ -22,6 +22,7 @@ import {
   OperationStats,
   CompletionStyle,
 } from './asmr';
+import { sleep, MIN_SPINNER_DISPLAY_MS } from './asmr/timing';
 
 /**
  * ASMR output context for a command execution
@@ -277,7 +278,11 @@ export async function withSpinner<T>(
   spinner.startWithMessages(operation);
 
   try {
-    const result = await task();
+    // Run task and minimum display delay in parallel so fast operations
+    // still show a visible animation cycle
+    const [result] = ctx.enabled
+      ? await Promise.all([task(), sleep(MIN_SPINNER_DISPLAY_MS)])
+      : [await task()];
     spinner.succeed(options?.successMessage);
     return result;
   } catch (error) {

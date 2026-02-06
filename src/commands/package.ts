@@ -17,7 +17,7 @@ import {
 } from '../errors';
 import type { PackageResult } from '../types/api';
 import * as output from '../utils/output';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -117,7 +117,7 @@ Output Formats:
 async function handlePackage(skillPath: string, options: PackageCommandOptions): Promise<number> {
   const { output: outputPath, force, skipValidation, quiet } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
 
   try {

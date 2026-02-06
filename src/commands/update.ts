@@ -43,7 +43,7 @@ import {
 import { success, warning } from '../utils/output';
 import { createDebugLogger } from '../utils/debug';
 import * as output from '../utils/output';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -175,7 +175,7 @@ async function handleUpdate(
 ): Promise<number> {
   const { scope, force, dryRun, quiet, noBackup, keepBackup } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet ? undefined : asmrConfig);
 
   debug('Update request', {

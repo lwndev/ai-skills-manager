@@ -12,7 +12,7 @@ import { validate } from '../api/validate';
 import { formatValidationOutput } from '../formatters/validate-formatter';
 import { AsmError, FileSystemError } from '../errors';
 import * as output from '../utils/output';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -81,7 +81,7 @@ Output Formats:
 async function handleValidate(skillPath: string, options: ValidateOptions): Promise<void> {
   const { quiet, json } = options;
 
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(quiet || json ? undefined : asmrConfig);
 
   // Validate that path was provided

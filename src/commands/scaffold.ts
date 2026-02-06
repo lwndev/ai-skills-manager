@@ -4,7 +4,7 @@ import { validateDescription } from '../validators';
 import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
-import { resolveAsmrConfig } from '../config/asmr';
+import { getResolvedAsmrConfig } from '../config/asmr';
 import {
   createAsmrContext,
   showBannerIfEnabled,
@@ -177,7 +177,7 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
 }
 
 async function handleScaffold(name: string, options: CliScaffoldOptions): Promise<void> {
-  const { config: asmrConfig } = resolveAsmrConfig();
+  const { config: asmrConfig } = getResolvedAsmrConfig();
   const asmrCtx = createAsmrContext(asmrConfig);
 
   // Validate description if provided
