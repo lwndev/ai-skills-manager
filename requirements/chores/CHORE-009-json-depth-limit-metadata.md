@@ -31,11 +31,11 @@ Change the `asm list --recursive --json` output from a raw skills array to a str
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-02-06
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#50](https://github.com/lwndev/ai-skills-manager/pull/50)
 
 ## Notes
 
