@@ -82,7 +82,7 @@ model: sonnet
 
 **Warning behavior:** If the value is a string but not in the known set, validation passes with a warning:
 ```
-Warning: Unknown model value "gpt-4". Known model values: inherit, sonnet, opus, haiku.
+Warning: Unknown model 'gpt-4' in model field. Known models: inherit, sonnet, opus, haiku
 ```
 
 ```typescript
@@ -272,24 +272,24 @@ Checks:
   ✓ Required fields present
   ✗ Field format invalid
 
-Error: Field 'memory' must be one of "user", "project", or "local" if specified, got "global".
+Error: Field 'memory' must be one of: user, project, local. Got "global".
 
 Skill validation failed.
 ```
 
 ### Validation Error for Invalid `skills` Value
 ```
-Error: Field 'skills' must be a string or array of strings if specified, got number.
+Error: Field 'skills' must be a string or an array of strings. Got type "number".
 ```
 
 ### Validation Error for Invalid `argument-hint` Length
 ```
-Error: Field 'argument-hint' must be 200 characters or fewer, got 242 characters.
+Error: Field 'argument-hint' must be at most 200 characters. Got 242 characters.
 ```
 
 ### Validation Warning for Unknown `model` Value
 ```
-Warning: Unknown model value "gpt-4". Known model values: inherit, sonnet, opus, haiku.
+Warning: Unknown model 'gpt-4' in model field. Known models: inherit, sonnet, opus, haiku
 ```
 
 ## Non-Functional Requirements
