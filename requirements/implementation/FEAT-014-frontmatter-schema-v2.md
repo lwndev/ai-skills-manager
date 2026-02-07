@@ -95,7 +95,7 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
 
 ### Phase 2: Tool-Pattern Validators (disallowedTools, tools, allowed-tools)
 **Feature:** [FEAT-014](../features/FEAT-014-frontmatter-schema-v2.md) | [#51](https://github.com/lwndev/ai-skills-manager/issues/51)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Shared validation logic**: `disallowedTools`, `tools`, and `allowed-tools` all share the same tool permission pattern syntax
@@ -135,14 +135,14 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
    - `tests/unit/validators/allowed-tools.test.ts` — including `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}`, `Bash(git:*)` acceptance
 
 #### Deliverables
-- [ ] `src/validators/tool-patterns.ts`
-- [ ] `src/validators/disallowed-tools.ts`
-- [ ] `src/validators/tools.ts`
-- [ ] `src/validators/allowed-tools.ts`
-- [ ] `tests/unit/validators/tool-patterns.test.ts`
-- [ ] `tests/unit/validators/disallowed-tools.test.ts`
-- [ ] `tests/unit/validators/tools.test.ts`
-- [ ] `tests/unit/validators/allowed-tools.test.ts`
+- [x] `src/validators/tool-patterns.ts`
+- [x] `src/validators/disallowed-tools.ts`
+- [x] `src/validators/tools.ts`
+- [x] `src/validators/allowed-tools.ts`
+- [x] `tests/unit/validators/tool-patterns.test.ts`
+- [x] `tests/unit/validators/disallowed-tools.test.ts`
+- [x] `tests/unit/validators/tools.test.ts`
+- [x] `tests/unit/validators/allowed-tools.test.ts`
 
 ---
 

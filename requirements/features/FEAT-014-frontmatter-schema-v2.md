@@ -414,16 +414,16 @@ export interface ParsedFrontmatter {
 - [ ] `color` field accepted and validated (one of 6 valid colors)
 - [ ] `disable-model-invocation` field accepted and validated (boolean)
 - [ ] `version` field accepted and validated (non-empty string)
-- [ ] `allowed-tools` accepts `Task(AgentName)` patterns
-- [ ] `allowed-tools` accepts `mcp__server__*` patterns
-- [ ] `allowed-tools` accepts `${CLAUDE_PLUGIN_ROOT}` patterns
-- [ ] `allowed-tools` accepts `Bash(git:*)` colon syntax
-- [ ] `ALLOWED_KEYS` set updated in frontmatter validator
-- [ ] `ParsedFrontmatter` type updated with new fields
-- [ ] Each new field has its own validator file
-- [ ] Error messages are clear and actionable
+- [x] `allowed-tools` accepts `Task(AgentName)` patterns
+- [x] `allowed-tools` accepts `mcp__server__*` patterns
+- [x] `allowed-tools` accepts `${CLAUDE_PLUGIN_ROOT}` patterns
+- [x] `allowed-tools` accepts `Bash(git:*)` colon syntax
+- [x] `ALLOWED_KEYS` set updated in frontmatter validator
+- [x] `ParsedFrontmatter` type updated with new fields
+- [x] Each new field has its own validator file
+- [x] Error messages are clear and actionable
 - [ ] Model warnings propagated through validation pipeline
-- [ ] All existing tests continue to pass
-- [ ] New unit tests for each new field
+- [x] All existing tests continue to pass
+- [x] New unit tests for each new field
 - [ ] Integration tests for full validation workflow
 - [ ] `npm run quality` passes
