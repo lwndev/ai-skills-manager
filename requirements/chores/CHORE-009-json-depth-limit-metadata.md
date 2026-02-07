@@ -23,11 +23,11 @@ Change the `asm list --recursive --json` output from a raw skills array to a str
 
 ## Acceptance Criteria
 
-- [ ] `asm list --json` outputs `{ "skills": [...], "depthLimitReached": false }` when `--recursive` is used
-- [ ] `asm list --json` without `--recursive` continues to output a plain skills array (no breaking change for non-recursive usage)
-- [ ] `depthLimitReached` is `true` when depth limit is reached during recursive scan
-- [ ] Existing tests updated to reflect the new JSON structure
-- [ ] `npm run quality` passes
+- [x] `asm list --json` outputs `{ "skills": [...], "depthLimitReached": false }` when `--recursive` is used
+- [x] `asm list --json` without `--recursive` continues to output a plain skills array (no breaking change for non-recursive usage)
+- [x] `depthLimitReached` is `true` when depth limit is reached during recursive scan
+- [x] Existing tests updated to reflect the new JSON structure
+- [x] `npm run quality` passes
 
 ## Completion
 
