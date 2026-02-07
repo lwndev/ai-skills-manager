@@ -148,7 +148,7 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
 
 ### Phase 3: Orchestrator Integration & Warning Propagation
 **Feature:** [FEAT-014](../features/FEAT-014-frontmatter-schema-v2.md) | [#51](https://github.com/lwndev/ai-skills-manager/issues/51)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Wiring phase**: All individual validators exist from Phases 1-2 but aren't yet called from the validation orchestrator
@@ -185,9 +185,9 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
    - Test that invalid new field values produce correct check failures
 
 #### Deliverables
-- [ ] `src/generators/validate.ts` — updated with 12 new validation steps
-- [ ] `src/validators/index.ts` — updated barrel exports
-- [ ] `tests/unit/generators/validate.test.ts` — new or updated orchestrator tests
+- [x] `src/generators/validate.ts` — updated with 12 new validation steps
+- [x] `src/validators/index.ts` — updated barrel exports
+- [x] `tests/unit/generators/validate.test.ts` — new or updated orchestrator tests
 
 ---
 
