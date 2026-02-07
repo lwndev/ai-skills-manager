@@ -110,11 +110,23 @@ export type ValidationCheckName =
   | 'nameFormat'
   | 'descriptionFormat'
   | 'compatibilityFormat'
-  | 'nameMatchesDirectory'
   | 'contextFormat'
   | 'agentFormat'
   | 'hooksFormat'
-  | 'userInvocableFormat';
+  | 'userInvocableFormat'
+  | 'memoryFormat'
+  | 'skillsFormat'
+  | 'modelFormat'
+  | 'permissionModeFormat'
+  | 'disallowedToolsFormat'
+  | 'argumentHintFormat'
+  | 'keepCodingInstructionsFormat'
+  | 'toolsFormat'
+  | 'colorFormat'
+  | 'disableModelInvocationFormat'
+  | 'versionFormat'
+  | 'allowedToolsFormat'
+  | 'nameMatchesDirectory';
 
 /**
  * Result of a single validation check.

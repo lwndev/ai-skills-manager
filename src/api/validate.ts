@@ -38,6 +38,18 @@ const CHECK_TO_CODE: Record<CheckName, string> = {
   agentFormat: 'INVALID_AGENT_FORMAT',
   hooksFormat: 'INVALID_HOOKS_FORMAT',
   userInvocableFormat: 'INVALID_USER_INVOCABLE_FORMAT',
+  memoryFormat: 'INVALID_MEMORY_FORMAT',
+  skillsFormat: 'INVALID_SKILLS_FORMAT',
+  modelFormat: 'INVALID_MODEL_FORMAT',
+  permissionModeFormat: 'INVALID_PERMISSION_MODE_FORMAT',
+  disallowedToolsFormat: 'INVALID_DISALLOWED_TOOLS_FORMAT',
+  argumentHintFormat: 'INVALID_ARGUMENT_HINT_FORMAT',
+  keepCodingInstructionsFormat: 'INVALID_KEEP_CODING_INSTRUCTIONS_FORMAT',
+  toolsFormat: 'INVALID_TOOLS_FORMAT',
+  colorFormat: 'INVALID_COLOR_FORMAT',
+  disableModelInvocationFormat: 'INVALID_DISABLE_MODEL_INVOCATION_FORMAT',
+  versionFormat: 'INVALID_VERSION_FORMAT',
+  allowedToolsFormat: 'INVALID_ALLOWED_TOOLS_FORMAT',
 };
 
 /**

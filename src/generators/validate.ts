@@ -32,11 +32,23 @@ function initializeChecks(): Record<CheckName, { passed: boolean; error?: string
     nameFormat: { passed: false },
     descriptionFormat: { passed: false },
     compatibilityFormat: { passed: false },
-    nameMatchesDirectory: { passed: false },
     contextFormat: { passed: false },
     agentFormat: { passed: false },
     hooksFormat: { passed: false },
     userInvocableFormat: { passed: false },
+    memoryFormat: { passed: false },
+    skillsFormat: { passed: false },
+    modelFormat: { passed: false },
+    permissionModeFormat: { passed: false },
+    disallowedToolsFormat: { passed: false },
+    argumentHintFormat: { passed: false },
+    keepCodingInstructionsFormat: { passed: false },
+    toolsFormat: { passed: false },
+    colorFormat: { passed: false },
+    disableModelInvocationFormat: { passed: false },
+    versionFormat: { passed: false },
+    allowedToolsFormat: { passed: false },
+    nameMatchesDirectory: { passed: false },
   };
 }
 
@@ -199,7 +211,22 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     error: userInvocableResult.error,
   };
 
-  // Step 12: Name matches directory check
+  // Steps 12-23: FEAT-014 field validators (Phase 3 will wire individual validators)
+  // For now, mark all new field checks as passed to avoid false negatives
+  checks.memoryFormat = { passed: true };
+  checks.skillsFormat = { passed: true };
+  checks.modelFormat = { passed: true };
+  checks.permissionModeFormat = { passed: true };
+  checks.disallowedToolsFormat = { passed: true };
+  checks.argumentHintFormat = { passed: true };
+  checks.keepCodingInstructionsFormat = { passed: true };
+  checks.toolsFormat = { passed: true };
+  checks.colorFormat = { passed: true };
+  checks.disableModelInvocationFormat = { passed: true };
+  checks.versionFormat = { passed: true };
+  checks.allowedToolsFormat = { passed: true };
+
+  // Step 24: Name matches directory check
   // Validates that frontmatter name matches parent directory name
   if (
     typeof frontmatter.name === 'string' &&

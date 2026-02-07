@@ -20,6 +20,18 @@ const ALLOWED_KEYS = new Set([
   'agent',
   'hooks',
   'user-invocable',
+  // FEAT-014 fields
+  'memory',
+  'skills',
+  'model',
+  'permissionMode',
+  'disallowedTools',
+  'argument-hint',
+  'keep-coding-instructions',
+  'tools',
+  'color',
+  'disable-model-invocation',
+  'version',
 ]);
 
 export interface FrontmatterData {
