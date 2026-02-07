@@ -398,22 +398,22 @@ export interface ParsedFrontmatter {
 - Full validation of skill with all new fields populated
 - Full validation of skill with subset of new fields
 - Backward compatibility: existing skills without new fields
-- Scaffold + validate round-trip with new fields
+- ~~Scaffold + validate round-trip with new fields~~ *(intentionally omitted — scaffold does not yet emit FEAT-014 fields, so a round-trip test would not exercise the new validation)*
 - Model warning propagation through validation pipeline
 
 ## Acceptance Criteria
 
-- [ ] `memory` field accepted and validated (`"user"`, `"project"`, or `"local"`)
-- [ ] `skills` field accepted and validated (string or string array)
-- [ ] `model` field accepted and validated (non-empty string, warns on unknown values)
-- [ ] `permissionMode` field accepted and validated (non-empty string)
-- [ ] `disallowedTools` field accepted and validated (string or string array)
-- [ ] `argument-hint` field accepted and validated (non-empty string, max 200 chars)
-- [ ] `keep-coding-instructions` field accepted and validated (boolean)
-- [ ] `tools` field accepted and validated (string or string array)
-- [ ] `color` field accepted and validated (one of 6 valid colors)
-- [ ] `disable-model-invocation` field accepted and validated (boolean)
-- [ ] `version` field accepted and validated (non-empty string)
+- [x] `memory` field accepted and validated (`"user"`, `"project"`, or `"local"`)
+- [x] `skills` field accepted and validated (string or string array)
+- [x] `model` field accepted and validated (non-empty string, warns on unknown values)
+- [x] `permissionMode` field accepted and validated (non-empty string)
+- [x] `disallowedTools` field accepted and validated (string or string array)
+- [x] `argument-hint` field accepted and validated (non-empty string, max 200 chars)
+- [x] `keep-coding-instructions` field accepted and validated (boolean)
+- [x] `tools` field accepted and validated (string or string array)
+- [x] `color` field accepted and validated (one of 6 valid colors)
+- [x] `disable-model-invocation` field accepted and validated (boolean)
+- [x] `version` field accepted and validated (non-empty string)
 - [x] `allowed-tools` accepts `Task(AgentName)` patterns
 - [x] `allowed-tools` accepts `mcp__server__*` patterns
 - [x] `allowed-tools` accepts `${CLAUDE_PLUGIN_ROOT}` patterns
@@ -422,8 +422,8 @@ export interface ParsedFrontmatter {
 - [x] `ParsedFrontmatter` type updated with new fields
 - [x] Each new field has its own validator file
 - [x] Error messages are clear and actionable
-- [ ] Model warnings propagated through validation pipeline
+- [x] Model warnings propagated through validation pipeline
 - [x] All existing tests continue to pass
 - [x] New unit tests for each new field
-- [ ] Integration tests for full validation workflow
-- [ ] `npm run quality` passes
+- [x] Integration tests for full validation workflow
+- [x] `npm run quality` passes

@@ -193,7 +193,7 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
 
 ### Phase 4: Integration Tests & Quality Verification
 **Feature:** [FEAT-014](../features/FEAT-014-frontmatter-schema-v2.md) | [#51](https://github.com/lwndev/ai-skills-manager/issues/51)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Confidence phase**: Verify the full pipeline works end-to-end
@@ -202,7 +202,7 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
 
 #### Implementation Steps
 
-1. Write integration tests in `tests/integration/feat-014-frontmatter-v2.test.ts`
+1. Write integration tests in `tests/integration/validate-frontmatter-v2.test.ts`
    - Full validation of skill with all 11 new fields populated
    - Full validation of skill with subset of new fields
    - Backward compatibility: validate existing skill with no new fields
@@ -221,9 +221,9 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
    - Audit passes
 
 #### Deliverables
-- [ ] `tests/integration/feat-014-frontmatter-v2.test.ts`
-- [ ] All existing tests still pass
-- [ ] `npm run quality` passes
+- [x] `tests/integration/validate-frontmatter-v2.test.ts`
+- [x] All existing tests still pass
+- [x] `npm run quality` passes
 
 ---
 
@@ -285,15 +285,15 @@ Significant infrastructure is already in place: `ALLOWED_KEYS`, `CheckName`, `Pa
 - No regressions in existing tests
 
 ### Overall (matches FEAT-014 Acceptance Criteria)
-- [ ] All 11 new fields accepted and validated per spec
-- [ ] `allowed-tools` accepts advanced patterns (Task, mcp__*, ${CLAUDE_PLUGIN_ROOT}, Bash colon syntax)
-- [ ] Model warnings propagated through validation pipeline
-- [ ] Each new field has its own validator file in `src/validators/`
-- [ ] Error messages are clear, actionable, and reference specific fields
-- [ ] All existing tests continue to pass
-- [ ] New unit tests for each new field
-- [ ] Integration tests for full validation workflow
-- [ ] `npm run quality` passes
+- [x] All 11 new fields accepted and validated per spec
+- [x] `allowed-tools` accepts advanced patterns (Task, mcp__*, ${CLAUDE_PLUGIN_ROOT}, Bash colon syntax)
+- [x] Model warnings propagated through validation pipeline
+- [x] Each new field has its own validator file in `src/validators/`
+- [x] Error messages are clear, actionable, and reference specific fields
+- [x] All existing tests continue to pass
+- [x] New unit tests for each new field
+- [x] Integration tests for full validation workflow
+- [x] `npm run quality` passes
 
 ## Code Organization
 
@@ -336,5 +336,5 @@ tests/unit/generators/
 └── validate.test.ts         # Updated orchestrator tests (Phase 3)
 
 tests/integration/
-└── feat-014-frontmatter-v2.test.ts  # End-to-end tests (Phase 4)
+└── validate-frontmatter-v2.test.ts  # End-to-end tests (Phase 4)
 ```

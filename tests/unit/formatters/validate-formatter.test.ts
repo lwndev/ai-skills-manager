@@ -248,6 +248,20 @@ describe('validate formatters', () => {
       expect(output).toContain('Consider splitting into smaller files');
       expect(output).toContain('✓ Skill is valid!');
     });
+
+    it('displays model warning in normal output', () => {
+      const resultWithModelWarning: ValidationResult = {
+        ...validResult,
+        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
+      };
+
+      const output = formatNormal(resultWithModelWarning);
+
+      expect(output).toContain('Warnings:');
+      expect(output).toContain('custom-llm-v4');
+      expect(output).toContain('⚠');
+      expect(output).toContain('✓ Skill is valid!');
+    });
   });
 
   describe('formatQuiet', () => {
@@ -307,6 +321,20 @@ describe('validate formatters', () => {
       // Should be indented with 2 spaces
       expect(output).toContain('  "valid": true');
       expect(output).toContain('    "fileExists"');
+    });
+
+    it('includes model warnings in JSON output', () => {
+      const resultWithModelWarning: ValidationResult = {
+        ...validResult,
+        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
+      };
+
+      const output = formatJSON(resultWithModelWarning);
+      const parsed = JSON.parse(output);
+
+      expect(parsed.valid).toBe(true);
+      expect(parsed.warnings).toHaveLength(1);
+      expect(parsed.warnings[0]).toContain('custom-llm-v4');
     });
 
     it('includes all validation checks in output', () => {
