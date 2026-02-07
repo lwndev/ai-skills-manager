@@ -138,7 +138,8 @@ async function handleList(options: ListCommandOptions): Promise<number> {
 
     // Output results
     if (json) {
-      console.log(JSON.stringify(skills, null, 2));
+      const jsonOutput = recursive ? { skills, depthLimitReached } : skills;
+      console.log(JSON.stringify(jsonOutput, null, 2));
     } else if (quiet) {
       for (const skill of skills) {
         console.log(skill.name);

@@ -263,15 +263,60 @@ description: ${options.description || `Description for ${name}`}${metadata}
 
       const { stdout } = runCli('list --recursive --scope project --json');
 
-      const skills = JSON.parse(stdout);
-      expect(skills).toHaveLength(2);
+      const result = JSON.parse(stdout);
+      expect(result).toHaveProperty('skills');
+      expect(result).toHaveProperty('depthLimitReached');
+      expect(result.skills).toHaveLength(2);
 
-      const rootSkill = skills.find((s: { name: string }) => s.name === 'root-skill');
+      const rootSkill = result.skills.find((s: { name: string }) => s.name === 'root-skill');
       expect(rootSkill.location).toBeUndefined();
 
-      const nestedSkill = skills.find((s: { name: string }) => s.name === 'nested-skill');
+      const nestedSkill = result.skills.find((s: { name: string }) => s.name === 'nested-skill');
       expect(nestedSkill.location).toBeDefined();
       expect(nestedSkill.location).toContain('packages/api/.claude/skills');
+    });
+
+    it('outputs plain array without --recursive', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'root-skill');
+
+      const { stdout } = runCli('list --scope project --json');
+
+      const result = JSON.parse(stdout);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('root-skill');
+    });
+
+    it('includes depthLimitReached: false when limit not reached', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'root-skill');
+
+      const { stdout } = runCli('list --recursive --scope project --json');
+
+      const result = JSON.parse(stdout);
+      expect(result.depthLimitReached).toBe(false);
+    });
+
+    it('includes depthLimitReached: true when limit is reached', async () => {
+      const rootSkillsDir = await createSkillsDir();
+      await createSkill(rootSkillsDir, 'depth-0');
+
+      const level1Dir = await createSkillsDir('level1');
+      await createSkill(level1Dir, 'depth-1');
+
+      const level2Dir = await createSkillsDir('level1', 'level2');
+      await createSkill(level2Dir, 'depth-2');
+
+      const { stdout } = runCli('list --recursive --depth 1 --scope project --json');
+
+      const result = JSON.parse(stdout);
+      expect(result.depthLimitReached).toBe(true);
+      // depth-2 should not be included since depth limit is 1
+      const names = result.skills.map((s: { name: string }) => s.name);
+      expect(names).toContain('depth-0');
+      expect(names).toContain('depth-1');
+      expect(names).not.toContain('depth-2');
     });
   });
 
@@ -395,9 +440,11 @@ description: ${options.description || `Description for ${name}`}${metadata}
 
       const { stdout } = runCli('list --recursive --depth 1 --scope project --json');
 
-      // JSON output should be valid JSON, not contain the warning
+      // JSON output should be valid JSON, not contain the warning text
       expect(stdout).not.toContain('Some directories were not scanned');
-      expect(() => JSON.parse(stdout)).not.toThrow();
+      const result = JSON.parse(stdout);
+      expect(result).toHaveProperty('skills');
+      expect(result.depthLimitReached).toBe(true);
     });
 
     it('does not show warning in quiet mode', async () => {
