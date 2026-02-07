@@ -5,7 +5,7 @@
 Add a `--minimal` flag to `asm scaffold` that generates shorter, production-ready templates without the verbose educational guidance, catering to experienced users who prefer clean scaffolding output.
 
 ## Feature ID
-`FEAT-014`
+`FEAT-016`
 
 ## GitHub Issue
 [#44](https://github.com/lwndev/ai-skills-manager/issues/44)

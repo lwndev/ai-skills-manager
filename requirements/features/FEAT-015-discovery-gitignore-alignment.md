@@ -8,7 +8,7 @@ This is a behavioral correction to FEAT-012, which implemented recursive discove
 
 ## Feature ID
 
-`FEAT-017`
+`FEAT-015`
 
 ## GitHub Issues
 
@@ -92,7 +92,7 @@ Project skills (.claude/skills/):
 # generated/.claude/skills/ was skipped because "generated/" is in .gitignore
 ```
 
-### After (FEAT-017 behavior)
+### After (FEAT-015 behavior)
 ```
 Project skills (.claude/skills/):
   my-skill

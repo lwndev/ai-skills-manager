@@ -126,7 +126,7 @@ Update all template type guidance blocks with:
 | `forked` | Auto-approval note, size budget |
 | `with-hooks` | Note that hooks opt out of auto-approval, plugin mention |
 | `internal` | Note that `user-invocable: false` skills don't appear in `/skills` menu |
-| `agent` (FEAT-016) | Plugin mention, agent-specific distribution considerations |
+| `agent` (FEAT-017) | Plugin mention, agent-specific distribution considerations |
 
 ## Non-Functional Requirements
 
@@ -147,12 +147,12 @@ Update all template type guidance blocks with:
 
 ## Dependencies
 
-- FEAT-015 (Frontmatter Schema v2) — new fields must be documented in guidance
-- FEAT-016 (Agent Template) — agent template guidance must include these updates
+- FEAT-014 (Frontmatter Schema v2) — new fields must be documented in guidance
+- FEAT-017 (Agent Template) — agent template guidance must include these updates
 
 ## Edge Cases
 
-1. **Minimal templates (FEAT-014)**: Minimal templates should NOT include the verbose guidance additions — they only have frontmatter and brief body
+1. **Minimal templates (FEAT-016)**: Minimal templates should NOT include the verbose guidance additions — they only have frontmatter and brief body
 2. **External documentation links**: Links may go stale — include link text that's useful even if the URL breaks
 3. **Version-specific behavior**: Note the minimum Claude Code version when behavior depends on it
 

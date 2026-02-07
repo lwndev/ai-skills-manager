@@ -6,7 +6,7 @@ Add a new `agent` template variant to ASM's `asm scaffold` command that demonstr
 
 ## Feature ID
 
-`FEAT-016`
+`FEAT-017`
 
 ## GitHub Issues
 
@@ -35,7 +35,7 @@ As a skill developer, I want a dedicated agent template that scaffolds agent-spe
 
 ## Dependencies
 
-- FEAT-015 (Frontmatter Schema v2) — validation must support new fields before templates reference them
+- FEAT-014 (Frontmatter Schema v2) — validation must support new fields before templates reference them
 - FEAT-013 (Skill Template Enhancements) — existing template system this builds on
 
 ## Command Syntax
@@ -202,7 +202,7 @@ Error: Argument hint must be 100 characters or fewer, got 142 characters.
 - Frontmatter field ordering is consistent across templates
 
 ### NFR-3: Minimal Template Support
-- If FEAT-014 (`--minimal`) is implemented, the agent template must also support it
+- If FEAT-016 (`--minimal`) is implemented, the agent template must also support it
 - Minimal agent template includes frontmatter only, no verbose guidance
 
 ## Edge Cases

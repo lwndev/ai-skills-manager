@@ -8,7 +8,7 @@ This builds on FEAT-011 which added `context`, `agent`, `hooks`, and `user-invoc
 
 ## Feature ID
 
-`FEAT-015`
+`FEAT-014`
 
 ## GitHub Issues
 
@@ -164,7 +164,7 @@ const ALLOWED_KEYS = new Set([
   'agent',
   'hooks',
   'user-invocable',
-  // New fields (FEAT-015)
+  // New fields (FEAT-014)
   'memory',
   'skills',
   'model',
@@ -225,7 +225,7 @@ Update the programmatic API types:
 export interface ParsedFrontmatter {
   // ... existing fields ...
 
-  // New fields (FEAT-015)
+  // New fields (FEAT-014)
   memory?: 'user' | 'project' | 'local';
   skills?: string | string[];
   model?: string;

@@ -8,12 +8,12 @@ Add a `--minimal` flag to `asm scaffold` that generates shorter, production-read
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-014 | [#44](https://github.com/lwndev/ai-skills-manager/issues/44) | [FEAT-014-minimal-scaffold-flag.md](../features/FEAT-014-minimal-scaffold-flag.md) | Medium | Low-Medium | Pending |
+| FEAT-016 | [#44](https://github.com/lwndev/ai-skills-manager/issues/44) | [FEAT-016-minimal-scaffold-flag.md](../features/FEAT-016-minimal-scaffold-flag.md) | Medium | Low-Medium | Pending |
 
 ## Recommended Build Sequence
 
 ### Phase 1: Minimal Template Generation
-**Feature:** [FEAT-014](../features/FEAT-014-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
+**Feature:** [FEAT-016](../features/FEAT-016-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
 **Status:** Pending
 
 #### Rationale
@@ -60,7 +60,7 @@ Add a `--minimal` flag to `asm scaffold` that generates shorter, production-read
 ---
 
 ### Phase 2: API and CLI Integration
-**Feature:** [FEAT-014](../features/FEAT-014-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
+**Feature:** [FEAT-016](../features/FEAT-016-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
 **Status:** Pending
 
 #### Rationale
@@ -103,7 +103,7 @@ Add a `--minimal` flag to `asm scaffold` that generates shorter, production-read
 ---
 
 ### Phase 3: Output Formatting and Integration Tests
-**Feature:** [FEAT-014](../features/FEAT-014-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
+**Feature:** [FEAT-016](../features/FEAT-016-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
 **Status:** Pending
 
 #### Rationale
