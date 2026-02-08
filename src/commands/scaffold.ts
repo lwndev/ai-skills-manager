@@ -5,7 +5,13 @@ import { AsmError, ValidationError, FileSystemError, SecurityError } from '../er
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
 
-const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
+const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = [
+  'basic',
+  'forked',
+  'with-hooks',
+  'internal',
+  'agent',
+];
 
 export function registerScaffoldCommand(program: Command): void {
   program
@@ -17,7 +23,10 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--personal', 'Create as a personal skill in ~/.claude/skills/')
     .option('-a, --allowed-tools <tools>', 'Comma-separated list of allowed tools')
     .option('-f, --force', 'Overwrite existing directory without prompting')
-    .option('-t, --template <type>', 'Template variant (basic, forked, with-hooks, internal)')
+    .option(
+      '-t, --template <type>',
+      'Template variant (basic, forked, with-hooks, internal, agent)'
+    )
     .option('--context <context>', 'Set context in frontmatter (fork)')
     .option('--agent <name>', 'Set agent field in frontmatter')
     .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
@@ -56,6 +65,7 @@ Template types:
   forked      - For skills running in isolated (forked) context
   with-hooks  - Template demonstrating hook configuration
   internal    - For non-user-invocable helper skills
+  agent       - For autonomous agent skills with model, memory, and tool config
 
 Minimal mode:
   --minimal   Generate shorter templates without educational guidance text.

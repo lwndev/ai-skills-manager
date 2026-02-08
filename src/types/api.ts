@@ -180,8 +180,9 @@ export interface ValidateOptions {
  * - forked: Template for skills that run in forked (isolated) context
  * - with-hooks: Template demonstrating hook configuration
  * - internal: Template for non-user-invocable helper skills
+ * - agent: Template for autonomous agent skills with model, memory, and tool configuration
  */
-export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
+export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent';
 
 /**
  * Template-specific options for scaffolding.

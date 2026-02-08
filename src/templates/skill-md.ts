@@ -16,8 +16,9 @@ export interface SkillTemplateParams {
  * - forked: Template for skills that run in forked (isolated) context
  * - with-hooks: Template demonstrating hook configuration
  * - internal: Template for non-user-invocable helper skills
+ * - agent: Template for autonomous agent skills with model, memory, and tool configuration
  */
-export type TemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
+export type TemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent';
 
 /**
  * Options for customizing generated skill templates.
@@ -35,6 +36,12 @@ export interface TemplateOptions {
   includeHooks?: boolean;
   /** Generate shorter templates without educational guidance */
   minimal?: boolean;
+  /** Memory scope for the skill (user, project, local) */
+  memory?: 'user' | 'project' | 'local';
+  /** Model for agent execution */
+  model?: string;
+  /** Argument hint for skill invocation */
+  argumentHint?: string;
 }
 
 /**
@@ -79,6 +86,9 @@ function getDefaultAllowedTools(templateType: TemplateType): string[] | undefine
     case 'with-hooks':
       // Tools commonly used with hook workflows
       return ['Bash', 'Read', 'Write'];
+    case 'agent':
+      // Full tool access for autonomous agents
+      return ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'];
     default:
       // No defaults for basic (user specifies or commented placeholder)
       return undefined;
@@ -143,10 +153,27 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push(
       'description: "TODO: Internal helper for other skills. Not for direct user invocation."'
     );
+  } else if (templateType === 'agent') {
+    lines.push('description: "TODO: Describe what this agent does and when it should be used."');
   } else if (options?.minimal) {
     lines.push('description: "TODO: Describe what this skill does and when to use it."');
   } else {
     lines.push('description: "TODO: Add a short description of what this skill does"');
+  }
+
+  // Agent-specific fields: model, memory, skills (before allowed-tools per FR-1 ordering)
+  const resolvedModel = options?.model ?? (templateType === 'agent' ? 'sonnet' : undefined);
+  if (resolvedModel) {
+    lines.push(`model: ${escapeYamlString(resolvedModel)}`);
+  }
+
+  const resolvedMemory = options?.memory ?? (templateType === 'agent' ? 'project' : undefined);
+  if (resolvedMemory) {
+    lines.push(`memory: ${resolvedMemory}`);
+  }
+
+  if (templateType === 'agent') {
+    lines.push('skills: []');
   }
 
   // Determine allowed-tools: explicit params override template defaults
@@ -165,6 +192,11 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push('#   - Edit');
     lines.push('#   - Glob');
     lines.push('#   - Grep');
+  }
+
+  // Agent-specific: disallowedTools after allowed-tools
+  if (templateType === 'agent') {
+    lines.push('disallowedTools: []');
   }
 
   // Add context: fork for forked template or if explicitly specified
@@ -341,6 +373,51 @@ IMPORTANT NOTES:
 - Hooks in skills are automatically cleaned up when the skill finishes
 `;
 
+    case 'agent':
+      return `
+AGENT SKILL
+================================================================================
+
+This skill defines a custom Claude Code agent. Agents are autonomous skills
+that can execute multi-step tasks with their own model, memory, and tool config.
+
+HOW AGENTS DIFFER FROM REGULAR SKILLS:
+- Agents run with a dedicated model and memory scope
+- Agents can load dependent skills via the \`skills\` field
+- Agents have their own tool permissions (allowed-tools + disallowedTools)
+- Regular skills provide instructions; agents provide autonomous capabilities
+
+MODEL SELECTION:
+The \`model\` field controls which model executes this agent:
+- \`sonnet\` (default) — fast, capable, good for most tasks
+- \`opus\` — most capable, best for complex reasoning
+- \`haiku\` — fastest, best for simple or high-volume tasks
+- If omitted, the agent inherits the model from its parent context
+
+MEMORY SCOPES:
+The \`memory\` field controls how the agent persists information:
+- \`user\` — cross-project memory, stored in ~/.claude/
+- \`project\` — repo-specific memory, stored in .claude/ (default for agents)
+- \`local\` — machine-specific, not committed to version control
+
+DEPENDENT SKILLS:
+Use the \`skills\` field to auto-load other skills when this agent runs:
+  skills:
+    - code-review-helper
+    - formatting-standards
+
+TOOL ACCESS CONTROL:
+- \`allowed-tools\`: Whitelist of tools the agent can use
+- \`disallowedTools\`: Blacklist specific tools (overrides allowed-tools)
+- Use both together for fine-grained control
+
+PERMISSION MODE:
+Add \`permissionMode\` to control agent permissions:
+- \`default\` — standard permission checks
+- \`plan\` — agent can only read/explore, not modify files
+- \`bypassPermissions\` — skip permission prompts (use with caution)
+`;
+
     default:
       // Basic template - return empty string (uses standard guidance)
       return '';
@@ -358,6 +435,8 @@ function getMinimalOverviewTodo(templateType: TemplateType): string {
       return 'TODO: Brief description. This skill uses hooks for tool lifecycle events.';
     case 'internal':
       return 'TODO: Brief description. This is an internal helper skill.';
+    case 'agent':
+      return 'TODO: Brief description. This is a custom Claude Code agent.';
     default:
       return 'TODO: Brief description of what this skill does.';
   }
