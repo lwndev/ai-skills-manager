@@ -66,6 +66,14 @@ export function detectConflictingFlags(options: CliScaffoldOptions): string[] {
   return conflicts;
 }
 
+/** Thrown when the user cancels the interactive scaffold (Ctrl+C / EOF). */
+export class ScaffoldCancelledError extends Error {
+  constructor() {
+    super('Scaffold cancelled.');
+    this.name = 'ScaffoldCancelledError';
+  }
+}
+
 /** Result of the interactive prompt flow. */
 export interface InteractivePromptResult {
   templateOptions: ScaffoldTemplateOptions;
@@ -80,7 +88,7 @@ export interface InteractivePromptResult {
  *
  * Throws ExitPromptError on Ctrl+C or EOF (handled by caller).
  */
-export async function runInteractivePrompts(_name: string): Promise<InteractivePromptResult> {
+export async function runInteractivePrompts(): Promise<InteractivePromptResult> {
   const templateOptions: ScaffoldTemplateOptions = {};
   let description: string | undefined;
   let allowedTools: string[] | undefined;
@@ -137,10 +145,6 @@ export async function runInteractivePrompts(_name: string): Promise<InteractiveP
   // FR-4: Agent name input
   const agentName = await input({
     message: 'Agent name (optional, press Enter to skip):',
-    validate: (value: string) => {
-      if (value.trim().length === 0) return true; // allow skip
-      return true;
-    },
   });
   if (agentName.trim().length > 0) {
     templateOptions.agent = agentName.trim();
@@ -337,7 +341,7 @@ export function formatSummary(
  */
 async function collectAndConfirmPrompts(name: string): Promise<InteractivePromptResult> {
   for (;;) {
-    const result = await runInteractivePrompts(name);
+    const result = await runInteractivePrompts();
 
     // FR-12: Display summary before proceeding
     const summary = formatSummary(
@@ -402,8 +406,7 @@ export async function runInteractiveScaffold(
     }
   } catch (error) {
     if (error instanceof ExitPromptError) {
-      console.log('Scaffold cancelled.');
-      process.exit(0);
+      throw new ScaffoldCancelledError();
     }
     throw error;
   }

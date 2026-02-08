@@ -17,6 +17,7 @@ import {
   runInteractivePrompts,
   runInteractiveScaffold,
   formatSummary,
+  ScaffoldCancelledError,
 } from '../../../src/commands/scaffold-interactive';
 import type { CliScaffoldOptions } from '../../../src/commands/scaffold';
 
@@ -319,18 +320,6 @@ describe('scaffold-interactive', () => {
 
       const program = await createTestProgram();
 
-      await expect(
-        program.parseAsync([
-          'node',
-          'asm',
-          'scaffold',
-          'test-skill',
-          '--output',
-          tempDir,
-          '--interactive',
-        ])
-      ).rejects.toThrow(ProcessExitError);
-
       try {
         await program.parseAsync([
           'node',
@@ -341,10 +330,10 @@ describe('scaffold-interactive', () => {
           tempDir,
           '--interactive',
         ]);
+        fail('Expected ProcessExitError');
       } catch (e) {
-        if (e instanceof ProcessExitError) {
-          expect(e.code).toBe(1);
-        }
+        expect(e).toBeInstanceOf(ProcessExitError);
+        expect((e as ProcessExitError).code).toBe(1);
       }
 
       expect(consoleOutput.some((line) => line.includes('--interactive requires a TTY'))).toBe(
@@ -506,27 +495,27 @@ describe('scaffold-interactive', () => {
     it('template type prompt produces correct templateType in options', async () => {
       setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.templateType).toBe('agent');
     });
 
     it('basic template produces correct templateType', async () => {
       setupPromptMocks({ templateType: 'basic' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.templateType).toBe('basic');
     });
 
     it('forked template produces correct templateType', async () => {
       setupPromptMocks({ templateType: 'forked' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.templateType).toBe('forked');
     });
 
     it('context prompt is shown only for basic template', async () => {
       setupPromptMocks({ templateType: 'basic', context: 'fork' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       // select called 4 times: template, context, memory, model
       expect(mockSelect).toHaveBeenCalledTimes(4);
@@ -538,7 +527,7 @@ describe('scaffold-interactive', () => {
 
     it('context prompt is NOT shown for forked template', async () => {
       setupPromptMocks({ templateType: 'forked' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       // select called 3 times: template, memory, model (no context)
       expect(mockSelect).toHaveBeenCalledTimes(3);
@@ -550,7 +539,7 @@ describe('scaffold-interactive', () => {
 
     it('context prompt is NOT shown for agent template', async () => {
       setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const messages = mockSelect.mock.calls.map(
         (call) => (call[0] as { message: string }).message
@@ -561,34 +550,34 @@ describe('scaffold-interactive', () => {
     it('context inherit omits context from options', async () => {
       setupPromptMocks({ templateType: 'basic', context: 'inherit' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.context).toBeUndefined();
     });
 
     it('context fork sets context in options', async () => {
       setupPromptMocks({ templateType: 'basic', context: 'fork' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.context).toBe('fork');
     });
 
     it('agent name is set when provided', async () => {
       setupPromptMocks({ templateType: 'basic', agent: 'Explore' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.agent).toBe('Explore');
     });
 
     it('agent name is skipped when empty', async () => {
       setupPromptMocks({ templateType: 'basic', agent: '' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.agent).toBeUndefined();
     });
 
     it('memory defaults to project for agent template', async () => {
       setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       // Find the memory select call — for agent, the message is "Memory scope:"
       const memoryCall = mockSelect.mock.calls.find(
@@ -600,7 +589,7 @@ describe('scaffold-interactive', () => {
 
     it('memory defaults to skip for non-agent templates', async () => {
       setupPromptMocks({ templateType: 'basic' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const memoryCall = mockSelect.mock.calls.find(
         (call) =>
@@ -614,20 +603,20 @@ describe('scaffold-interactive', () => {
     it('memory skip omits memory from options for non-agent', async () => {
       setupPromptMocks({ templateType: 'basic', memory: 'skip' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.memory).toBeUndefined();
     });
 
     it('memory value is set when selected for non-agent', async () => {
       setupPromptMocks({ templateType: 'basic', memory: 'user' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.memory).toBe('user');
     });
 
     it('model defaults to sonnet for agent template', async () => {
       setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const modelCall = mockSelect.mock.calls.find(
         (call) => (call[0] as { message: string }).message === 'Model:'
@@ -638,7 +627,7 @@ describe('scaffold-interactive', () => {
 
     it('model defaults to skip for non-agent templates', async () => {
       setupPromptMocks({ templateType: 'basic' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const modelCall = mockSelect.mock.calls.find(
         (call) =>
@@ -651,20 +640,20 @@ describe('scaffold-interactive', () => {
     it('model skip omits model from options for non-agent', async () => {
       setupPromptMocks({ templateType: 'basic', model: 'skip' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.model).toBeUndefined();
     });
 
     it('model value is set when selected', async () => {
       setupPromptMocks({ templateType: 'basic', model: 'opus' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.model).toBe('opus');
     });
 
     it('hooks prompt is shown for basic template', async () => {
       setupPromptMocks({ templateType: 'basic', hooks: true });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
         (call) =>
@@ -675,7 +664,7 @@ describe('scaffold-interactive', () => {
 
     it('hooks prompt is shown for forked template', async () => {
       setupPromptMocks({ templateType: 'forked', hooks: false });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
         (call) =>
@@ -686,7 +675,7 @@ describe('scaffold-interactive', () => {
 
     it('hooks prompt is skipped for with-hooks template', async () => {
       setupPromptMocks({ templateType: 'with-hooks' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
         (call) =>
@@ -697,7 +686,7 @@ describe('scaffold-interactive', () => {
 
     it('hooks prompt is skipped for internal template', async () => {
       setupPromptMocks({ templateType: 'internal' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
         (call) =>
@@ -708,7 +697,7 @@ describe('scaffold-interactive', () => {
 
     it('hooks prompt is skipped for agent template', async () => {
       setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
         (call) =>
@@ -720,56 +709,56 @@ describe('scaffold-interactive', () => {
     it('hooks yes sets includeHooks in options', async () => {
       setupPromptMocks({ templateType: 'basic', hooks: true });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.includeHooks).toBe(true);
     });
 
     it('hooks no does not set includeHooks in options', async () => {
       setupPromptMocks({ templateType: 'basic', hooks: false });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.includeHooks).toBeUndefined();
     });
 
     it('minimal yes sets minimal in options', async () => {
       setupPromptMocks({ templateType: 'basic', minimal: true });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.minimal).toBe(true);
     });
 
     it('minimal no does not set minimal in options', async () => {
       setupPromptMocks({ templateType: 'basic', minimal: false });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.minimal).toBeUndefined();
     });
 
     it('description is set when provided', async () => {
       setupPromptMocks({ templateType: 'basic', description: 'A useful skill' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.description).toBe('A useful skill');
     });
 
     it('description is skipped when empty', async () => {
       setupPromptMocks({ templateType: 'basic', description: '' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.description).toBeUndefined();
     });
 
     it('argument hint is set when provided', async () => {
       setupPromptMocks({ templateType: 'basic', argumentHint: '<query> [--deep]' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.argumentHint).toBe('<query> [--deep]');
     });
 
     it('argument hint is skipped when empty', async () => {
       setupPromptMocks({ templateType: 'basic', argumentHint: '' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.templateOptions.argumentHint).toBeUndefined();
     });
 
@@ -796,7 +785,7 @@ describe('scaffold-interactive', () => {
         }
       );
 
-      await runInteractivePrompts('test-skill');
+      await runInteractivePrompts();
 
       if (!capturedValidate) throw new Error('Expected validate function to be captured');
       // Valid: empty (skip)
@@ -814,21 +803,21 @@ describe('scaffold-interactive', () => {
     it('allowed tools parsed from comma-separated string to array', async () => {
       setupPromptMocks({ templateType: 'basic', allowedTools: 'Read, Write, Bash' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.allowedTools).toEqual(['Read', 'Write', 'Bash']);
     });
 
     it('allowed tools with extra commas and spaces are trimmed', async () => {
       setupPromptMocks({ templateType: 'basic', allowedTools: ' Read , , Write ' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.allowedTools).toEqual(['Read', 'Write']);
     });
 
     it('allowed tools skipped when empty', async () => {
       setupPromptMocks({ templateType: 'basic', allowedTools: '' });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
       expect(result.allowedTools).toBeUndefined();
     });
 
@@ -844,7 +833,7 @@ describe('scaffold-interactive', () => {
         allowedTools: 'Read, Glob, Grep',
       });
 
-      const result = await runInteractivePrompts('test-skill');
+      const result = await runInteractivePrompts();
 
       expect(result.templateOptions).toEqual({
         templateType: 'agent',
@@ -860,14 +849,14 @@ describe('scaffold-interactive', () => {
     it('Ctrl+C during prompts throws ExitPromptError', async () => {
       mockSelect.mockRejectedValueOnce(new ExitPromptError('user exit'));
 
-      await expect(runInteractivePrompts('test-skill')).rejects.toThrow(ExitPromptError);
+      await expect(runInteractivePrompts()).rejects.toThrow(ExitPromptError);
     });
 
     it('EOF on stdin throws ExitPromptError', async () => {
       // ExitPromptError is thrown for both Ctrl+C and EOF by @inquirer/prompts
       mockSelect.mockRejectedValueOnce(new ExitPromptError('eof'));
 
-      await expect(runInteractivePrompts('test-skill')).rejects.toThrow(ExitPromptError);
+      await expect(runInteractivePrompts()).rejects.toThrow(ExitPromptError);
     });
   });
 
@@ -892,33 +881,30 @@ describe('scaffold-interactive', () => {
       process.exit = originalProcessExit;
     });
 
-    it('Ctrl+C exits with code 0 and message "Scaffold cancelled."', async () => {
+    it('Ctrl+C throws ScaffoldCancelledError', async () => {
       mockSelect.mockRejectedValueOnce(new ExitPromptError('user exit'));
 
       const options: CliScaffoldOptions = { interactive: true };
 
-      await expect(runInteractiveScaffold('test-skill', options)).rejects.toThrow(ProcessExitError);
-
-      try {
-        mockSelect.mockRejectedValueOnce(new ExitPromptError('user exit'));
-        await runInteractiveScaffold('test-skill', options);
-      } catch (e) {
-        if (e instanceof ProcessExitError) {
-          expect(e.code).toBe(0);
-        }
-      }
-
-      expect(consoleOutput.some((line) => line.includes('Scaffold cancelled.'))).toBe(true);
+      await expect(runInteractiveScaffold('test-skill', options)).rejects.toThrow(
+        ScaffoldCancelledError
+      );
+      await expect(
+        (async () => {
+          mockSelect.mockRejectedValueOnce(new ExitPromptError('user exit'));
+          await runInteractiveScaffold('test-skill', options);
+        })()
+      ).rejects.toThrow('Scaffold cancelled.');
     });
 
-    it('EOF on stdin exits with code 0 and message "Scaffold cancelled."', async () => {
+    it('EOF on stdin throws ScaffoldCancelledError', async () => {
       mockSelect.mockRejectedValueOnce(new ExitPromptError('eof'));
 
       const options: CliScaffoldOptions = { interactive: true };
 
-      await expect(runInteractiveScaffold('test-skill', options)).rejects.toThrow(ProcessExitError);
-
-      expect(consoleOutput.some((line) => line.includes('Scaffold cancelled.'))).toBe(true);
+      await expect(runInteractiveScaffold('test-skill', options)).rejects.toThrow(
+        ScaffoldCancelledError
+      );
     });
 
     it('non-ExitPromptError is re-thrown', async () => {

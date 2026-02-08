@@ -4,7 +4,12 @@ import { validateDescription } from '../validators';
 import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
-import { isTTY, detectConflictingFlags, runInteractiveScaffold } from './scaffold-interactive';
+import {
+  isTTY,
+  detectConflictingFlags,
+  runInteractiveScaffold,
+  ScaffoldCancelledError,
+} from './scaffold-interactive';
 
 /** FEAT-018: Skills auto-load note for help text */
 export const SCAFFOLD_AUTOLOAD_NOTE =
@@ -107,6 +112,10 @@ Flags can be combined with templates. Explicit flags override template defaults.
       try {
         await handleScaffold(name, options);
       } catch (error) {
+        if (error instanceof ScaffoldCancelledError) {
+          console.log(error.message);
+          process.exit(0);
+        }
         handleError(error);
         process.exit(1);
       }
