@@ -1,8 +1,9 @@
 /**
- * Unit tests for the scaffold interactive module (FEAT-019 Phases 1 & 2)
+ * Unit tests for the scaffold interactive module (FEAT-019 Phases 1–3)
  *
  * Tests TTY detection, flag conflict detection, non-TTY error handling,
- * conflicting flags warning, -i short flag alias, and interactive prompt flow.
+ * conflicting flags warning, -i short flag alias, interactive prompt flow,
+ * summary formatting, and confirmation loop.
  */
 
 import { Command } from 'commander';
@@ -15,6 +16,7 @@ import {
   TEMPLATE_CONTENT_FLAGS,
   runInteractivePrompts,
   runInteractiveScaffold,
+  formatSummary,
 } from '../../../src/commands/scaffold-interactive';
 import type { CliScaffoldOptions } from '../../../src/commands/scaffold';
 
@@ -940,7 +942,8 @@ describe('scaffold-interactive', () => {
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      const confirmAnswers = [false, false]; // hooks: no, minimal: no
+      // hooks: no, minimal: no, Proceed: yes
+      const confirmAnswers = [false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -962,12 +965,74 @@ describe('scaffold-interactive', () => {
       });
     });
 
+    it('displays summary before confirmation', async () => {
+      let selectIdx = 0;
+      const selectAnswers = ['agent', 'project', 'sonnet'];
+      mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
+
+      let inputIdx = 0;
+      const inputAnswers = ['code-reviewer', 'Reviews code', '', 'Read, Grep'];
+      mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
+
+      let confirmIdx = 0;
+      // minimal: no, Proceed: yes (no hooks for agent)
+      const confirmAnswers = [false, true];
+      mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
+
+      mockScaffold.mockResolvedValueOnce({
+        path: '/tmp/test-skill',
+        files: ['/tmp/test-skill/SKILL.md'],
+      });
+
+      const options: CliScaffoldOptions = { interactive: true };
+      await runInteractiveScaffold('test-skill', options);
+
+      // Verify summary was printed
+      expect(consoleOutput.some((line) => line.includes('Scaffold configuration:'))).toBe(true);
+      expect(consoleOutput.some((line) => line.includes('test-skill'))).toBe(true);
+      expect(consoleOutput.some((line) => line.includes('agent'))).toBe(true);
+    });
+
+    it('restarts prompts when user declines summary', async () => {
+      let selectIdx = 0;
+      // First pass: agent, then second pass: basic, inherit, skip, skip
+      const selectAnswers = ['agent', 'project', 'sonnet', 'basic', 'inherit', 'skip', 'skip'];
+      mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
+
+      let inputIdx = 0;
+      // First pass: agent, desc, argHint, tools; second pass: same
+      const inputAnswers = ['', '', '', '', '', '', '', ''];
+      mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
+
+      let confirmIdx = 0;
+      // First pass: minimal: no, Proceed: NO (decline)
+      // Second pass: hooks: no, minimal: no, Proceed: YES
+      const confirmAnswers = [false, false, false, false, true];
+      mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
+
+      mockScaffold.mockResolvedValueOnce({
+        path: '/tmp/test-skill',
+        files: ['/tmp/test-skill/SKILL.md'],
+      });
+
+      const options: CliScaffoldOptions = { interactive: true };
+      await runInteractiveScaffold('test-skill', options);
+
+      // Should have gone through prompts twice
+      // First time: 3 selects (template, memory, model) + second time: 4 selects (template, context, memory, model)
+      expect(mockSelect.mock.calls.length).toBe(7);
+    });
+
     it('respects --personal flag for scope', async () => {
       let selectIdx = 0;
       const selectAnswers = ['basic', 'inherit', 'skip', 'skip'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
       mockInput.mockResolvedValue('');
-      mockConfirm.mockResolvedValue(false);
+
+      let confirmIdx = 0;
+      // hooks: no, minimal: no, Proceed: yes
+      const confirmAnswers = [false, false, true];
+      mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
         path: '/home/.claude/skills/test-skill',
@@ -985,7 +1050,11 @@ describe('scaffold-interactive', () => {
       const selectAnswers = ['basic', 'inherit', 'skip', 'skip'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
       mockInput.mockResolvedValue('');
-      mockConfirm.mockResolvedValue(false);
+
+      let confirmIdx = 0;
+      // hooks: no, minimal: no, Proceed: yes
+      const confirmAnswers = [false, false, true];
+      mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
         path: '/custom/path/test-skill',
@@ -1005,6 +1074,194 @@ describe('scaffold-interactive', () => {
           force: true,
         })
       );
+    });
+  });
+
+  describe('formatSummary()', () => {
+    it('always includes Name and Template', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' });
+
+      expect(summary).toContain('Scaffold configuration:');
+      expect(summary).toContain('Name');
+      expect(summary).toContain('my-skill');
+      expect(summary).toContain('Template');
+      expect(summary).toContain('basic');
+    });
+
+    it('defaults Template to basic when templateType is undefined', () => {
+      const summary = formatSummary('my-skill', {});
+
+      expect(summary).toContain('Template');
+      expect(summary).toContain('basic');
+    });
+
+    it('includes only set fields — minimal config shows only Name and Template', () => {
+      const summary = formatSummary('test-skill', { templateType: 'basic' });
+      const lines = summary.split('\n');
+
+      // Header + Name + Template = 3 lines
+      expect(lines).toHaveLength(3);
+    });
+
+    it('shows Context only when fork', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic', context: 'fork' });
+
+      expect(summary).toContain('Context');
+      expect(summary).toContain('fork');
+    });
+
+    it('does not show Context when not set', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' });
+
+      expect(summary).not.toContain('Context');
+    });
+
+    it('shows Agent when set', () => {
+      const summary = formatSummary('my-skill', { templateType: 'agent', agent: 'Explore' });
+
+      expect(summary).toContain('Agent');
+      expect(summary).toContain('Explore');
+    });
+
+    it('shows Memory when set', () => {
+      const summary = formatSummary('my-skill', {
+        templateType: 'agent',
+        memory: 'project',
+      });
+
+      expect(summary).toContain('Memory');
+      expect(summary).toContain('project');
+    });
+
+    it('shows Model when set', () => {
+      const summary = formatSummary('my-skill', {
+        templateType: 'agent',
+        model: 'sonnet',
+      });
+
+      expect(summary).toContain('Model');
+      expect(summary).toContain('sonnet');
+    });
+
+    it('shows Hooks only when includeHooks is true', () => {
+      const summaryWith = formatSummary('my-skill', {
+        templateType: 'basic',
+        includeHooks: true,
+      });
+      const summaryWithout = formatSummary('my-skill', { templateType: 'basic' });
+
+      expect(summaryWith).toContain('Hooks');
+      expect(summaryWith).toContain('yes');
+      expect(summaryWithout).not.toContain('Hooks');
+    });
+
+    it('shows Minimal only when minimal is true', () => {
+      const summaryWith = formatSummary('my-skill', {
+        templateType: 'basic',
+        minimal: true,
+      });
+      const summaryWithout = formatSummary('my-skill', { templateType: 'basic' });
+
+      expect(summaryWith).toContain('Minimal');
+      expect(summaryWith).toContain('yes');
+      expect(summaryWithout).not.toContain('Minimal');
+    });
+
+    it('shows Description when provided', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' }, 'A useful skill');
+
+      expect(summary).toContain('Description');
+      expect(summary).toContain('A useful skill');
+    });
+
+    it('does not show Description when undefined', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' });
+
+      expect(summary).not.toContain('Description');
+    });
+
+    it('shows Argument hint when set', () => {
+      const summary = formatSummary('my-skill', {
+        templateType: 'basic',
+        argumentHint: '<query> [--deep]',
+      });
+
+      expect(summary).toContain('Argument hint');
+      expect(summary).toContain('<query> [--deep]');
+    });
+
+    it('shows Allowed tools when provided', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' }, undefined, [
+        'Read',
+        'Write',
+        'Bash',
+      ]);
+
+      expect(summary).toContain('Allowed tools');
+      expect(summary).toContain('Read, Write, Bash');
+    });
+
+    it('does not show Allowed tools when empty array', () => {
+      const summary = formatSummary('my-skill', { templateType: 'basic' }, undefined, []);
+
+      expect(summary).not.toContain('Allowed tools');
+    });
+
+    it('all optional fields appear when set', () => {
+      const summary = formatSummary(
+        'my-skill',
+        {
+          templateType: 'agent',
+          context: 'fork',
+          agent: 'code-reviewer',
+          memory: 'project',
+          model: 'sonnet',
+          includeHooks: true,
+          minimal: true,
+          argumentHint: '<file>',
+        },
+        'Reviews code',
+        ['Read', 'Glob', 'Grep']
+      );
+
+      expect(summary).toContain('Name');
+      expect(summary).toContain('Template');
+      expect(summary).toContain('Context');
+      expect(summary).toContain('Agent');
+      expect(summary).toContain('Memory');
+      expect(summary).toContain('Model');
+      expect(summary).toContain('Hooks');
+      expect(summary).toContain('Minimal');
+      expect(summary).toContain('Description');
+      expect(summary).toContain('Argument hint');
+      expect(summary).toContain('Allowed tools');
+    });
+
+    it('key-value pairs are properly aligned', () => {
+      const summary = formatSummary(
+        'my-skill',
+        {
+          templateType: 'agent',
+          agent: 'code-reviewer',
+          memory: 'project',
+          model: 'sonnet',
+          argumentHint: '<file>',
+        },
+        'Reviews code',
+        ['Read', 'Grep']
+      );
+
+      // All value columns should start at the same position
+      const lines = summary.split('\n').slice(1); // Skip header line
+      const valueStarts = lines.map((line) => {
+        // Find the position after the label + colon + padding + two spaces
+        const match = line.match(/^ {2}\S.*?:\s+/);
+        return match ? match[0].length : -1;
+      });
+
+      // All lines should have values starting at the same column
+      const uniqueStarts = new Set(valueStarts.filter((s) => s > 0));
+      expect(uniqueStarts.size).toBe(1);
     });
   });
 });

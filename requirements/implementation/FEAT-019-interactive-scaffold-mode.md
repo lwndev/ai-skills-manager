@@ -54,7 +54,7 @@ Add an `--interactive` / `-i` flag to `asm scaffold` that launches a guided prom
 
 ### Phase 2: Interactive Prompt Flow
 **Feature:** [FEAT-019](../features/FEAT-019-interactive-scaffold-mode.md) | [#45](https://github.com/lwndev/ai-skills-manager/issues/45)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - With infrastructure in place, implement the full sequential prompt flow
@@ -116,17 +116,17 @@ Add an `--interactive` / `-i` flag to `asm scaffold` that launches a guided prom
     - EOF on stdin exits with code 0 and message `Scaffold cancelled.`
 
 #### Deliverables
-- [ ] `runInteractivePrompts()` function with all 10 prompt steps
-- [ ] Conditional prompt logic based on template type
-- [ ] Ctrl+C and EOF graceful handling
-- [ ] `handleScaffold()` integration — interactive results fed to `scaffold()` API
-- [ ] Unit tests for each prompt step and conditional logic
+- [x] `runInteractivePrompts()` function with all 10 prompt steps
+- [x] Conditional prompt logic based on template type
+- [x] Ctrl+C and EOF graceful handling
+- [x] `handleScaffold()` integration — interactive results fed to `scaffold()` API
+- [x] Unit tests for each prompt step and conditional logic
 
 ---
 
 ### Phase 3: Configuration Summary and Integration Tests
 **Feature:** [FEAT-019](../features/FEAT-019-interactive-scaffold-mode.md) | [#45](https://github.com/lwndev/ai-skills-manager/issues/45)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - The configuration summary (FR-12) is the final UX step before scaffold generation — it gives users a chance to review and restart
@@ -160,11 +160,11 @@ Add an `--interactive` / `-i` flag to `asm scaffold` that launches a guided prom
 6. Verify all acceptance criteria from the feature requirements document
 
 #### Deliverables
-- [ ] `formatSummary()` function with conditional field display
-- [ ] Confirmation prompt with restart-on-decline loop
-- [ ] Unit tests for summary formatting
-- [ ] `tests/integration/scaffold-interactive.test.ts` — end-to-end integration tests
-- [ ] All acceptance criteria verified
+- [x] `formatSummary()` function with conditional field display
+- [x] Confirmation prompt with restart-on-decline loop
+- [x] Unit tests for summary formatting
+- [x] `tests/integration/scaffold-interactive.test.ts` — end-to-end integration tests
+- [x] All acceptance criteria verified
 
 ---
 

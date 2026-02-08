@@ -12,5 +12,10 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
+  // Map @inquirer ESM packages to CJS-compatible manual mocks
+  moduleNameMapper: {
+    '^@inquirer/prompts$': '<rootDir>/tests/__mocks__/@inquirer/prompts.js',
+    '^@inquirer/core$': '<rootDir>/tests/__mocks__/@inquirer/core.js',
+  },
   verbose: true,
 };
