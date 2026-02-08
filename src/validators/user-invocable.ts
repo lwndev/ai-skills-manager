@@ -24,7 +24,7 @@ export function validateUserInvocable(value: unknown): ValidationResult {
   if (typeof value !== 'boolean') {
     return {
       valid: false,
-      error: `Field 'user-invocable' must be a boolean (true or false), got "${typeof value}".`,
+      error: `Field 'user-invocable' must be a boolean (true or false). Got type "${typeof value}".`,
     };
   }
 

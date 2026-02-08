@@ -36,7 +36,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('true');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -44,7 +44,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('false');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -52,7 +52,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -60,7 +60,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('yes');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -68,7 +68,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable(1);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "number".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -76,7 +76,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable(0);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "number".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -84,7 +84,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable([true]);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "object".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "object".'
       );
     });
 
@@ -92,7 +92,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable({ value: true });
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "object".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "object".'
       );
     });
   });
@@ -103,7 +103,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable(boolObject);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "object".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "object".'
       );
     });
 
@@ -111,7 +111,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('TRUE');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -119,7 +119,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable('1');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "string".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -127,7 +127,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable(NaN);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "number".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -135,7 +135,7 @@ describe('validateUserInvocable', () => {
       const result = validateUserInvocable(Infinity);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'user-invocable\' must be a boolean (true or false), got "number".'
+        'Field \'user-invocable\' must be a boolean (true or false). Got type "number".'
       );
     });
   });

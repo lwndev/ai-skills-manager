@@ -496,11 +496,23 @@ Content.
         'nameFormat',
         'descriptionFormat',
         'compatibilityFormat',
-        'nameMatchesDirectory',
         'contextFormat',
         'agentFormat',
         'hooksFormat',
         'userInvocableFormat',
+        'memoryFormat',
+        'skillsFormat',
+        'modelFormat',
+        'permissionModeFormat',
+        'disallowedToolsFormat',
+        'argumentHintFormat',
+        'keepCodingInstructionsFormat',
+        'toolsFormat',
+        'colorFormat',
+        'disableModelInvocationFormat',
+        'versionFormat',
+        'allowedToolsFormat',
+        'nameMatchesDirectory',
       ]);
     });
 
@@ -895,6 +907,607 @@ Content.
         expect(result.checks.agentFormat.passed).toBe(false);
         expect(result.checks.userInvocableFormat.passed).toBe(false);
         expect(result.errors.length).toBeGreaterThanOrEqual(3);
+      });
+    });
+  });
+
+  describe('FEAT-014 fields', () => {
+    describe('memory field', () => {
+      it('validates skill with valid memory value', async () => {
+        const skillPath = await createSkill(`---
+name: memory-skill
+description: Skill with memory field
+memory: user
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.memoryFormat.passed).toBe(true);
+      });
+
+      it('fails when memory has invalid value', async () => {
+        const skillPath = await createSkill(`---
+name: bad-memory
+description: Skill with bad memory
+memory: global
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.memoryFormat.passed).toBe(false);
+        expect(result.checks.memoryFormat.error).toBeDefined();
+      });
+    });
+
+    describe('skills field', () => {
+      it('validates skill with skills as string', async () => {
+        const skillPath = await createSkill(`---
+name: skills-skill
+description: Skill with skills field
+skills: my-other-skill
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.skillsFormat.passed).toBe(true);
+      });
+
+      it('validates skill with skills as array', async () => {
+        const skillPath = await createSkill(`---
+name: skills-array
+description: Skill with skills array
+skills:
+  - skill-one
+  - skill-two
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.skillsFormat.passed).toBe(true);
+      });
+
+      it('fails when skills is a number', async () => {
+        const skillPath = await createSkill(`---
+name: bad-skills
+description: Skill with bad skills
+skills: 123
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.skillsFormat.passed).toBe(false);
+      });
+    });
+
+    describe('model field', () => {
+      it('validates skill with known model', async () => {
+        const skillPath = await createSkill(`---
+name: model-skill
+description: Skill with model field
+model: sonnet
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.modelFormat.passed).toBe(true);
+        expect(result.warnings).toEqual(
+          expect.not.arrayContaining([expect.stringContaining('model')])
+        );
+      });
+
+      it('generates warning for unknown model value', async () => {
+        const skillPath = await createSkill(`---
+name: unknown-model
+description: Skill with unknown model
+model: gpt-5
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.modelFormat.passed).toBe(true);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings?.some((w) => w.includes('gpt-5'))).toBe(true);
+      });
+
+      it('fails when model is empty string', async () => {
+        const skillPath = await createSkill(`---
+name: empty-model
+description: Skill with empty model
+model: ""
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.modelFormat.passed).toBe(false);
+        expect(result.checks.modelFormat.error).toBeDefined();
+      });
+    });
+
+    describe('permission-mode field', () => {
+      it('validates skill with permissionMode', async () => {
+        const skillPath = await createSkill(`---
+name: perm-mode-skill
+description: Skill with permission mode
+permissionMode: plan
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.permissionModeFormat.passed).toBe(true);
+      });
+
+      it('fails when permissionMode is a number', async () => {
+        const skillPath = await createSkill(`---
+name: bad-perm-mode
+description: Skill with bad permission mode
+permissionMode: 123
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.permissionModeFormat.passed).toBe(false);
+      });
+    });
+
+    describe('disallowedTools field', () => {
+      it('validates skill with disallowedTools array', async () => {
+        const skillPath = await createSkill(`---
+name: disallowed-tools-skill
+description: Skill with disallowed tools
+disallowedTools:
+  - Bash
+  - Write
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.disallowedToolsFormat.passed).toBe(true);
+      });
+
+      it('fails when disallowedTools contains non-strings', async () => {
+        const skillPath = await createSkill(`---
+name: bad-disallowed
+description: Skill with bad disallowed tools
+disallowedTools:
+  - 123
+  - true
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.disallowedToolsFormat.passed).toBe(false);
+      });
+    });
+
+    describe('argument-hint field', () => {
+      it('validates skill with argument-hint', async () => {
+        const skillPath = await createSkill(`---
+name: hint-skill
+description: Skill with argument hint
+argument-hint: "Enter a file path"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.argumentHintFormat.passed).toBe(true);
+      });
+
+      it('fails when argument-hint exceeds 200 characters', async () => {
+        const longHint = 'x'.repeat(201);
+        const skillPath = await createSkill(`---
+name: long-hint
+description: Skill with long hint
+argument-hint: "${longHint}"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.argumentHintFormat.passed).toBe(false);
+      });
+    });
+
+    describe('keep-coding-instructions field', () => {
+      it('validates skill with keep-coding-instructions: true', async () => {
+        const skillPath = await createSkill(`---
+name: keep-coding-skill
+description: Skill with keep coding instructions
+keep-coding-instructions: true
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
+      });
+
+      it('fails when keep-coding-instructions is a string', async () => {
+        const skillPath = await createSkill(`---
+name: bad-keep-coding
+description: Skill with bad keep coding
+keep-coding-instructions: "true"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.keepCodingInstructionsFormat.passed).toBe(false);
+      });
+    });
+
+    describe('tools field', () => {
+      it('validates skill with tools array', async () => {
+        const skillPath = await createSkill(`---
+name: tools-skill
+description: Skill with tools field
+tools:
+  - Read
+  - Write
+  - "Bash(git:*)"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.toolsFormat.passed).toBe(true);
+      });
+
+      it('validates skill with tools as string', async () => {
+        const skillPath = await createSkill(`---
+name: tools-string
+description: Skill with tools string
+tools: Read
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.toolsFormat.passed).toBe(true);
+      });
+    });
+
+    describe('color field', () => {
+      it('validates skill with valid color', async () => {
+        const skillPath = await createSkill(`---
+name: color-skill
+description: Skill with color
+color: blue
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.colorFormat.passed).toBe(true);
+      });
+
+      it('fails when color has invalid value', async () => {
+        const skillPath = await createSkill(`---
+name: bad-color
+description: Skill with bad color
+color: purple
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.colorFormat.passed).toBe(false);
+      });
+    });
+
+    describe('disable-model-invocation field', () => {
+      it('validates skill with disable-model-invocation: true', async () => {
+        const skillPath = await createSkill(`---
+name: disable-model-skill
+description: Skill with disable model invocation
+disable-model-invocation: true
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.disableModelInvocationFormat.passed).toBe(true);
+      });
+
+      it('fails when disable-model-invocation is not boolean', async () => {
+        const skillPath = await createSkill(`---
+name: bad-disable-model
+description: Skill with bad disable model
+disable-model-invocation: "yes"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.disableModelInvocationFormat.passed).toBe(false);
+      });
+    });
+
+    describe('version field', () => {
+      it('validates skill with version', async () => {
+        const skillPath = await createSkill(`---
+name: versioned-skill
+description: Skill with version
+version: "1.0.0"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.versionFormat.passed).toBe(true);
+      });
+
+      it('fails when version is a number', async () => {
+        const skillPath = await createSkill(`---
+name: bad-version
+description: Skill with bad version
+version: 1
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.versionFormat.passed).toBe(false);
+      });
+    });
+
+    describe('allowed-tools field with advanced patterns', () => {
+      it('validates skill with Task() pattern', async () => {
+        const skillPath = await createSkill(`---
+name: task-pattern-skill
+description: Skill with Task pattern in allowed-tools
+allowed-tools:
+  - Read
+  - "Task(research-agent)"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.allowedToolsFormat.passed).toBe(true);
+      });
+
+      it('validates skill with mcp__ and Bash patterns', async () => {
+        const skillPath = await createSkill(`---
+name: advanced-tools-skill
+description: Skill with advanced tool patterns
+allowed-tools:
+  - "mcp__myserver__*"
+  - "Bash(git:*)"
+  - "\${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.allowedToolsFormat.passed).toBe(true);
+      });
+    });
+
+    describe('combined FEAT-014 fields', () => {
+      it('validates skill with all FEAT-014 fields present and valid', async () => {
+        const skillPath = await createSkill(`---
+name: complete-v2-skill
+description: Skill with all FEAT-014 fields
+memory: project
+skills:
+  - helper-skill
+model: sonnet
+permissionMode: plan
+disallowedTools:
+  - Bash
+argument-hint: "Enter a query"
+keep-coding-instructions: true
+tools:
+  - Read
+  - Write
+color: green
+disable-model-invocation: false
+version: "2.0.0"
+allowed-tools:
+  - Read
+  - Write
+  - "Bash(git:*)"
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.memoryFormat.passed).toBe(true);
+        expect(result.checks.skillsFormat.passed).toBe(true);
+        expect(result.checks.modelFormat.passed).toBe(true);
+        expect(result.checks.permissionModeFormat.passed).toBe(true);
+        expect(result.checks.disallowedToolsFormat.passed).toBe(true);
+        expect(result.checks.argumentHintFormat.passed).toBe(true);
+        expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
+        expect(result.checks.toolsFormat.passed).toBe(true);
+        expect(result.checks.colorFormat.passed).toBe(true);
+        expect(result.checks.disableModelInvocationFormat.passed).toBe(true);
+        expect(result.checks.versionFormat.passed).toBe(true);
+        expect(result.checks.allowedToolsFormat.passed).toBe(true);
+      });
+
+      it('validates backward compatibility — no FEAT-014 fields', async () => {
+        const skillPath = await createSkill(`---
+name: legacy-v1-skill
+description: Skill without any FEAT-014 fields
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.memoryFormat.passed).toBe(true);
+        expect(result.checks.skillsFormat.passed).toBe(true);
+        expect(result.checks.modelFormat.passed).toBe(true);
+        expect(result.checks.permissionModeFormat.passed).toBe(true);
+        expect(result.checks.disallowedToolsFormat.passed).toBe(true);
+        expect(result.checks.argumentHintFormat.passed).toBe(true);
+        expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
+        expect(result.checks.toolsFormat.passed).toBe(true);
+        expect(result.checks.colorFormat.passed).toBe(true);
+        expect(result.checks.disableModelInvocationFormat.passed).toBe(true);
+        expect(result.checks.versionFormat.passed).toBe(true);
+        expect(result.checks.allowedToolsFormat.passed).toBe(true);
+      });
+
+      it('reports multiple errors for multiple invalid FEAT-014 fields', async () => {
+        const skillPath = await createSkill(`---
+name: multi-bad-v2
+description: Skill with multiple invalid FEAT-014 fields
+memory: invalid
+color: orange
+keep-coding-instructions: "yes"
+model: ""
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(false);
+        expect(result.checks.memoryFormat.passed).toBe(false);
+        expect(result.checks.colorFormat.passed).toBe(false);
+        expect(result.checks.keepCodingInstructionsFormat.passed).toBe(false);
+        expect(result.checks.modelFormat.passed).toBe(false);
+        expect(result.errors.length).toBeGreaterThanOrEqual(4);
+      });
+
+      it('propagates model warnings through validation pipeline', async () => {
+        const skillPath = await createSkill(`---
+name: model-warning-skill
+description: Skill with unknown model
+model: custom-model-v3
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.checks.modelFormat.passed).toBe(true);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings?.some((w) => w.includes('custom-model-v3'))).toBe(true);
+        expect(result.warnings?.some((w) => w.includes('Unknown model'))).toBe(true);
+      });
+
+      it('combines hooks and model warnings', async () => {
+        const skillPath = await createSkill(`---
+name: multi-warning-skill
+description: Skill with both hooks and model warnings
+hooks:
+  PreToolUse: valid.sh
+  CustomHook: also-valid.sh
+model: future-model
+---
+
+Content.
+`);
+
+        const result = await validateSkill(skillPath);
+
+        expect(result.valid).toBe(true);
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings?.length).toBeGreaterThanOrEqual(2);
+        expect(result.warnings?.some((w) => w.includes('CustomHook'))).toBe(true);
+        expect(result.warnings?.some((w) => w.includes('future-model'))).toBe(true);
       });
     });
   });

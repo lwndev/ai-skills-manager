@@ -18,6 +18,18 @@ import { validateContext } from '../validators/context';
 import { validateAgent } from '../validators/agent';
 import { validateHooks } from '../validators/hooks';
 import { validateUserInvocable } from '../validators/user-invocable';
+import { validateMemory } from '../validators/memory';
+import { validateSkills } from '../validators/skills';
+import { validateModel } from '../validators/model';
+import { validatePermissionMode } from '../validators/permission-mode';
+import { validateDisallowedTools } from '../validators/disallowed-tools';
+import { validateArgumentHint } from '../validators/argument-hint';
+import { validateKeepCodingInstructions } from '../validators/keep-coding-instructions';
+import { validateTools } from '../validators/tools';
+import { validateColor } from '../validators/color';
+import { validateDisableModelInvocation } from '../validators/disable-model-invocation';
+import { validateVersion } from '../validators/version';
+import { validateAllowedTools } from '../validators/allowed-tools';
 import { analyzeFileSize } from '../analyzers/file-size';
 
 /**
@@ -32,11 +44,23 @@ function initializeChecks(): Record<CheckName, { passed: boolean; error?: string
     nameFormat: { passed: false },
     descriptionFormat: { passed: false },
     compatibilityFormat: { passed: false },
-    nameMatchesDirectory: { passed: false },
     contextFormat: { passed: false },
     agentFormat: { passed: false },
     hooksFormat: { passed: false },
     userInvocableFormat: { passed: false },
+    memoryFormat: { passed: false },
+    skillsFormat: { passed: false },
+    modelFormat: { passed: false },
+    permissionModeFormat: { passed: false },
+    disallowedToolsFormat: { passed: false },
+    argumentHintFormat: { passed: false },
+    keepCodingInstructionsFormat: { passed: false },
+    toolsFormat: { passed: false },
+    colorFormat: { passed: false },
+    disableModelInvocationFormat: { passed: false },
+    versionFormat: { passed: false },
+    allowedToolsFormat: { passed: false },
+    nameMatchesDirectory: { passed: false },
   };
 }
 
@@ -79,6 +103,16 @@ function buildResult(
  * 4. Allowed properties - Check for unexpected keys
  * 5. Name format - Validate name format
  * 6. Description format - Validate description format
+ * 7. Compatibility format - Validate compatibility field
+ * 8. Context format - Validate context field
+ * 9. Agent format - Validate agent field
+ * 10. Hooks format - Validate hooks field (with warnings)
+ * 11. User-invocable format - Validate user-invocable field
+ * 12-23. FEAT-014 fields - memory, skills, model, permissionMode, disallowedTools,
+ *        argumentHint, keepCodingInstructions, tools, color, disableModelInvocation,
+ *        version, allowedTools
+ * 24. Name matches directory - Validate name matches parent directory
+ * 25. File size analysis - Generate warnings for large files
  *
  * @param skillPath - Path to skill directory or SKILL.md file
  * @returns Comprehensive validation result
@@ -199,7 +233,94 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     error: userInvocableResult.error,
   };
 
-  // Step 12: Name matches directory check
+  // Step 12: Memory format check
+  const memoryResult = validateMemory(frontmatter.memory);
+  checks.memoryFormat = {
+    passed: memoryResult.valid,
+    error: memoryResult.error,
+  };
+
+  // Step 13: Skills format check
+  const skillsResult = validateSkills(frontmatter.skills);
+  checks.skillsFormat = {
+    passed: skillsResult.valid,
+    error: skillsResult.error,
+  };
+
+  // Step 14: Model format check (collect warnings)
+  const modelResult = validateModel(frontmatter.model);
+  checks.modelFormat = {
+    passed: modelResult.valid,
+    error: modelResult.valid ? undefined : modelResult.error,
+  };
+  const modelWarnings = modelResult.valid && modelResult.warnings ? modelResult.warnings : [];
+
+  // Step 15: Permission mode format check
+  const permissionModeResult = validatePermissionMode(frontmatter.permissionMode);
+  checks.permissionModeFormat = {
+    passed: permissionModeResult.valid,
+    error: permissionModeResult.error,
+  };
+
+  // Step 16: Disallowed tools format check
+  const disallowedToolsResult = validateDisallowedTools(frontmatter.disallowedTools);
+  checks.disallowedToolsFormat = {
+    passed: disallowedToolsResult.valid,
+    error: disallowedToolsResult.error,
+  };
+
+  // Step 17: Argument hint format check
+  const argumentHintResult = validateArgumentHint(frontmatter['argument-hint']);
+  checks.argumentHintFormat = {
+    passed: argumentHintResult.valid,
+    error: argumentHintResult.error,
+  };
+
+  // Step 18: Keep coding instructions format check
+  const keepCodingResult = validateKeepCodingInstructions(frontmatter['keep-coding-instructions']);
+  checks.keepCodingInstructionsFormat = {
+    passed: keepCodingResult.valid,
+    error: keepCodingResult.error,
+  };
+
+  // Step 19: Tools format check
+  const toolsResult = validateTools(frontmatter.tools);
+  checks.toolsFormat = {
+    passed: toolsResult.valid,
+    error: toolsResult.error,
+  };
+
+  // Step 20: Color format check
+  const colorResult = validateColor(frontmatter.color);
+  checks.colorFormat = {
+    passed: colorResult.valid,
+    error: colorResult.error,
+  };
+
+  // Step 21: Disable model invocation format check
+  const disableModelResult = validateDisableModelInvocation(
+    frontmatter['disable-model-invocation']
+  );
+  checks.disableModelInvocationFormat = {
+    passed: disableModelResult.valid,
+    error: disableModelResult.error,
+  };
+
+  // Step 22: Version format check
+  const versionResult = validateVersion(frontmatter.version);
+  checks.versionFormat = {
+    passed: versionResult.valid,
+    error: versionResult.error,
+  };
+
+  // Step 23: Allowed tools format check
+  const allowedToolsResult = validateAllowedTools(frontmatter['allowed-tools']);
+  checks.allowedToolsFormat = {
+    passed: allowedToolsResult.valid,
+    error: allowedToolsResult.error,
+  };
+
+  // Step 24: Name matches directory check
   // Validates that frontmatter name matches parent directory name
   if (
     typeof frontmatter.name === 'string' &&
@@ -217,10 +338,10 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     checks.nameMatchesDirectory = { passed: true };
   }
 
-  // Step 13: File size analysis (generates warnings, not errors)
+  // Step 25: File size analysis (generates warnings, not errors)
   // Analyze body content for size recommendations
   const fileSizeAnalysis = analyzeFileSize(parseResult.body || '');
-  const warnings = [...hooksWarnings, ...fileSizeAnalysis.warnings];
+  const warnings = [...hooksWarnings, ...modelWarnings, ...fileSizeAnalysis.warnings];
 
   return buildResult(
     fileResult.resolvedPath || skillPath,

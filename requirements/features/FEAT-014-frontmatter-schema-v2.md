@@ -71,12 +71,24 @@ skills: code-analyzer
 ### FR-3: Add `model` Field
 
 - If present, must be a non-empty string
-- No format constraints on model names (defers to Claude Code runtime)
+- Known values: `"inherit"`, `"sonnet"`, `"opus"`, `"haiku"`
+- Unknown values produce a warning (not an error), listing known values
 - Field is optional
-- Common values: `"sonnet"`, `"opus"`, `"haiku"`, or full model IDs
+- Common values include the known set above, or full model IDs (e.g., `"claude-sonnet-4-5-20250929"`)
 
 ```yaml
 model: sonnet
+```
+
+**Warning behavior:** If the value is a string but not in the known set, validation passes with a warning:
+```
+Warning: Unknown model 'gpt-4' in model field. Known models: inherit, sonnet, opus, haiku
+```
+
+```typescript
+export type ModelValidationResult =
+  | { valid: true; warnings?: string[] }
+  | { valid: false; error: string };
 ```
 
 ### FR-4: Add `permissionMode` Field
@@ -109,7 +121,9 @@ disallowedTools:
 - If present, must be a non-empty string
 - Provides hint text displayed in the slash command menu
 - Field is optional
-- Max length: 100 characters
+- Max length: 200 characters
+
+> **Note:** The 200-character limit is an ASM-specific constraint. Claude Code itself does not enforce a maximum length for this field.
 
 ```yaml
 argument-hint: "<file-path> [--verbose]"
@@ -120,7 +134,8 @@ argument-hint: "<file-path> [--verbose]"
 - If present, must be a boolean (`true` or `false`)
 - Controls output style behavior in Claude Code
 - Field is optional
-- Niche field primarily used for output formatting preferences
+
+> **Note:** This field applies specifically to Output Style definitions in Claude Code. It controls whether the agent's coding instructions are preserved when an output style is applied.
 
 ```yaml
 keep-coding-instructions: true
@@ -133,7 +148,8 @@ The `allowed-tools` validator must accept the following patterns in addition to 
 | Pattern | Example | Description |
 |---------|---------|-------------|
 | Simple name | `Read` | Exact tool name |
-| Bash with command | `Bash(git *)` | Wildcard bash command pattern |
+| Bash with command (space) | `Bash(git *)` | Wildcard bash command pattern (space syntax) |
+| Bash with command (colon) | `Bash(git:*)` | Wildcard bash command pattern (colon syntax) |
 | Task with agent | `Task(general-purpose)` | Restrict to specific agent type |
 | MCP wildcard | `mcp__server__*` | All tools from an MCP server |
 | Plugin root var | `${CLAUDE_PLUGIN_ROOT}/scripts/run.sh` | Plugin path substitution |
@@ -147,6 +163,56 @@ Current validation should not reject these patterns. If ASM currently validates 
 - No changes to required fields (`name`, `description`)
 - No breaking changes to validation output format
 - New fields are all optional
+
+### FR-10: Add `tools` Field
+
+- If present, must be a string or array of strings
+- Supports the same patterns as `allowed-tools` including `Task(agent_type)` syntax
+- Used by agent definitions (distinct from command-level `allowed-tools`)
+- Empty array is valid
+- Field is optional
+
+```yaml
+tools:
+  - Read
+  - Write
+  - Task(general-purpose)
+```
+
+Or single tool:
+```yaml
+tools: Bash
+```
+
+### FR-11: Add `color` Field
+
+- If present, must be one of: `"blue"`, `"cyan"`, `"green"`, `"yellow"`, `"magenta"`, `"red"`
+- Used for agent visual identification in Claude Code
+- Field is optional at ASM validation level (Claude Code requires it for agents, but ASM does not enforce agent-vs-command context)
+
+```yaml
+color: cyan
+```
+
+### FR-12: Add `disable-model-invocation` Field
+
+- If present, must be a boolean (`true` or `false`)
+- Command-level field that prevents the model from invoking this command
+- Field is optional
+
+```yaml
+disable-model-invocation: true
+```
+
+### FR-13: Add `version` Field
+
+- If present, must be a non-empty string
+- No strict semver enforcement (defers to runtime)
+- Field is optional
+
+```yaml
+version: "1.0.0"
+```
 
 ## Updated Allowed Keys
 
@@ -172,8 +238,27 @@ const ALLOWED_KEYS = new Set([
   'disallowedTools',
   'argument-hint',
   'keep-coding-instructions',
+  'tools',
+  'color',
+  'disable-model-invocation',
+  'version',
 ]);
 ```
+
+## Field Context Notes
+
+### `allowed-tools` vs `tools`
+
+These are distinct fields with different purposes:
+
+- **`allowed-tools`**: Command-level field. Specifies which tools a skill/command is allowed to use. Defined in the agent skills specification.
+- **`tools`**: Agent-level field. Specifies which tools are available to an agent definition. Used by Claude Code's agent system.
+
+Both support the same tool name patterns (simple names, `Task(agent)`, `mcp__*`, wildcards). ASM validates format for both but does not enforce which field is appropriate for a given context (command vs agent).
+
+### `disallowedTools` vs `allowed-tools`
+
+Both can be present simultaneously. Claude Code handles precedence at runtime. ASM validates format only.
 
 ## Output Format
 
@@ -187,19 +272,24 @@ Checks:
   ✓ Required fields present
   ✗ Field format invalid
 
-Error: Field 'memory' must be one of "user", "project", or "local" if specified, got "global".
+Error: Field 'memory' must be one of: user, project, local. Got "global".
 
 Skill validation failed.
 ```
 
 ### Validation Error for Invalid `skills` Value
 ```
-Error: Field 'skills' must be a string or array of strings if specified, got number.
+Error: Field 'skills' must be a string or an array of strings. Got type "number".
 ```
 
 ### Validation Error for Invalid `argument-hint` Length
 ```
-Error: Field 'argument-hint' must be 100 characters or fewer, got 142 characters.
+Error: Field 'argument-hint' must be at most 200 characters. Got 242 characters.
+```
+
+### Validation Warning for Unknown `model` Value
+```
+Warning: Unknown model 'gpt-4' in model field. Known models: inherit, sonnet, opus, haiku
 ```
 
 ## Non-Functional Requirements
@@ -233,6 +323,10 @@ export interface ParsedFrontmatter {
   disallowedTools?: string | string[];
   'argument-hint'?: string;
   'keep-coding-instructions'?: boolean;
+  tools?: string | string[];
+  color?: string;
+  'disable-model-invocation'?: boolean;
+  version?: string;
 }
 ```
 
@@ -249,16 +343,23 @@ export interface ParsedFrontmatter {
 3. **`skills` as empty array**: Valid — no auto-loaded skills
 4. **`skills` as number or boolean**: Error — must be string or array of strings
 5. **`model` as empty string**: Error — must be non-empty if present
-6. **`disallowedTools` as single string**: Valid — treat as single tool
-7. **`disallowedTools` with `Task(AgentName)` pattern**: Valid
-8. **`argument-hint` as empty string**: Error — must be non-empty if present
-9. **`argument-hint` exceeding 100 chars**: Error with length info
-10. **`allowed-tools` with `mcp__server__*`**: Must be accepted (not rejected as unknown tool)
-11. **`allowed-tools` with `${CLAUDE_PLUGIN_ROOT}`**: Must be accepted (variable substitution)
-11a. **`keep-coding-instructions` as string**: Error — must be boolean
-11b. **`keep-coding-instructions` as boolean**: Valid
-12. **`permissionMode` as non-string**: Error — must be string
-13. **Both `allowed-tools` and `disallowedTools` present**: Valid (Claude Code handles precedence)
+6. **`model` as unknown string**: Warning — lists known values
+7. **`disallowedTools` as single string**: Valid — treat as single tool
+8. **`disallowedTools` with `Task(AgentName)` pattern**: Valid
+9. **`argument-hint` as empty string**: Error — must be non-empty if present
+10. **`argument-hint` exceeding 200 chars**: Error with length info
+11. **`allowed-tools` with `mcp__server__*`**: Must be accepted (not rejected as unknown tool)
+12. **`allowed-tools` with `${CLAUDE_PLUGIN_ROOT}`**: Must be accepted (variable substitution)
+13. **`keep-coding-instructions` as string**: Error — must be boolean
+14. **`keep-coding-instructions` as boolean**: Valid
+15. **`permissionMode` as non-string**: Error — must be string
+16. **Both `allowed-tools` and `disallowedTools` present**: Valid (Claude Code handles precedence)
+17. **`tools` as single string**: Valid — treat as single-item list
+18. **`tools` as empty array**: Valid
+19. **`color` with wrong value**: Error with message listing valid options
+20. **`disable-model-invocation` as string**: Error — must be boolean
+21. **`version` as empty string**: Error — must be non-empty if present
+22. **`version` as number**: Error — must be string
 
 ## Testing Requirements
 
@@ -267,11 +368,16 @@ export interface ParsedFrontmatter {
 **New validators (`src/validators/`):**
 - `memory`: valid scopes, invalid scope, missing, non-string
 - `skills`: string, array of strings, empty array, non-string types
-- `model`: valid string, empty string, non-string
+- `model`: valid known string, unknown string (warning), empty string, non-string
 - `permissionMode`: valid string, empty string, non-string
 - `disallowedTools`: string, array of strings, Task() pattern, empty array
-- `argument-hint`: valid string, empty string, over-length, non-string
+- `argument-hint`: valid string, empty string, over-length (200 chars), non-string
 - `keep-coding-instructions`: valid boolean, non-boolean types
+- `tools`: string, array of strings, Task() pattern, empty array
+- `color`: valid colors (all 6), invalid color, non-string
+- `disable-model-invocation`: valid boolean, non-boolean types
+- `version`: valid string, empty string, non-string
+- `allowed-tools`: array of non-empty strings, post-normalization format
 
 **Frontmatter key validation (`src/validators/frontmatter.ts`):**
 - All new keys accepted individually
@@ -284,6 +390,7 @@ export interface ParsedFrontmatter {
 - `mcp__server__*` accepted
 - `${CLAUDE_PLUGIN_ROOT}/path` accepted
 - `Bash(git *)` accepted (existing but verify)
+- `Bash(git:*)` accepted (colon syntax)
 - `Bash(*)` accepted
 
 ### Integration Tests
@@ -291,25 +398,32 @@ export interface ParsedFrontmatter {
 - Full validation of skill with all new fields populated
 - Full validation of skill with subset of new fields
 - Backward compatibility: existing skills without new fields
-- Scaffold + validate round-trip with new fields
+- ~~Scaffold + validate round-trip with new fields~~ *(intentionally omitted — scaffold does not yet emit FEAT-014 fields, so a round-trip test would not exercise the new validation)*
+- Model warning propagation through validation pipeline
 
 ## Acceptance Criteria
 
-- [ ] `memory` field accepted and validated (`"user"`, `"project"`, or `"local"`)
-- [ ] `skills` field accepted and validated (string or string array)
-- [ ] `model` field accepted and validated (non-empty string)
-- [ ] `permissionMode` field accepted and validated (non-empty string)
-- [ ] `disallowedTools` field accepted and validated (string or string array)
-- [ ] `argument-hint` field accepted and validated (non-empty string, max 100 chars)
-- [ ] `keep-coding-instructions` field accepted and validated (boolean)
-- [ ] `allowed-tools` accepts `Task(AgentName)` patterns
-- [ ] `allowed-tools` accepts `mcp__server__*` patterns
-- [ ] `allowed-tools` accepts `${CLAUDE_PLUGIN_ROOT}` patterns
-- [ ] `ALLOWED_KEYS` set updated in frontmatter validator
-- [ ] `ParsedFrontmatter` type updated with new fields
-- [ ] Each new field has its own validator file
-- [ ] Error messages are clear and actionable
-- [ ] All existing tests continue to pass
-- [ ] New unit tests for each new field
-- [ ] Integration tests for full validation workflow
-- [ ] `npm run quality` passes
+- [x] `memory` field accepted and validated (`"user"`, `"project"`, or `"local"`)
+- [x] `skills` field accepted and validated (string or string array)
+- [x] `model` field accepted and validated (non-empty string, warns on unknown values)
+- [x] `permissionMode` field accepted and validated (non-empty string)
+- [x] `disallowedTools` field accepted and validated (string or string array)
+- [x] `argument-hint` field accepted and validated (non-empty string, max 200 chars)
+- [x] `keep-coding-instructions` field accepted and validated (boolean)
+- [x] `tools` field accepted and validated (string or string array)
+- [x] `color` field accepted and validated (one of 6 valid colors)
+- [x] `disable-model-invocation` field accepted and validated (boolean)
+- [x] `version` field accepted and validated (non-empty string)
+- [x] `allowed-tools` accepts `Task(AgentName)` patterns
+- [x] `allowed-tools` accepts `mcp__server__*` patterns
+- [x] `allowed-tools` accepts `${CLAUDE_PLUGIN_ROOT}` patterns
+- [x] `allowed-tools` accepts `Bash(git:*)` colon syntax
+- [x] `ALLOWED_KEYS` set updated in frontmatter validator
+- [x] `ParsedFrontmatter` type updated with new fields
+- [x] Each new field has its own validator file
+- [x] Error messages are clear and actionable
+- [x] Model warnings propagated through validation pipeline
+- [x] All existing tests continue to pass
+- [x] New unit tests for each new field
+- [x] Integration tests for full validation workflow
+- [x] `npm run quality` passes

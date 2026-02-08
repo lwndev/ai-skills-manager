@@ -13,11 +13,23 @@ export type CheckName =
   | 'nameFormat'
   | 'descriptionFormat'
   | 'compatibilityFormat'
-  | 'nameMatchesDirectory'
   | 'contextFormat'
   | 'agentFormat'
   | 'hooksFormat'
-  | 'userInvocableFormat';
+  | 'userInvocableFormat'
+  | 'memoryFormat'
+  | 'skillsFormat'
+  | 'modelFormat'
+  | 'permissionModeFormat'
+  | 'disallowedToolsFormat'
+  | 'argumentHintFormat'
+  | 'keepCodingInstructionsFormat'
+  | 'toolsFormat'
+  | 'colorFormat'
+  | 'disableModelInvocationFormat'
+  | 'versionFormat'
+  | 'allowedToolsFormat'
+  | 'nameMatchesDirectory';
 
 /**
  * Result of a single validation check
@@ -74,6 +86,18 @@ export interface ParsedFrontmatter {
   agent?: string;
   hooks?: HooksConfig;
   'user-invocable'?: boolean;
+  // FEAT-014 fields
+  memory?: 'user' | 'project' | 'local';
+  skills?: string | string[];
+  model?: string;
+  permissionMode?: string;
+  disallowedTools?: string | string[];
+  'argument-hint'?: string;
+  'keep-coding-instructions'?: boolean;
+  tools?: string | string[];
+  color?: string;
+  'disable-model-invocation'?: boolean;
+  version?: string;
   [key: string]: unknown;
 }
 

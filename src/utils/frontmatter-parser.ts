@@ -83,22 +83,46 @@ export function parseFrontmatter(content: string): FrontmatterParseResult {
       };
     }
 
-    // Normalize allowed-tools: convert space-delimited string to array, null to undefined
+    // Normalize tool-related fields: convert space-delimited string to array, null to undefined
     // Use parsed (unknown type) to check before casting to ParsedFrontmatter
     const rawParsed = parsed as Record<string, unknown>;
+
+    // Normalize allowed-tools
     if (rawParsed['allowed-tools'] === null) {
-      // YAML null becomes undefined (field not specified)
       delete rawParsed['allowed-tools'];
     } else if (typeof rawParsed['allowed-tools'] === 'string') {
       const toolsString = rawParsed['allowed-tools'].trim();
       if (toolsString === '') {
-        // Empty string becomes empty array
         rawParsed['allowed-tools'] = [];
       } else {
-        // Split by whitespace (one or more spaces/tabs)
         rawParsed['allowed-tools'] = toolsString.split(/\s+/);
       }
     }
+
+    // Normalize tools (FEAT-014): same pattern as allowed-tools
+    if (rawParsed['tools'] === null) {
+      delete rawParsed['tools'];
+    } else if (typeof rawParsed['tools'] === 'string') {
+      const toolsString = rawParsed['tools'].trim();
+      if (toolsString === '') {
+        rawParsed['tools'] = [];
+      } else {
+        rawParsed['tools'] = toolsString.split(/\s+/);
+      }
+    }
+
+    // Normalize disallowedTools (FEAT-014): same pattern as allowed-tools
+    if (rawParsed['disallowedTools'] === null) {
+      delete rawParsed['disallowedTools'];
+    } else if (typeof rawParsed['disallowedTools'] === 'string') {
+      const toolsString = rawParsed['disallowedTools'].trim();
+      if (toolsString === '') {
+        rawParsed['disallowedTools'] = [];
+      } else {
+        rawParsed['disallowedTools'] = toolsString.split(/\s+/);
+      }
+    }
+
     const frontmatter = rawParsed as ParsedFrontmatter;
 
     // Extract body content (everything after closing delimiter)

@@ -23,6 +23,27 @@ import { CheckName } from '../types/validation';
 /* eslint-disable no-redeclare */
 
 /**
+ * Categorize a warning message into a machine-readable code.
+ *
+ * Warnings originate from three sources in the validation pipeline:
+ * - File size analysis: "Skill body has N lines/tokens..."
+ * - Model validation: "Unknown model '...' in model field..."
+ * - Hooks validation: "Unknown hook '...' in hooks field..."
+ */
+function categorizeWarningCode(message: string): string {
+  if (message.includes('Unknown model')) {
+    return 'UNKNOWN_MODEL';
+  }
+  if (message.includes('Unknown hook')) {
+    return 'UNKNOWN_HOOK_KEY';
+  }
+  if (message.startsWith('Skill body has')) {
+    return 'FILE_SIZE_WARNING';
+  }
+  return 'VALIDATION_WARNING';
+}
+
+/**
  * Map of check names to machine-readable error codes.
  */
 const CHECK_TO_CODE: Record<CheckName, string> = {
@@ -38,6 +59,18 @@ const CHECK_TO_CODE: Record<CheckName, string> = {
   agentFormat: 'INVALID_AGENT_FORMAT',
   hooksFormat: 'INVALID_HOOKS_FORMAT',
   userInvocableFormat: 'INVALID_USER_INVOCABLE_FORMAT',
+  memoryFormat: 'INVALID_MEMORY_FORMAT',
+  skillsFormat: 'INVALID_SKILLS_FORMAT',
+  modelFormat: 'INVALID_MODEL_FORMAT',
+  permissionModeFormat: 'INVALID_PERMISSION_MODE_FORMAT',
+  disallowedToolsFormat: 'INVALID_DISALLOWED_TOOLS_FORMAT',
+  argumentHintFormat: 'INVALID_ARGUMENT_HINT_FORMAT',
+  keepCodingInstructionsFormat: 'INVALID_KEEP_CODING_INSTRUCTIONS_FORMAT',
+  toolsFormat: 'INVALID_TOOLS_FORMAT',
+  colorFormat: 'INVALID_COLOR_FORMAT',
+  disableModelInvocationFormat: 'INVALID_DISABLE_MODEL_INVOCATION_FORMAT',
+  versionFormat: 'INVALID_VERSION_FORMAT',
+  allowedToolsFormat: 'INVALID_ALLOWED_TOOLS_FORMAT',
 };
 
 /**
@@ -69,7 +102,7 @@ function transformToSimpleResult(
   if (internalResult.warnings) {
     for (const warningMessage of internalResult.warnings) {
       warnings.push({
-        code: 'FILE_SIZE_WARNING',
+        code: categorizeWarningCode(warningMessage),
         message: warningMessage,
         path: skillPath,
       });

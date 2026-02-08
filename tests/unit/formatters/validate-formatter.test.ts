@@ -28,6 +28,18 @@ describe('validate formatters', () => {
       agentFormat: { passed: true },
       hooksFormat: { passed: true },
       userInvocableFormat: { passed: true },
+      memoryFormat: { passed: true },
+      skillsFormat: { passed: true },
+      modelFormat: { passed: true },
+      permissionModeFormat: { passed: true },
+      disallowedToolsFormat: { passed: true },
+      argumentHintFormat: { passed: true },
+      keepCodingInstructionsFormat: { passed: true },
+      toolsFormat: { passed: true },
+      colorFormat: { passed: true },
+      disableModelInvocationFormat: { passed: true },
+      versionFormat: { passed: true },
+      allowedToolsFormat: { passed: true },
     },
     errors: [],
     warnings: [],
@@ -53,6 +65,18 @@ describe('validate formatters', () => {
       agentFormat: { passed: true },
       hooksFormat: { passed: true },
       userInvocableFormat: { passed: true },
+      memoryFormat: { passed: true },
+      skillsFormat: { passed: true },
+      modelFormat: { passed: true },
+      permissionModeFormat: { passed: true },
+      disallowedToolsFormat: { passed: true },
+      argumentHintFormat: { passed: true },
+      keepCodingInstructionsFormat: { passed: true },
+      toolsFormat: { passed: true },
+      colorFormat: { passed: true },
+      disableModelInvocationFormat: { passed: true },
+      versionFormat: { passed: true },
+      allowedToolsFormat: { passed: true },
     },
     errors: [
       'Unknown property: invalid-prop',
@@ -77,6 +101,18 @@ describe('validate formatters', () => {
       agentFormat: { passed: false },
       hooksFormat: { passed: false },
       userInvocableFormat: { passed: false },
+      memoryFormat: { passed: false },
+      skillsFormat: { passed: false },
+      modelFormat: { passed: false },
+      permissionModeFormat: { passed: false },
+      disallowedToolsFormat: { passed: false },
+      argumentHintFormat: { passed: false },
+      keepCodingInstructionsFormat: { passed: false },
+      toolsFormat: { passed: false },
+      colorFormat: { passed: false },
+      disableModelInvocationFormat: { passed: false },
+      versionFormat: { passed: false },
+      allowedToolsFormat: { passed: false },
     },
     errors: ['SKILL.md not found at /path/to/missing'],
     warnings: [],
@@ -145,6 +181,18 @@ describe('validate formatters', () => {
           agentFormat: { passed: true },
           hooksFormat: { passed: true },
           userInvocableFormat: { passed: true },
+          memoryFormat: { passed: true },
+          skillsFormat: { passed: true },
+          modelFormat: { passed: true },
+          permissionModeFormat: { passed: true },
+          disallowedToolsFormat: { passed: true },
+          argumentHintFormat: { passed: true },
+          keepCodingInstructionsFormat: { passed: true },
+          toolsFormat: { passed: true },
+          colorFormat: { passed: true },
+          disableModelInvocationFormat: { passed: true },
+          versionFormat: { passed: true },
+          allowedToolsFormat: { passed: true },
         },
         errors: ['Invalid YAML syntax', 'Missing required field: name'],
         warnings: [],
@@ -176,6 +224,18 @@ describe('validate formatters', () => {
           agentFormat: { passed: true },
           hooksFormat: { passed: true },
           userInvocableFormat: { passed: true },
+          memoryFormat: { passed: true },
+          skillsFormat: { passed: true },
+          modelFormat: { passed: true },
+          permissionModeFormat: { passed: true },
+          disallowedToolsFormat: { passed: true },
+          argumentHintFormat: { passed: true },
+          keepCodingInstructionsFormat: { passed: true },
+          toolsFormat: { passed: true },
+          colorFormat: { passed: true },
+          disableModelInvocationFormat: { passed: true },
+          versionFormat: { passed: true },
+          allowedToolsFormat: { passed: true },
         },
         errors: [],
         warnings: ['Content size exceeds 50KB', 'Consider splitting into smaller files'],
@@ -186,6 +246,20 @@ describe('validate formatters', () => {
       expect(output).toContain('Warnings:');
       expect(output).toContain('Content size exceeds 50KB');
       expect(output).toContain('Consider splitting into smaller files');
+      expect(output).toContain('✓ Skill is valid!');
+    });
+
+    it('displays model warning in normal output', () => {
+      const resultWithModelWarning: ValidationResult = {
+        ...validResult,
+        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
+      };
+
+      const output = formatNormal(resultWithModelWarning);
+
+      expect(output).toContain('Warnings:');
+      expect(output).toContain('custom-llm-v4');
+      expect(output).toContain('⚠');
       expect(output).toContain('✓ Skill is valid!');
     });
   });
@@ -249,6 +323,20 @@ describe('validate formatters', () => {
       expect(output).toContain('    "fileExists"');
     });
 
+    it('includes model warnings in JSON output', () => {
+      const resultWithModelWarning: ValidationResult = {
+        ...validResult,
+        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
+      };
+
+      const output = formatJSON(resultWithModelWarning);
+      const parsed = JSON.parse(output);
+
+      expect(parsed.valid).toBe(true);
+      expect(parsed.warnings).toHaveLength(1);
+      expect(parsed.warnings[0]).toContain('custom-llm-v4');
+    });
+
     it('includes all validation checks in output', () => {
       const output = formatJSON(validResult);
       const parsed = JSON.parse(output);
@@ -265,6 +353,19 @@ describe('validate formatters', () => {
       expect(parsed.checks).toHaveProperty('agentFormat');
       expect(parsed.checks).toHaveProperty('hooksFormat');
       expect(parsed.checks).toHaveProperty('userInvocableFormat');
+      // FEAT-014 checks
+      expect(parsed.checks).toHaveProperty('memoryFormat');
+      expect(parsed.checks).toHaveProperty('skillsFormat');
+      expect(parsed.checks).toHaveProperty('modelFormat');
+      expect(parsed.checks).toHaveProperty('permissionModeFormat');
+      expect(parsed.checks).toHaveProperty('disallowedToolsFormat');
+      expect(parsed.checks).toHaveProperty('argumentHintFormat');
+      expect(parsed.checks).toHaveProperty('keepCodingInstructionsFormat');
+      expect(parsed.checks).toHaveProperty('toolsFormat');
+      expect(parsed.checks).toHaveProperty('colorFormat');
+      expect(parsed.checks).toHaveProperty('disableModelInvocationFormat');
+      expect(parsed.checks).toHaveProperty('versionFormat');
+      expect(parsed.checks).toHaveProperty('allowedToolsFormat');
     });
   });
 
