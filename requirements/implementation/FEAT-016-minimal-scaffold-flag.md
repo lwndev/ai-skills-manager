@@ -85,7 +85,7 @@ The implementation is split into 3 phases: types and template generation (core l
 
 ### Phase 3: Tests and Verification
 **Feature:** [FEAT-016](../features/FEAT-016-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Depends on Phases 1-2**: All code must be in place before testing
@@ -116,10 +116,10 @@ The implementation is split into 3 phases: types and template generation (core l
 4. Run `npm run quality` to verify all tests pass, lint passes, and coverage thresholds are met
 
 #### Deliverables
-- [ ] Created/updated `tests/unit/templates/skill-md.test.ts` — minimal template generation tests
-- [ ] Updated `tests/unit/commands/scaffold.test.ts` — `--minimal` flag parsing tests
-- [ ] Updated `tests/integration/api/scaffold.test.ts` — minimal scaffold validation tests
-- [ ] `npm run quality` passes
+- [x] Created/updated `tests/unit/templates/skill-md.test.ts` — minimal template generation tests
+- [x] Updated `tests/unit/commands/scaffold.test.ts` — `--minimal` flag parsing tests
+- [x] Updated `tests/integration/api/scaffold.test.ts` — minimal scaffold validation tests
+- [x] `npm run quality` passes
 
 ---
 

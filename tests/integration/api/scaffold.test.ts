@@ -811,6 +811,134 @@ describe('scaffold API integration', () => {
     });
   });
 
+  describe('minimal scaffold (FEAT-016 Phase 3)', () => {
+    it('scaffold with minimal: true for basic template passes validation', async () => {
+      const result = await scaffold({
+        name: 'minimal-basic-skill',
+        output: tempDir,
+        template: { minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('## Overview');
+      expect(content).toContain('## Instructions');
+      expect(content).toContain('## Examples');
+      expect(content).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('scaffold with minimal: true for forked template passes validation', async () => {
+      const result = await scaffold({
+        name: 'minimal-forked-skill',
+        output: tempDir,
+        template: { templateType: 'forked', minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).not.toContain('FORKED CONTEXT SKILL');
+    });
+
+    it('scaffold with minimal: true for with-hooks template passes validation', async () => {
+      const result = await scaffold({
+        name: 'minimal-hooks-skill',
+        output: tempDir,
+        template: { templateType: 'with-hooks', minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+      expect(content).toContain('PreToolUse:');
+      expect(content).not.toContain('SKILL WITH HOOKS');
+    });
+
+    it('scaffold with minimal: true for internal template passes validation', async () => {
+      const result = await scaffold({
+        name: 'minimal-internal-skill',
+        output: tempDir,
+        template: { templateType: 'internal', minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+      expect(content).not.toContain('INTERNAL HELPER SKILL');
+    });
+
+    it('minimal SKILL.md content matches expected structure', async () => {
+      const result = await scaffold({
+        name: 'minimal-structure-check',
+        output: tempDir,
+        template: { minimal: true },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+
+      // Should have frontmatter
+      expect(content).toMatch(/^---\n[\s\S]*?\n---/);
+      // Should have minimal body sections
+      expect(content).toContain('## Overview');
+      expect(content).toContain('## Instructions');
+      expect(content).toContain('## Examples');
+      // Should NOT have verbose sections
+      expect(content).not.toContain('## Usage');
+      expect(content).not.toContain('## Implementation Notes');
+      expect(content).not.toContain('<!--');
+    });
+
+    it('minimal with description and allowedTools produces correct frontmatter', async () => {
+      const result = await scaffold({
+        name: 'minimal-with-options',
+        description: 'A minimal skill with tools',
+        allowedTools: ['Read', 'Bash'],
+        output: tempDir,
+        template: { minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('description: A minimal skill with tools');
+      expect(content).toContain('- Read');
+      expect(content).toContain('- Bash');
+    });
+
+    it('minimal output is significantly smaller than verbose output', async () => {
+      const minimalResult = await scaffold({
+        name: 'size-minimal',
+        output: tempDir,
+        template: { minimal: true },
+      });
+
+      const verboseResult = await scaffold({
+        name: 'size-verbose',
+        output: tempDir,
+      });
+
+      const minimalContent = await fs.readFile(path.join(minimalResult.path, 'SKILL.md'), 'utf-8');
+      const verboseContent = await fs.readFile(path.join(verboseResult.path, 'SKILL.md'), 'utf-8');
+
+      expect(minimalContent.length).toBeLessThan(verboseContent.length);
+      // Minimal should be significantly smaller (less than half)
+      expect(minimalContent.length).toBeLessThan(verboseContent.length / 2);
+    });
+  });
+
   describe('CLI scaffold with template options (FEAT-013 Phase 4)', () => {
     // These tests verify the CLI command correctly passes template options
     // to the API and produces valid skills.
@@ -931,6 +1059,40 @@ describe('scaffold API integration', () => {
       );
 
       expect(output).toContain('"forked" template');
+    });
+
+    it('CLI scaffold --minimal creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-minimal-skill --output "${tempDir}" --minimal --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-minimal-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('## Overview');
+      expect(content).toContain('## Instructions');
+      expect(content).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('CLI scaffold --minimal --template forked creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-minimal-forked --output "${tempDir}" --minimal --template forked --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-minimal-forked');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).not.toContain('FORKED CONTEXT SKILL');
+    });
+
+    it('CLI scaffold --minimal output shows (minimal) in template info', () => {
+      const output = execSync(
+        `node "${cliPath}" scaffold cli-minimal-output --output "${tempDir}" --minimal --force`,
+        { encoding: 'utf-8' }
+      );
+
+      expect(output).toContain('(minimal)');
     });
 
     it('CLI scaffold without template options maintains backward compatibility', () => {
