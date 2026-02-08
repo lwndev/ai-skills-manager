@@ -811,6 +811,140 @@ describe('scaffold API integration', () => {
     });
   });
 
+  describe('agent template scaffold (FEAT-017 Phase 4)', () => {
+    it('scaffold with agent template passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-agent-template',
+        output: tempDir,
+        template: { templateType: 'agent' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: sonnet');
+      expect(content).toContain('memory: project');
+      expect(content).toContain('skills: []');
+      expect(content).toContain('disallowedTools: []');
+      expect(content).toContain('allowed-tools:');
+    });
+
+    it('scaffold with agent template + minimal passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-agent-minimal',
+        output: tempDir,
+        template: { templateType: 'agent', minimal: true },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: sonnet');
+      expect(content).not.toContain('AGENT SKILL');
+    });
+
+    it('scaffold with agent + memory user + model haiku passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-agent-overrides',
+        output: tempDir,
+        template: { templateType: 'agent', memory: 'user', model: 'haiku' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: haiku');
+      expect(content).toContain('memory: user');
+    });
+
+    it('scaffold with memory on basic template passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-basic-memory',
+        output: tempDir,
+        template: { memory: 'project' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('memory: project');
+    });
+
+    it('scaffold with argument-hint passes validation with proper YAML escaping', async () => {
+      const result = await scaffold({
+        name: 'api-argument-hint',
+        output: tempDir,
+        template: { argumentHint: '<query> [--deep]' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('argument-hint:');
+      expect(content).toContain('query');
+    });
+
+    it('scaffold with all new flags combined passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-all-new-flags',
+        output: tempDir,
+        template: {
+          templateType: 'agent',
+          memory: 'local',
+          model: 'opus',
+          argumentHint: 'task to execute',
+          minimal: true,
+        },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: opus');
+      expect(content).toContain('memory: local');
+      expect(content).toContain('argument-hint: task to execute');
+      expect(content).toContain('skills: []');
+      expect(content).toContain('disallowedTools: []');
+    });
+
+    it('scaffold with model on forked template passes validation', async () => {
+      const result = await scaffold({
+        name: 'api-forked-model',
+        output: tempDir,
+        template: { templateType: 'forked', model: 'sonnet' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: sonnet');
+      expect(content).toContain('context: fork');
+    });
+
+    it('agent template skills are discoverable by list', async () => {
+      await scaffold({
+        name: 'list-api-agent',
+        output: tempDir,
+        template: { templateType: 'agent' },
+      });
+
+      const { skills } = await list({ targetPath: tempDir });
+      const names = skills.map((s) => s.name);
+      expect(names).toContain('list-api-agent');
+    });
+  });
+
   describe('minimal scaffold (FEAT-016 Phase 3)', () => {
     it('scaffold with minimal: true for basic template passes validation', async () => {
       const result = await scaffold({
@@ -1093,6 +1227,86 @@ describe('scaffold API integration', () => {
       );
 
       expect(output).toContain('(minimal)');
+    });
+
+    it('CLI scaffold --template agent creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-agent-template --output "${tempDir}" --template agent --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-agent-template');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: sonnet');
+      expect(content).toContain('memory: project');
+      expect(content).toContain('skills: []');
+      expect(content).toContain('disallowedTools: []');
+    });
+
+    it('CLI scaffold --template agent with overrides creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-agent-overrides --output "${tempDir}" --template agent --memory user --model haiku --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-agent-overrides');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: haiku');
+      expect(content).toContain('memory: user');
+    });
+
+    it('CLI scaffold --memory project creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-memory-skill --output "${tempDir}" --memory project --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-memory-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('memory: project');
+    });
+
+    it('CLI scaffold --argument-hint creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-hint-skill --output "${tempDir}" --argument-hint "search query" --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-hint-skill');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('argument-hint: search query');
+    });
+
+    it('CLI scaffold --template agent --minimal creates valid skill', () => {
+      execSync(
+        `node "${cliPath}" scaffold cli-agent-minimal --output "${tempDir}" --template agent --minimal --force`,
+        { encoding: 'utf-8' }
+      );
+
+      const skillPath = path.join(tempDir, 'cli-agent-minimal');
+      const content = fsSync.readFileSync(path.join(skillPath, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('model: sonnet');
+      expect(content).not.toContain('AGENT SKILL');
+      expect(content).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('CLI scaffold rejects invalid memory scope', () => {
+      expect(() => {
+        execSync(
+          `node "${cliPath}" scaffold invalid-memory-skill --output "${tempDir}" --memory global 2>&1`,
+          { encoding: 'utf-8' }
+        );
+      }).toThrow();
+    });
+
+    it('CLI scaffold rejects argument-hint over 100 chars', () => {
+      const longHint = 'a'.repeat(101);
+      expect(() => {
+        execSync(
+          `node "${cliPath}" scaffold long-hint-skill --output "${tempDir}" --argument-hint "${longHint}" 2>&1`,
+          { encoding: 'utf-8' }
+        );
+      }).toThrow();
     });
 
     it('CLI scaffold without template options maintains backward compatibility', () => {

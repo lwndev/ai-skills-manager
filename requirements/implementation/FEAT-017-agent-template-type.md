@@ -153,7 +153,7 @@ The implementation is split into 4 phases: types and agent template generation, 
 
 ### Phase 4: Tests and Verification
 **Feature:** [FEAT-017](../features/FEAT-017-agent-template-type.md) | [#52](https://github.com/lwndev/ai-skills-manager/issues/52)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Depends on Phases 1-3**: All code changes must be in place before comprehensive testing
@@ -199,10 +199,10 @@ The implementation is split into 4 phases: types and agent template generation, 
 7. Run `npm run quality` to verify all tests pass, lint is clean, and coverage thresholds are met
 
 #### Deliverables
-- [ ] Updated `tests/unit/templates/skill-md.test.ts` — agent template tests, flag frontmatter tests, hooks `once: true` tests
-- [ ] Updated `tests/unit/commands/scaffold.test.ts` — new flag parsing tests, validation error tests
-- [ ] Updated `tests/integration/api/scaffold.test.ts` — agent scaffold validation, flag combination tests
-- [ ] `npm run quality` passes
+- [x] Updated `tests/unit/templates/skill-md.test.ts` — agent template tests, flag frontmatter tests, hooks `once: true` tests
+- [x] Updated `tests/unit/commands/scaffold.test.ts` — new flag parsing tests, validation error tests
+- [x] Updated `tests/integration/api/scaffold.test.ts` — agent scaffold validation, flag combination tests
+- [x] `npm run quality` passes
 
 ---
 
