@@ -56,6 +56,7 @@ jest.mock('../../../src/utils/output', () => {
 import { select, input, confirm } from '@inquirer/prompts';
 import { ExitPromptError } from '@inquirer/core';
 import { scaffold } from '../../../src/api';
+import * as output from '../../../src/utils/output';
 
 const mockSelect = select as jest.MockedFunction<typeof select>;
 const mockInput = input as jest.MockedFunction<typeof input>;
@@ -973,10 +974,13 @@ describe('scaffold-interactive', () => {
       const options: CliScaffoldOptions = { interactive: true };
       await runInteractiveScaffold('test-skill', options);
 
-      // Verify summary was printed
-      expect(consoleOutput.some((line) => line.includes('Scaffold configuration:'))).toBe(true);
-      expect(consoleOutput.some((line) => line.includes('test-skill'))).toBe(true);
-      expect(consoleOutput.some((line) => line.includes('agent'))).toBe(true);
+      // Verify summary was displayed through the output module
+      const mockDisplayInfo = output.displayInfo as jest.MockedFunction<typeof output.displayInfo>;
+      expect(mockDisplayInfo).toHaveBeenCalledWith(
+        expect.stringContaining('Scaffold configuration:')
+      );
+      expect(mockDisplayInfo).toHaveBeenCalledWith(expect.stringContaining('test-skill'));
+      expect(mockDisplayInfo).toHaveBeenCalledWith(expect.stringContaining('agent'));
     });
 
     it('restarts prompts when user declines summary', async () => {

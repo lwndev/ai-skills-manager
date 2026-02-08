@@ -350,7 +350,8 @@ async function collectAndConfirmPrompts(name: string): Promise<InteractivePrompt
       result.description,
       result.allowedTools
     );
-    console.log(`\n${summary}\n`);
+    console.log('');
+    output.displayInfo(summary);
 
     const proceed = await confirm({
       message: 'Proceed? (Y/n)',

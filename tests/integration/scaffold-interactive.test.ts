@@ -1,8 +1,10 @@
 /**
  * Integration tests for the interactive scaffold workflow (FEAT-019 Phase 3)
  *
- * Tests the full end-to-end flow by running the CLI with mocked prompts
- * and verifying the generated skill directories match explicit-flag output.
+ * Tests interactive-specific CLI behavior (non-TTY error, flag conflict precedence)
+ * via real CLI invocations. Also validates scaffold output for all template types
+ * as a baseline — the interactive prompt flow itself is tested via unit tests
+ * with mocked prompts since integration tests cannot simulate a real TTY.
  */
 
 import * as fs from 'fs/promises';
@@ -56,14 +58,12 @@ describe('scaffold --interactive integration', () => {
     });
   });
 
-  describe('flag override warning', () => {
-    it('displays warning when conflicting flags are provided', () => {
+  describe('flag conflict precedence', () => {
+    it('non-TTY error takes precedence over flag conflict warning', () => {
       let output = '';
       try {
-        // Pipe input so it's non-TTY — the TTY check fires first, but let's use
-        // a different approach: we need TTY for the warning to be shown.
-        // Since we can't get a real TTY in CI, we test this through the unit tests.
-        // Instead, verify the non-TTY error takes precedence.
+        // In non-TTY the TTY check fires before the flag conflict warning.
+        // The flag conflict warning path is covered by unit tests with a mocked TTY.
         execSync(
           `echo "" | node "${cliPath}" scaffold test-skill --output "${tempDir}" --interactive --template forked`,
           {
@@ -81,7 +81,7 @@ describe('scaffold --interactive integration', () => {
     });
   });
 
-  describe('generated skill equivalence', () => {
+  describe('scaffold output baseline (reference for interactive equivalence)', () => {
     it('explicit-flag scaffold produces valid skill directory', async () => {
       execSync(
         `node "${cliPath}" scaffold basic-skill --output "${tempDir}" --template basic --force`,
@@ -150,7 +150,7 @@ describe('scaffold --interactive integration', () => {
     });
   });
 
-  describe('output-location flags with scaffold', () => {
+  describe('output-location flags (respected alongside --interactive)', () => {
     it('--output flag places skill in specified directory', async () => {
       const customDir = path.join(tempDir, 'custom');
       await fs.mkdir(customDir, { recursive: true });
@@ -198,7 +198,7 @@ describe('scaffold --interactive integration', () => {
     });
   });
 
-  describe('template type equivalence', () => {
+  describe('all template types produce valid skills', () => {
     it.each([
       ['basic', {}],
       ['forked', { template: 'forked' }],
