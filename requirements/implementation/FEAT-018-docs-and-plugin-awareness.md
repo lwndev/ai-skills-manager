@@ -61,7 +61,7 @@ The implementation is split into 3 phases: CLI help text updates, template guida
 
 ### Phase 2: Template Guidance Updates
 **Feature:** [FEAT-018](../features/FEAT-018-docs-and-plugin-awareness.md) | [#54](https://github.com/lwndev/ai-skills-manager/issues/54)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Core of the feature**: Template guidance is where skill developers spend the most time reading documentation
@@ -184,12 +184,12 @@ Confirm that `generateMinimalBody()` (lines 491-507) does NOT call `getTemplateG
 The main HTML comment block already uses "skill" terminology consistently. No "slash command" references exist in this block. No changes needed to the main guidance block itself — the template-specific additions from Step 1 are inserted via `getTemplateGuidance()` which is already embedded in the comment block (line 546).
 
 #### Deliverables
-- [ ] Updated `src/templates/skill-md.ts` — basic template: auto-approval + size budget + plugin distribution
-- [ ] Updated `src/templates/skill-md.ts` — forked template: auto-approval + size budget
-- [ ] Updated `src/templates/skill-md.ts` — with-hooks template: hooks opt-out note + size budget + plugin distribution
-- [ ] Updated `src/templates/skill-md.ts` — internal template: /skills visibility note + size budget
-- [ ] Updated `src/templates/skill-md.ts` — agent template: permissions note + size budget + plugin distribution
-- [ ] Verified minimal templates unaffected
+- [x] Updated `src/templates/skill-md.ts` — basic template: auto-approval + size budget + plugin distribution
+- [x] Updated `src/templates/skill-md.ts` — forked template: auto-approval + size budget
+- [x] Updated `src/templates/skill-md.ts` — with-hooks template: hooks opt-out note + size budget + plugin distribution
+- [x] Updated `src/templates/skill-md.ts` — internal template: /skills visibility note + size budget
+- [x] Updated `src/templates/skill-md.ts` — agent template: permissions note + size budget + plugin distribution
+- [x] Verified minimal templates unaffected
 
 ---
 

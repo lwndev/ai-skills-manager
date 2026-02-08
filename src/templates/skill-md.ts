@@ -274,6 +274,18 @@ ADDITIONAL FRONTMATTER FIELDS:
 - disallowedTools: Blocklist specific tools from being used
 - permissionMode: Control permission behavior (default, plan, bypassPermissions)
 - argument-hint: Display hint for skill arguments in the UI
+
+PERMISSIONS NOTE:
+Skills that don't declare additional allowed-tools or hooks are automatically
+approved by Claude Code without user confirmation (since v2.1.19). This means
+minimal skills load faster with less friction. Only add allowed-tools and hooks
+when your skill actually needs them.
+
+SIZE CONSIDERATIONS:
+Claude Code allocates approximately 2% of the context window for skill
+descriptions. For a 200k token context window, this is ~4000 tokens shared
+across ALL loaded skills. Keep your skill's description and body concise
+to avoid crowding out other skills. A good target is under 500 lines.
 `;
 
     case 'internal':
@@ -316,6 +328,16 @@ ADDITIONAL FRONTMATTER FIELDS:
 - disallowedTools: Blocklist specific tools from being used
 - permissionMode: Control permission behavior (default, plan, bypassPermissions)
 - argument-hint: Display hint for skill arguments in the UI
+
+VISIBILITY NOTE:
+Skills with user-invocable: false don't appear in the /skills menu in Claude
+Code. They are loaded but only accessible to other skills that reference them.
+
+SIZE CONSIDERATIONS:
+Claude Code allocates approximately 2% of the context window for skill
+descriptions. For a 200k token context window, this is ~4000 tokens shared
+across ALL loaded skills. Keep your skill's description and body concise
+to avoid crowding out other skills. A good target is under 500 lines.
 `;
 
     case 'with-hooks':
@@ -405,6 +427,27 @@ IMPORTANT NOTES:
 - Use the scripts/ directory for complex hook logic
 - Test hooks thoroughly before deployment
 - Hooks in skills are automatically cleaned up when the skill finishes
+
+PERMISSIONS NOTE:
+Skills with hooks are NOT auto-approved — users will be prompted to confirm
+before this skill loads (unlike simple skills without hooks, which auto-approve
+since v2.1.19). This is expected for hooks since they execute shell commands.
+
+SIZE CONSIDERATIONS:
+Claude Code allocates approximately 2% of the context window for skill
+descriptions. For a 200k token context window, this is ~4000 tokens shared
+across ALL loaded skills. Keep your skill's description and body concise
+to avoid crowding out other skills. A good target is under 500 lines.
+
+DISTRIBUTION OPTIONS:
+Skills can be distributed in two ways:
+1. ASM packages (.skill files) — standalone skill distribution via asm package/install
+2. Claude Code plugins — broader distribution including commands, agents, hooks,
+   and MCP servers via plugin marketplaces
+
+For skills with hooks or complex multi-component setups, the Claude Code plugin
+system may be a better fit than standalone ASM packages.
+See: https://code.claude.com/docs/en/plugins
 `;
 
     case 'agent':
@@ -450,6 +493,26 @@ Add \`permissionMode\` to control agent permissions:
 - \`default\` — standard permission checks
 - \`plan\` — agent can only read/explore, not modify files
 - \`bypassPermissions\` — skip permission prompts (use with caution)
+
+PERMISSIONS NOTE:
+Agent skills with allowed-tools are NOT auto-approved — users will be prompted
+to confirm before this agent loads (since agents typically declare tools).
+
+SIZE CONSIDERATIONS:
+Claude Code allocates approximately 2% of the context window for skill
+descriptions. For a 200k token context window, this is ~4000 tokens shared
+across ALL loaded skills. Keep your skill's description and body concise
+to avoid crowding out other skills. A good target is under 500 lines.
+
+DISTRIBUTION OPTIONS:
+Skills can be distributed in two ways:
+1. ASM packages (.skill files) — standalone skill distribution via asm package/install
+2. Claude Code plugins — broader distribution including commands, agents, hooks,
+   and MCP servers via plugin marketplaces
+
+For agents that bundle multiple skills, hooks, or MCP servers, consider the
+Claude Code plugin system for distribution.
+See: https://code.claude.com/docs/en/plugins
 `;
 
     default:
@@ -462,6 +525,24 @@ ADDITIONAL FRONTMATTER FIELDS:
 - disallowedTools: Blocklist specific tools from being used
 - permissionMode: Control permission behavior (default, plan, bypassPermissions)
 - argument-hint: Display hint for skill arguments in the UI
+
+PERMISSIONS NOTE:
+Skills that don't declare additional allowed-tools or hooks are automatically
+approved by Claude Code without user confirmation (since v2.1.19). This means
+minimal skills load faster with less friction. Only add allowed-tools and hooks
+when your skill actually needs them.
+
+SIZE CONSIDERATIONS:
+Claude Code allocates approximately 2% of the context window for skill
+descriptions. For a 200k token context window, this is ~4000 tokens shared
+across ALL loaded skills. Keep your skill's description and body concise
+to avoid crowding out other skills. A good target is under 500 lines.
+
+DISTRIBUTION OPTIONS:
+Skills can be distributed as ASM packages (.skill files) or as Claude Code
+plugins. Plugins support broader distribution including commands, agents,
+hooks, and MCP servers via plugin marketplaces. For simple skills, ASM
+packages are sufficient. See: https://code.claude.com/docs/en/plugins
 `;
   }
 }
