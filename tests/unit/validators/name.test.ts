@@ -1,4 +1,44 @@
-import { validateName } from '../../../src/validators/name';
+import { validateName, truncateForDisplay } from '../../../src/validators/name';
+
+describe('truncateForDisplay', () => {
+  it('returns short strings unchanged', () => {
+    expect(truncateForDisplay('hello')).toBe('hello');
+  });
+
+  it('returns string at exactly maxLength unchanged', () => {
+    const value = 'a'.repeat(50);
+    expect(truncateForDisplay(value)).toBe(value);
+  });
+
+  it('truncates string one character over maxLength', () => {
+    const value = 'a'.repeat(51);
+    const result = truncateForDisplay(value);
+    expect(result).toBe('a'.repeat(50) + '…');
+    expect(result.length).toBe(51); // 50 chars + 1 ellipsis
+  });
+
+  it('truncates long strings', () => {
+    const value = 'x'.repeat(200);
+    expect(truncateForDisplay(value)).toBe('x'.repeat(50) + '…');
+  });
+
+  it('returns empty string unchanged', () => {
+    expect(truncateForDisplay('')).toBe('');
+  });
+
+  it('respects custom maxLength', () => {
+    expect(truncateForDisplay('abcdefgh', 5)).toBe('abcde…');
+    expect(truncateForDisplay('abcde', 5)).toBe('abcde');
+  });
+
+  it('handles strings with multi-byte characters', () => {
+    // String.prototype.slice operates on code units, so multi-byte chars
+    // at the boundary may be split — the function uses simple .slice
+    const emoji = '🎉'.repeat(30); // Each emoji is 2 code units, total 60
+    const result = truncateForDisplay(emoji);
+    expect(result.length).toBe(51); // 50 code units + ellipsis
+  });
+});
 
 describe('validateName', () => {
   describe('valid names', () => {
