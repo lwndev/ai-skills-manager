@@ -17,7 +17,8 @@ describe('package CLI command', () => {
     it('help text includes the plugin distribution note', async () => {
       const { PACKAGE_DISTRIBUTION_NOTE } = await import('../../../src/commands/package');
       const program = await createTestProgram();
-      const packageCmd = program.commands.find((cmd) => cmd.name() === 'package')!;
+      const packageCmd = program.commands.find((cmd) => cmd.name() === 'package');
+      if (!packageCmd) throw new Error('package command not found');
       let helpText = '';
       packageCmd.configureOutput({ writeOut: (str: string) => (helpText += str) });
       try {

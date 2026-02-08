@@ -878,7 +878,8 @@ describe('scaffold CLI command', () => {
     it('help text includes the autoload note', async () => {
       const { SCAFFOLD_AUTOLOAD_NOTE } = await import('../../../src/commands/scaffold');
       const program = await createTestProgram();
-      const scaffoldCmd = program.commands.find((cmd) => cmd.name() === 'scaffold')!;
+      const scaffoldCmd = program.commands.find((cmd) => cmd.name() === 'scaffold');
+      if (!scaffoldCmd) throw new Error('scaffold command not found');
       let helpText = '';
       scaffoldCmd.configureOutput({ writeOut: (str: string) => (helpText += str) });
       try {
