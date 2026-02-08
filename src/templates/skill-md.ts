@@ -33,6 +33,8 @@ export interface TemplateOptions {
   userInvocable?: boolean;
   /** Include commented hook examples in frontmatter */
   includeHooks?: boolean;
+  /** Generate shorter templates without educational guidance */
+  minimal?: boolean;
 }
 
 /**
@@ -93,7 +95,7 @@ function getDefaultAllowedTools(templateType: TemplateType): string[] | undefine
  * For PreToolUse/PostToolUse, use "*" matcher for all tools or specific tool names.
  * Stop hooks don't use matchers.
  */
-function generateHooksYaml(): string {
+function generateHooksYaml(minimal?: boolean): string {
   const lines: string[] = [];
 
   lines.push('hooks:');
@@ -101,16 +103,26 @@ function generateHooksYaml(): string {
   lines.push('    - matcher: "*"');
   lines.push('      hooks:');
   lines.push('        - type: command');
-  lines.push('          command: echo "Starting tool execution..."');
-  lines.push('  PostToolUse:');
-  lines.push('    - matcher: "*"');
-  lines.push('      hooks:');
-  lines.push('        - type: command');
-  lines.push('          command: echo "Tool execution complete"');
-  lines.push('  # Stop:');
-  lines.push('  #   - hooks:');
-  lines.push('  #       - type: command');
-  lines.push('  #         command: echo "Skill stopped"');
+
+  if (minimal) {
+    lines.push('          command: "echo \'TODO: pre-tool hook\'"');
+    lines.push('  PostToolUse:');
+    lines.push('    - matcher: "*"');
+    lines.push('      hooks:');
+    lines.push('        - type: command');
+    lines.push('          command: "echo \'TODO: post-tool hook\'"');
+  } else {
+    lines.push('          command: echo "Starting tool execution..."');
+    lines.push('  PostToolUse:');
+    lines.push('    - matcher: "*"');
+    lines.push('      hooks:');
+    lines.push('        - type: command');
+    lines.push('          command: echo "Tool execution complete"');
+    lines.push('  # Stop:');
+    lines.push('  #   - hooks:');
+    lines.push('  #       - type: command');
+    lines.push('  #         command: echo "Skill stopped"');
+  }
 
   return lines.join('\n');
 }
@@ -126,6 +138,12 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
 
   if (params.description) {
     lines.push(`description: ${escapeYamlString(params.description)}`);
+  } else if (options?.minimal && templateType === 'internal') {
+    lines.push(
+      'description: "TODO: Internal helper for other skills. Not for direct user invocation."'
+    );
+  } else if (options?.minimal) {
+    lines.push('description: "TODO: Describe what this skill does and when to use it."');
   } else {
     lines.push('description: "TODO: Add a short description of what this skill does"');
   }
@@ -138,7 +156,7 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     for (const tool of allowedTools) {
       lines.push(`  - ${escapeYamlString(tool.trim())}`);
     }
-  } else {
+  } else if (!options?.minimal) {
     lines.push('# allowed-tools:');
     lines.push('#   - Bash');
     lines.push('#   - Read');
@@ -165,7 +183,7 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
 
   // Add hooks section for with-hooks template or if includeHooks option is true
   if (templateType === 'with-hooks' || options?.includeHooks) {
-    lines.push(generateHooksYaml());
+    lines.push(generateHooksYaml(options?.minimal));
   }
 
   lines.push('---');
@@ -329,6 +347,44 @@ IMPORTANT NOTES:
 }
 
 /**
+ * Get the overview TODO text for minimal templates based on template type.
+ */
+function getMinimalOverviewTodo(templateType: TemplateType): string {
+  switch (templateType) {
+    case 'forked':
+      return 'TODO: Brief description. This skill runs in a forked context.';
+    case 'with-hooks':
+      return 'TODO: Brief description. This skill uses hooks for tool lifecycle events.';
+    case 'internal':
+      return 'TODO: Brief description. This is an internal helper skill.';
+    default:
+      return 'TODO: Brief description of what this skill does.';
+  }
+}
+
+/**
+ * Generate a minimal markdown body without educational guidance.
+ * Returns only: # Name + ## Overview + ## Instructions + ## Examples
+ */
+function generateMinimalBody(params: SkillTemplateParams, templateType: TemplateType): string {
+  return `
+# ${params.name}
+
+## Overview
+
+${getMinimalOverviewTodo(templateType)}
+
+## Instructions
+
+TODO: Step-by-step guidance for Claude.
+
+## Examples
+
+TODO: Concrete input/output examples.
+`;
+}
+
+/**
  * Generate the markdown body with guidance and TODO placeholders
  */
 function generateBody(params: SkillTemplateParams, templateType: TemplateType): string {
@@ -442,6 +498,8 @@ export function generateSkillMd(params: SkillTemplateParams, options?: TemplateO
   // Default to basic template if no options provided
   const templateType = options?.templateType ?? 'basic';
   const frontmatter = generateFrontmatter(params, options);
-  const body = generateBody(params, templateType);
+  const body = options?.minimal
+    ? generateMinimalBody(params, templateType)
+    : generateBody(params, templateType);
   return frontmatter + '\n' + body;
 }
