@@ -5,17 +5,20 @@
  * - Optional field (absence is valid)
  * - Must be non-empty string if present → error otherwise
  * - Return warning for unknown values not in known model list
- * - Extends shared ValidationResult with optional warnings
+ * - Uses discriminated union return type: ModelValidationResult
  */
 
-import { ValidationResult, truncateForDisplay } from './name';
+import { truncateForDisplay } from './name';
 
 const KNOWN_MODELS = ['inherit', 'sonnet', 'opus', 'haiku'] as const;
 
 /**
- * Result type for model validation that extends ValidationResult with optional warnings
+ * Result type for model validation that includes optional warnings.
+ * Uses discriminated union per CLAUDE.md coding guidelines.
  */
-export type ModelValidationResult = ValidationResult & { warnings?: string[] };
+export type ModelValidationResult =
+  | { valid: true; warnings?: string[] }
+  | { valid: false; error: string };
 
 /**
  * Validate the model field value

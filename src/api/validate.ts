@@ -26,15 +26,15 @@ import { CheckName } from '../types/validation';
  * Categorize a warning message into a machine-readable code.
  *
  * Warnings originate from three sources in the validation pipeline:
- * - File size analysis: "Content size exceeds..."
+ * - File size analysis: "Skill body has N lines/tokens..."
  * - Model validation: "Unknown model '...' in model field..."
- * - Hooks validation: "Unknown hook key..."
+ * - Hooks validation: "Unknown hook '...' in hooks field..."
  */
 function categorizeWarningCode(message: string): string {
   if (message.includes('Unknown model')) {
     return 'UNKNOWN_MODEL';
   }
-  if (message.includes('Unknown hook key')) {
+  if (message.includes('Unknown hook')) {
     return 'UNKNOWN_HOOK_KEY';
   }
   if (message.includes('lines') || message.includes('tokens')) {
