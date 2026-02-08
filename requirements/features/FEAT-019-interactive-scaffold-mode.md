@@ -342,17 +342,17 @@ Using "agent" template
 
 ## Acceptance Criteria
 
-- [ ] `--interactive` / `-i` flag is accepted by `asm scaffold`
-- [ ] Interactive prompts guide user through template type, context, agent, memory, model, hooks, minimal, description, argument hint, and allowed tools
-- [ ] `agent` template type is available in template selection
-- [ ] Memory and model prompts default to populated values for `agent` template
-- [ ] Argument hint input validates max length of 100 characters
-- [ ] Conditional prompts are skipped when not applicable to the selected template
-- [ ] Configuration summary is displayed before scaffold generation
-- [ ] Generated skill matches what would be produced with equivalent explicit flags
-- [ ] Works when combined with `<name>`, `--project`, `--personal`, `--output`, `--force`
-- [ ] Warning displayed when `--interactive` is combined with template-content flags
-- [ ] Falls back gracefully with error message if stdin is not a TTY
-- [ ] Ctrl+C during prompts exits cleanly without partial files
-- [ ] Help text documents the `--interactive` / `-i` flag
-- [ ] Tests cover prompt flow logic and edge cases
+- [x] `--interactive` / `-i` flag is accepted by `asm scaffold`
+- [x] Interactive prompts guide user through template type, context, agent, memory, model, hooks, minimal, description, argument hint, and allowed tools
+- [x] `agent` template type is available in template selection
+- [x] Memory and model prompts default to populated values for `agent` template
+- [x] Argument hint input validates max length of 100 characters
+- [x] Conditional prompts are skipped when not applicable to the selected template
+- [x] Configuration summary is displayed before scaffold generation
+- [x] Generated skill matches what would be produced with equivalent explicit flags
+- [x] Works when combined with `<name>`, `--project`, `--personal`, `--output`, `--force`
+- [x] Warning displayed when `--interactive` is combined with template-content flags
+- [x] Falls back gracefully with error message if stdin is not a TTY
+- [x] Ctrl+C during prompts exits cleanly without partial files
+- [x] Help text documents the `--interactive` / `-i` flag
+- [x] Tests cover prompt flow logic and edge cases

@@ -17,7 +17,8 @@ describe('list CLI command', () => {
     it('help text includes the skills menu note', async () => {
       const { LIST_SKILLS_NOTE } = await import('../../../src/commands/list');
       const program = await createTestProgram();
-      const listCmd = program.commands.find((cmd) => cmd.name() === 'list')!;
+      const listCmd = program.commands.find((cmd) => cmd.name() === 'list');
+      if (!listCmd) throw new Error('list command not found');
       let helpText = '';
       listCmd.configureOutput({ writeOut: (str: string) => (helpText += str) });
       try {
