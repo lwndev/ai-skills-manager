@@ -180,13 +180,13 @@ Update all template type guidance blocks with:
 
 ## Acceptance Criteria
 
-- [ ] "Slash command" not used as a standalone concept in any user-facing text
-- [ ] "Skill" used as primary term throughout
-- [ ] Plugin system relationship documented in template guidance
-- [ ] Auto-approval behavior noted in relevant templates
-- [ ] Skill size budget warning in all verbose templates
-- [ ] CLI help text updated for all commands
-- [ ] Minimal templates not affected by guidance additions
-- [ ] All external links are valid
-- [ ] All existing tests continue to pass
-- [ ] `npm run quality` passes
+- [x] "Slash command" not used as a standalone concept in any user-facing text
+- [x] "Skill" used as primary term throughout
+- [x] Plugin system relationship documented in template guidance
+- [x] Auto-approval behavior noted in relevant templates
+- [x] Skill size budget warning in all verbose templates
+- [x] CLI help text updated for all commands
+- [x] Minimal templates not affected by guidance additions
+- [x] All external links are valid
+- [x] All existing tests continue to pass
+- [x] `npm run quality` passes

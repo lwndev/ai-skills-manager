@@ -315,21 +315,21 @@ This feature requires no new packages. All changes are text modifications to exi
 ## Success Criteria
 
 ### Per-Phase Criteria
-- [ ] Phase 1: All CLI `--help` commands show updated text with consistent "skill" terminology
-- [ ] Phase 2: All 5 verbose template types include targeted guidance additions; minimal templates unaffected
-- [ ] Phase 3: All tests pass, `npm run quality` green
+- [x] Phase 1: All CLI `--help` commands show updated text with consistent "skill" terminology
+- [x] Phase 2: All 5 verbose template types include targeted guidance additions; minimal templates unaffected
+- [x] Phase 3: All tests pass, `npm run quality` green
 
 ### Overall Success (from Requirements)
-- [ ] "Slash command" not used as a standalone concept in any user-facing text
-- [ ] "Skill" used as primary term throughout
-- [ ] Plugin system relationship documented in template guidance
-- [ ] Auto-approval behavior noted in relevant templates
-- [ ] Skill size budget warning in all verbose templates
-- [ ] CLI help text updated for all commands
-- [ ] Minimal templates not affected by guidance additions
-- [ ] All external links are valid
-- [ ] All existing tests continue to pass
-- [ ] `npm run quality` passes
+- [x] "Slash command" not used as a standalone concept in any user-facing text
+- [x] "Skill" used as primary term throughout
+- [x] Plugin system relationship documented in template guidance
+- [x] Auto-approval behavior noted in relevant templates
+- [x] Skill size budget warning in all verbose templates
+- [x] CLI help text updated for all commands
+- [x] Minimal templates not affected by guidance additions
+- [x] All external links are valid
+- [x] All existing tests continue to pass
+- [x] `npm run quality` passes
 
 ---
 
