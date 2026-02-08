@@ -6,7 +6,7 @@
  * - Must be one of "user", "project", "local" when present
  */
 
-import { ValidationResult } from './name';
+import { ValidationResult, truncateForDisplay } from './name';
 
 const VALID_MEMORY_VALUES = ['user', 'project', 'local'] as const;
 
@@ -34,7 +34,7 @@ export function validateMemory(value: unknown): ValidationResult {
   if (!VALID_MEMORY_VALUES.includes(value as (typeof VALID_MEMORY_VALUES)[number])) {
     return {
       valid: false,
-      error: `Field 'memory' must be one of: ${VALID_MEMORY_VALUES.join(', ')}. Got "${value}".`,
+      error: `Field 'memory' must be one of: ${VALID_MEMORY_VALUES.join(', ')}. Got "${truncateForDisplay(value)}".`,
     };
   }
 

@@ -23,6 +23,27 @@ import { CheckName } from '../types/validation';
 /* eslint-disable no-redeclare */
 
 /**
+ * Categorize a warning message into a machine-readable code.
+ *
+ * Warnings originate from three sources in the validation pipeline:
+ * - File size analysis: "Content size exceeds..."
+ * - Model validation: "Unknown model '...' in model field..."
+ * - Hooks validation: "Unknown hook key..."
+ */
+function categorizeWarningCode(message: string): string {
+  if (message.includes('Unknown model')) {
+    return 'UNKNOWN_MODEL';
+  }
+  if (message.includes('Unknown hook key')) {
+    return 'UNKNOWN_HOOK_KEY';
+  }
+  if (message.includes('lines') || message.includes('tokens')) {
+    return 'FILE_SIZE_WARNING';
+  }
+  return 'VALIDATION_WARNING';
+}
+
+/**
  * Map of check names to machine-readable error codes.
  */
 const CHECK_TO_CODE: Record<CheckName, string> = {
@@ -81,7 +102,7 @@ function transformToSimpleResult(
   if (internalResult.warnings) {
     for (const warningMessage of internalResult.warnings) {
       warnings.push({
-        code: 'FILE_SIZE_WARNING',
+        code: categorizeWarningCode(warningMessage),
         message: warningMessage,
         path: skillPath,
       });

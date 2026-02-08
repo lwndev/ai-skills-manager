@@ -339,7 +339,7 @@ Content.
       expect(result.warnings?.some((w) => w.includes('Unknown model'))).toBe(true);
     });
 
-    it('propagates model warning through public API', async () => {
+    it('propagates model warning through public API with correct warning code', async () => {
       const skillPath = await createSkill(`---
 name: api-model-warn
 description: Model warning through API
@@ -356,6 +356,7 @@ Content.
       expect(result.valid).toBe(true);
       expect(result.warnings.length).toBeGreaterThan(0);
       expect(result.warnings.some((w) => w.message.includes('future-gpt'))).toBe(true);
+      expect(result.warnings.some((w) => w.code === 'UNKNOWN_MODEL')).toBe(true);
     });
 
     it('propagates model warning through detailed API', async () => {
@@ -697,6 +698,24 @@ Content.
 
       expect(result.valid).toBe(false);
       expect(result.checks.modelFormat.passed).toBe(false);
+    });
+
+    it('fails for version as YAML number (edge case #22)', async () => {
+      // YAML parses `version: 1.0` as a float, not a string
+      const skillPath = await createSkill(`---
+name: numeric-version-skill
+description: Skill with numeric version
+version: 1.0
+---
+
+Content.
+`);
+
+      const result = await validateSkill(skillPath);
+
+      expect(result.valid).toBe(false);
+      expect(result.checks.versionFormat.passed).toBe(false);
+      expect(result.checks.versionFormat.error).toContain('must be a non-empty string');
     });
 
     it('fails for argument-hint exceeding 200 characters', async () => {

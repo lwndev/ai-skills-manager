@@ -36,7 +36,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions('true');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "string".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -44,7 +44,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions('false');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "string".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -52,7 +52,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions(1);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "number".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -60,7 +60,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions(0);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "number".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -68,7 +68,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions([true]);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "object".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "object".'
       );
     });
 
@@ -76,7 +76,7 @@ describe('validateKeepCodingInstructions', () => {
       const result = validateKeepCodingInstructions({ value: true });
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'keep-coding-instructions\' must be a boolean (true or false), got "object".'
+        'Field \'keep-coding-instructions\' must be a boolean (true or false). Got type "object".'
       );
     });
   });

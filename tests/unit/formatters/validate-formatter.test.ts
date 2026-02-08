@@ -353,6 +353,19 @@ describe('validate formatters', () => {
       expect(parsed.checks).toHaveProperty('agentFormat');
       expect(parsed.checks).toHaveProperty('hooksFormat');
       expect(parsed.checks).toHaveProperty('userInvocableFormat');
+      // FEAT-014 checks
+      expect(parsed.checks).toHaveProperty('memoryFormat');
+      expect(parsed.checks).toHaveProperty('skillsFormat');
+      expect(parsed.checks).toHaveProperty('modelFormat');
+      expect(parsed.checks).toHaveProperty('permissionModeFormat');
+      expect(parsed.checks).toHaveProperty('disallowedToolsFormat');
+      expect(parsed.checks).toHaveProperty('argumentHintFormat');
+      expect(parsed.checks).toHaveProperty('keepCodingInstructionsFormat');
+      expect(parsed.checks).toHaveProperty('toolsFormat');
+      expect(parsed.checks).toHaveProperty('colorFormat');
+      expect(parsed.checks).toHaveProperty('disableModelInvocationFormat');
+      expect(parsed.checks).toHaveProperty('versionFormat');
+      expect(parsed.checks).toHaveProperty('allowedToolsFormat');
     });
   });
 

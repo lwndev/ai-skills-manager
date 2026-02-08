@@ -33,14 +33,21 @@ export function validateSkills(value: unknown): ValidationResult {
     return { valid: true };
   }
 
-  // Accept array of strings
+  // Accept array of strings with per-entry validation
   if (Array.isArray(value)) {
-    const nonStrings = value.filter((item) => typeof item !== 'string');
-    if (nonStrings.length > 0) {
+    if (value.some((item) => typeof item !== 'string')) {
       return {
         valid: false,
         error: `Field 'skills' array must contain only strings. Found non-string entries.`,
       };
+    }
+    for (let i = 0; i < value.length; i++) {
+      if (typeof value[i] === 'string' && (value[i] as string).trim() === '') {
+        return {
+          valid: false,
+          error: `Field 'skills' array contains an empty string at index ${i}. Each entry must be a non-empty skill name.`,
+        };
+      }
     }
     return { valid: true };
   }

@@ -24,7 +24,7 @@ export function validateDisableModelInvocation(value: unknown): ValidationResult
   if (typeof value !== 'boolean') {
     return {
       valid: false,
-      error: `Field 'disable-model-invocation' must be a boolean (true or false), got "${typeof value}".`,
+      error: `Field 'disable-model-invocation' must be a boolean (true or false). Got type "${typeof value}".`,
     };
   }
 

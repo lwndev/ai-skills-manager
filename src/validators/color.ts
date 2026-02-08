@@ -6,7 +6,7 @@
  * - Must be one of: "blue", "cyan", "green", "yellow", "magenta", "red"
  */
 
-import { ValidationResult } from './name';
+import { ValidationResult, truncateForDisplay } from './name';
 
 const VALID_COLORS = ['blue', 'cyan', 'green', 'yellow', 'magenta', 'red'] as const;
 
@@ -34,7 +34,7 @@ export function validateColor(value: unknown): ValidationResult {
   if (!VALID_COLORS.includes(value as (typeof VALID_COLORS)[number])) {
     return {
       valid: false,
-      error: `Field 'color' must be one of: ${VALID_COLORS.join(', ')}. Got "${value}".`,
+      error: `Field 'color' must be one of: ${VALID_COLORS.join(', ')}. Got "${truncateForDisplay(value)}".`,
     };
   }
 

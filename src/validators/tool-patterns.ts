@@ -43,14 +43,21 @@ export function validateToolList(fieldName: string, value: unknown): ValidationR
     return { valid: true };
   }
 
-  // Accept array of strings
+  // Accept array of strings with per-entry validation
   if (Array.isArray(value)) {
-    const nonStrings = value.filter((item) => typeof item !== 'string');
-    if (nonStrings.length > 0) {
+    if (value.some((item) => typeof item !== 'string')) {
       return {
         valid: false,
         error: `Field '${fieldName}' array must contain only strings. Found non-string entries.`,
       };
+    }
+    for (let i = 0; i < value.length; i++) {
+      if (!validateToolEntry(value[i] as string)) {
+        return {
+          valid: false,
+          error: `Field '${fieldName}' array contains an empty string at index ${i}. Each entry must be a non-empty tool permission pattern.`,
+        };
+      }
     }
     return { valid: true };
   }

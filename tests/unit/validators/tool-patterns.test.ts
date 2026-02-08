@@ -121,6 +121,18 @@ describe('validateToolList', () => {
       );
     });
 
+    it('returns invalid for array containing empty strings', () => {
+      const result = validateToolList(fieldName, ['Read', '', 'Write']);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('empty string at index 1');
+    });
+
+    it('returns invalid for array containing whitespace-only strings', () => {
+      const result = validateToolList(fieldName, ['Read', '   ']);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('empty string at index 1');
+    });
+
     it('returns invalid for array containing non-strings', () => {
       const result = validateToolList(fieldName, ['Read', 123]);
       expect(result.valid).toBe(false);

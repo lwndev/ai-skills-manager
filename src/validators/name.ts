@@ -12,6 +12,15 @@ export interface ValidationResult {
   error?: string;
 }
 
+/**
+ * Truncate a value for display in error messages.
+ * Prevents extremely long user-provided values from bloating error output.
+ */
+export function truncateForDisplay(value: string, maxLength = 50): string {
+  if (value.length <= maxLength) return value;
+  return value.slice(0, maxLength) + '…';
+}
+
 const NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_LENGTH = 64;
 const RESERVED_WORDS = ['anthropic', 'claude'];
@@ -40,7 +49,7 @@ export function validateName(name: string): ValidationResult {
       error:
         'Skill name must contain only lowercase letters, numbers, and hyphens. ' +
         'Cannot start or end with a hyphen, or have consecutive hyphens. ' +
-        `Example: "my-skill-name" (got "${name}")`,
+        `Example: "my-skill-name" (got "${truncateForDisplay(name)}")`,
     };
   }
 

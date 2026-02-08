@@ -110,10 +110,16 @@ describe('validateSkills', () => {
   });
 
   describe('edge cases', () => {
-    it('returns valid for array containing empty strings', () => {
-      // Empty strings within arrays are allowed — only non-string types are rejected
+    it('returns invalid for array containing empty strings', () => {
       const result = validateSkills(['']);
-      expect(result.valid).toBe(true);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('empty string at index 0');
+    });
+
+    it('returns invalid for array with empty string among valid entries', () => {
+      const result = validateSkills(['helper-a', '', 'helper-b']);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('empty string at index 1');
     });
 
     it('returns valid for string with special characters', () => {

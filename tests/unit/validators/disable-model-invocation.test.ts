@@ -36,7 +36,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation('true');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "string".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -44,7 +44,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation('false');
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "string".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "string".'
       );
     });
 
@@ -52,7 +52,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation(1);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "number".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -60,7 +60,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation(0);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "number".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "number".'
       );
     });
 
@@ -68,7 +68,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation([true]);
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "object".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "object".'
       );
     });
 
@@ -76,7 +76,7 @@ describe('validateDisableModelInvocation', () => {
       const result = validateDisableModelInvocation({ value: true });
       expect(result.valid).toBe(false);
       expect(result.error).toBe(
-        'Field \'disable-model-invocation\' must be a boolean (true or false), got "object".'
+        'Field \'disable-model-invocation\' must be a boolean (true or false). Got type "object".'
       );
     });
   });

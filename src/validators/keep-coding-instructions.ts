@@ -24,7 +24,7 @@ export function validateKeepCodingInstructions(value: unknown): ValidationResult
   if (typeof value !== 'boolean') {
     return {
       valid: false,
-      error: `Field 'keep-coding-instructions' must be a boolean (true or false), got "${typeof value}".`,
+      error: `Field 'keep-coding-instructions' must be a boolean (true or false). Got type "${typeof value}".`,
     };
   }
 
