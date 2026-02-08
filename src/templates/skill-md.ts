@@ -87,8 +87,9 @@ function getDefaultAllowedTools(templateType: TemplateType): string[] | undefine
 
 /**
  * Generate YAML for the hooks section of frontmatter.
- * Produces properly indented YAML with PreToolUse and PostToolUse examples,
- * plus commented Stop example.
+ * Produces properly indented YAML with PreToolUse and PostToolUse examples.
+ * When minimal is false/undefined, includes a commented Stop example.
+ * When minimal is true, omits the Stop example and uses TODO placeholder commands.
  *
  * Note: Skills only support PreToolUse, PostToolUse, and Stop hooks.
  * The format follows Claude Code's nested structure with matcher and hooks array.
@@ -104,20 +105,17 @@ function generateHooksYaml(minimal?: boolean): string {
   lines.push('      hooks:');
   lines.push('        - type: command');
 
-  if (minimal) {
-    lines.push('          command: "echo \'TODO: pre-tool hook\'"');
-    lines.push('  PostToolUse:');
-    lines.push('    - matcher: "*"');
-    lines.push('      hooks:');
-    lines.push('        - type: command');
-    lines.push('          command: "echo \'TODO: post-tool hook\'"');
-  } else {
-    lines.push('          command: echo "Starting tool execution..."');
-    lines.push('  PostToolUse:');
-    lines.push('    - matcher: "*"');
-    lines.push('      hooks:');
-    lines.push('        - type: command');
-    lines.push('          command: echo "Tool execution complete"');
+  const preCmd = minimal ? `"echo 'TODO: pre-tool hook'"` : 'echo "Starting tool execution..."';
+  const postCmd = minimal ? `"echo 'TODO: post-tool hook'"` : 'echo "Tool execution complete"';
+
+  lines.push(`          command: ${preCmd}`);
+  lines.push('  PostToolUse:');
+  lines.push('    - matcher: "*"');
+  lines.push('      hooks:');
+  lines.push('        - type: command');
+  lines.push(`          command: ${postCmd}`);
+
+  if (!minimal) {
     lines.push('  # Stop:');
     lines.push('  #   - hooks:');
     lines.push('  #       - type: command');
