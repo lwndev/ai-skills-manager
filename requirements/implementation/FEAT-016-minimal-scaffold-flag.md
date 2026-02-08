@@ -10,7 +10,7 @@ The implementation is split into 3 phases: types and template generation (core l
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-016   | [#44](https://github.com/lwndev/ai-skills-manager/issues/44) | [FEAT-016-minimal-scaffold-flag.md](../features/FEAT-016-minimal-scaffold-flag.md) | Medium | Low | Pending |
+| FEAT-016   | [#44](https://github.com/lwndev/ai-skills-manager/issues/44) | [FEAT-016-minimal-scaffold-flag.md](../features/FEAT-016-minimal-scaffold-flag.md) | Medium | Low | ✅ Complete |
 
 ## Recommended Build Sequence
 
@@ -194,23 +194,23 @@ This feature requires no new packages. All changes are internal to existing modu
 ## Success Criteria
 
 ### Per-Phase Criteria
-- [ ] Phase 1: `generateSkillMd({ name: 'test' }, { minimal: true })` produces correct minimal output for all 4 template types
-- [ ] Phase 2: `asm scaffold my-skill --minimal` works end-to-end with all flag combinations
-- [ ] Phase 3: All tests pass, `npm run quality` green
+- [x] Phase 1: `generateSkillMd({ name: 'test' }, { minimal: true })` produces correct minimal output for all 4 template types
+- [x] Phase 2: `asm scaffold my-skill --minimal` works end-to-end with all flag combinations
+- [x] Phase 3: All tests pass, `npm run quality` green
 
 ### Overall Success (from Requirements)
-- [ ] `--minimal` flag is accepted by `asm scaffold`
-- [ ] Minimal templates contain valid SKILL.md structure with required frontmatter
-- [ ] Minimal templates pass `asm validate`
-- [ ] Minimal basic template omits HTML comment guidance block
-- [ ] Minimal forked template omits forked context guidance while keeping `context: fork`
-- [ ] Minimal hooks template omits hook documentation while keeping hook configuration
-- [ ] Minimal internal template omits internal skill guidance while keeping `user-invocable: false`
-- [ ] `--minimal` works in combination with all other flags
-- [ ] Default behavior (no `--minimal`) is unchanged
-- [ ] Help text documents the `--minimal` flag
-- [ ] Unit tests cover minimal output for all template types
-- [ ] Integration tests validate minimal skills pass `asm validate`
+- [x] `--minimal` flag is accepted by `asm scaffold`
+- [x] Minimal templates contain valid SKILL.md structure with required frontmatter
+- [x] Minimal templates pass `asm validate`
+- [x] Minimal basic template omits HTML comment guidance block
+- [x] Minimal forked template omits forked context guidance while keeping `context: fork`
+- [x] Minimal hooks template omits hook documentation while keeping hook configuration
+- [x] Minimal internal template omits internal skill guidance while keeping `user-invocable: false`
+- [x] `--minimal` works in combination with all other flags
+- [x] Default behavior (no `--minimal`) is unchanged
+- [x] Help text documents the `--minimal` flag
+- [x] Unit tests cover minimal output for all template types
+- [x] Integration tests validate minimal skills pass `asm validate`
 
 ---
 

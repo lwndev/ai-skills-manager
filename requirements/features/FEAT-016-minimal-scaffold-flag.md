@@ -311,15 +311,15 @@ Note: Minimal mode uses a shorter "Next steps" section (2 steps vs. the standard
 
 ## Acceptance Criteria
 
-- [ ] `--minimal` flag is accepted by `asm scaffold`
-- [ ] Minimal templates contain valid SKILL.md structure with required frontmatter
-- [ ] Minimal templates pass `asm validate`
-- [ ] Minimal basic template omits HTML comment guidance block
-- [ ] Minimal forked template omits forked context guidance while keeping `context: fork`
-- [ ] Minimal hooks template omits hook documentation while keeping hook configuration
-- [ ] Minimal internal template omits internal skill guidance while keeping `user-invocable: false`
-- [ ] `--minimal` works in combination with all other flags (`--template`, `--context`, `--agent`, `--hooks`, `--no-user-invocable`, `--allowed-tools`, `--personal`, `--project`, `--force`, `--output`, `--description`)
-- [ ] Default behavior (no `--minimal`) is unchanged
-- [ ] Help text documents the `--minimal` flag
-- [ ] Unit tests cover minimal output for all template types
-- [ ] Integration tests validate minimal skills pass `asm validate`
+- [x] `--minimal` flag is accepted by `asm scaffold`
+- [x] Minimal templates contain valid SKILL.md structure with required frontmatter
+- [x] Minimal templates pass `asm validate`
+- [x] Minimal basic template omits HTML comment guidance block
+- [x] Minimal forked template omits forked context guidance while keeping `context: fork`
+- [x] Minimal hooks template omits hook documentation while keeping hook configuration
+- [x] Minimal internal template omits internal skill guidance while keeping `user-invocable: false`
+- [x] `--minimal` works in combination with all other flags (`--template`, `--context`, `--agent`, `--hooks`, `--no-user-invocable`, `--allowed-tools`, `--personal`, `--project`, `--force`, `--output`, `--description`)
+- [x] Default behavior (no `--minimal`) is unchanged
+- [x] Help text documents the `--minimal` flag
+- [x] Unit tests cover minimal output for all template types
+- [x] Integration tests validate minimal skills pass `asm validate`
