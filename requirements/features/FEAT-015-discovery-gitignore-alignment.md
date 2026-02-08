@@ -153,13 +153,13 @@ Project skills (generated/.claude/skills/):
 
 ## Acceptance Criteria
 
-- [ ] `asm list --recursive` does NOT read `.gitignore` files
-- [ ] `.claude/skills` in `.gitignore`'d directories are discovered
-- [ ] `node_modules` and `.git` directories are still skipped
-- [ ] `dist`, `build`, `vendor` directories are scanned
-- [ ] `--depth` limiting still works correctly
-- [ ] Non-recursive `asm list` behavior is unchanged
-- [ ] Performance within 5 seconds for typical monorepos
-- [ ] Existing FEAT-012 tests updated for new behavior
-- [ ] New tests verify `.gitignore` is not applied
-- [ ] `npm run quality` passes
+- [x] `asm list --recursive` does NOT read `.gitignore` files
+- [x] `.claude/skills` in `.gitignore`'d directories are discovered
+- [x] `node_modules` and `.git` directories are still skipped
+- [x] `dist`, `build`, `vendor` directories are scanned
+- [x] `--depth` limiting still works correctly
+- [x] Non-recursive `asm list` behavior is unchanged
+- [x] Performance within 5 seconds for typical monorepos
+- [x] Existing FEAT-012 tests updated for new behavior
+- [x] New tests verify `.gitignore` is not applied
+- [x] `npm run quality` passes

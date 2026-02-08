@@ -21,7 +21,6 @@ import { FileSystemError } from '../errors';
 import { hasErrorCode } from '../utils/error-helpers';
 import { getProjectSkillsDir, getPersonalSkillsDir } from '../utils/scope-resolver';
 import { parseFrontmatter } from '../utils/frontmatter-parser';
-import { loadGitignore } from '../utils/gitignore-parser';
 import { collectNestedSkillDirectories } from '../utils/nested-discovery';
 
 /**
@@ -280,13 +279,8 @@ async function listProjectSkillsRecursively(
 ): Promise<RecursiveListResult> {
   const allSkills: InstalledSkill[] = [];
 
-  // Load gitignore patterns for filtering
-  const ignore = await loadGitignore(projectRoot);
-
   // Find all nested skill directories with depth limit tracking
-  const discoveryResult = await collectNestedSkillDirectories(projectRoot, maxDepth, {
-    ignore: ignore ?? undefined,
-  });
+  const discoveryResult = await collectNestedSkillDirectories(projectRoot, maxDepth);
 
   // Process each discovered skills directory
   for (const skillsDir of discoveryResult.directories) {
