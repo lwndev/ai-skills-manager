@@ -105,6 +105,9 @@ function generateHooksYaml(minimal?: boolean): string {
   lines.push('      hooks:');
   lines.push('        - type: command');
 
+  // Minimal commands use outer YAML double quotes because the inner single quotes
+  // would otherwise be parsed as YAML flow syntax. Verbose commands are unquoted
+  // because their inner double quotes are valid in unquoted YAML scalars.
   const preCmd = minimal ? `"echo 'TODO: pre-tool hook'"` : 'echo "Starting tool execution..."';
   const postCmd = minimal ? `"echo 'TODO: post-tool hook'"` : 'echo "Tool execution complete"';
 
