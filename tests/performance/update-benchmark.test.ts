@@ -155,16 +155,21 @@ This is a generated skill for performance testing.
   }
 
   describe('Progress Indicator Threshold', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
     it('should use 2-second default threshold', () => {
-      expect(shouldShowProgress(Date.now())).toBe(false);
-      expect(shouldShowProgress(Date.now() - 1999)).toBe(false);
-      expect(shouldShowProgress(Date.now() - 2000)).toBe(true);
-      expect(shouldShowProgress(Date.now() - 3000)).toBe(true);
+      const now = Date.now();
+      expect(shouldShowProgress(now)).toBe(false);
+      expect(shouldShowProgress(now - 1999)).toBe(false);
+      expect(shouldShowProgress(now - 2000)).toBe(true);
+      expect(shouldShowProgress(now - 3000)).toBe(true);
     });
 
     it('should allow custom threshold', () => {
-      expect(shouldShowProgress(Date.now() - 500, 1000)).toBe(false);
-      expect(shouldShowProgress(Date.now() - 1500, 1000)).toBe(true);
+      const now = Date.now();
+      expect(shouldShowProgress(now - 500, 1000)).toBe(false);
+      expect(shouldShowProgress(now - 1500, 1000)).toBe(true);
     });
   });
 
