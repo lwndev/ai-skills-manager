@@ -69,6 +69,60 @@ asm scaffold my-skill --allowed-tools "Read,Write,Bash"
 asm scaffold my-skill --force
 ```
 
+#### Template Options
+
+Choose a template variant to generate skill-specific frontmatter and guidance:
+
+```bash
+# Default template with general guidance
+asm scaffold my-skill --template basic
+
+# Isolated context with read-only tools
+asm scaffold my-skill --template forked
+
+# Includes hook configuration examples
+asm scaffold my-skill --template with-hooks
+
+# Non-user-invocable helper skill
+asm scaffold my-skill --template internal
+
+# Autonomous agent with model, memory, and tool config
+asm scaffold my-skill --template agent
+```
+
+Individual frontmatter flags can be combined with any template:
+
+```bash
+# Set context, agent, and hooks independently
+asm scaffold my-skill --context fork --hooks
+asm scaffold my-skill --agent Explore --no-user-invocable
+
+# Agent-specific fields work with any template
+asm scaffold code-reviewer --template agent --memory project --model sonnet
+asm scaffold search-helper --template forked --argument-hint "<query> [--deep]"
+```
+
+#### Minimal Mode
+
+Generate shorter templates without educational guidance text:
+
+```bash
+asm scaffold my-skill --minimal
+asm scaffold my-skill --template agent --minimal
+```
+
+#### Interactive Mode
+
+Launch a guided prompt-driven workflow that walks through template selection and configuration step by step:
+
+```bash
+asm scaffold my-skill --interactive
+asm scaffold my-skill -i
+asm scaffold my-skill --interactive --project
+```
+
+Interactive mode requires a TTY (interactive terminal). Template-content flags (`--template`, `--context`, etc.) are ignored when `--interactive` is set. Output-location flags (`--output`, `--project`, `--personal`, `--force`) are still respected.
+
 #### Scaffold Options
 
 | Option | Description |
@@ -79,6 +133,26 @@ asm scaffold my-skill --force
 | `--personal` | Create as a personal skill in `~/.claude/skills/` |
 | `-a, --allowed-tools <tools>` | Comma-separated list of allowed tools |
 | `-f, --force` | Overwrite existing directory without prompting |
+| `-t, --template <type>` | Template variant: `basic`, `forked`, `with-hooks`, `internal`, `agent` |
+| `--context <context>` | Set context in frontmatter (`fork`) |
+| `--agent <name>` | Set agent field in frontmatter |
+| `--no-user-invocable` | Set `user-invocable: false` in frontmatter |
+| `--hooks` | Include commented hook examples in frontmatter |
+| `--minimal` | Generate shorter templates without educational guidance text |
+| `--memory <scope>` | Set memory scope (`user`, `project`, `local`) |
+| `--model <name>` | Set model for agent execution (e.g., `sonnet`, `opus`, `haiku`) |
+| `--argument-hint <hint>` | Set argument hint for skill invocation (max 100 chars) |
+| `-i, --interactive` | Launch guided prompt-driven scaffold workflow |
+
+#### Template Types
+
+| Template | Description |
+|----------|-------------|
+| `basic` | Default template with general guidance |
+| `forked` | For skills running in isolated (forked) context |
+| `with-hooks` | Template demonstrating hook configuration |
+| `internal` | For non-user-invocable helper skills |
+| `agent` | For autonomous agent skills with model, memory, and tool config |
 
 #### Skill Name Requirements
 
@@ -136,11 +210,24 @@ The validate command performs these checks in order:
 5. **Name format** - Validates hyphen-case format, max 64 characters
 6. **Description format** - Validates no angle brackets, max 1024 characters
 7. **Compatibility format** - Validates optional compatibility field (max 500 characters)
-8. **Context format** - Validates optional context field (must be "fork" if present)
+8. **Context format** - Validates optional context field (must be `"fork"` if present)
 9. **Agent format** - Validates optional agent field (must be non-empty string if present)
 10. **Hooks format** - Validates optional hooks object structure; unknown hook keys produce warnings
 11. **User-invocable format** - Validates optional user-invocable field (must be boolean if present)
-12. **Name matches directory** - Validates frontmatter name matches parent directory name
+12. **Memory format** - Validates optional memory field (`"user"`, `"project"`, or `"local"`)
+13. **Skills format** - Validates optional skills field (string or string array)
+14. **Model format** - Validates optional model field (warns on unknown values)
+15. **Permission mode format** - Validates optional permissionMode field (non-empty string)
+16. **Disallowed tools format** - Validates optional disallowedTools field (string or string array)
+17. **Argument hint format** - Validates optional argument-hint field (max 200 characters)
+18. **Keep-coding-instructions format** - Validates optional keep-coding-instructions field (boolean)
+19. **Tools format** - Validates optional tools field (string or string array)
+20. **Color format** - Validates optional color field (`blue`, `cyan`, `green`, `yellow`, `magenta`, `red`)
+21. **Disable-model-invocation format** - Validates optional disable-model-invocation field (boolean)
+22. **Version format** - Validates optional version field (non-empty string)
+23. **Allowed tools format** - Validates optional allowed-tools field (supports `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}` patterns)
+24. **Name matches directory** - Validates frontmatter name matches parent directory name
+25. **File size** - Warns when skill body exceeds recommended size budget
 
 #### Exit Codes
 
@@ -187,12 +274,110 @@ PASS
     "agentFormat": { "passed": true },
     "hooksFormat": { "passed": true },
     "userInvocableFormat": { "passed": true },
-    "nameMatchesDirectory": { "passed": true }
+    "memoryFormat": { "passed": true },
+    "skillsFormat": { "passed": true },
+    "modelFormat": { "passed": true },
+    "permissionModeFormat": { "passed": true },
+    "disallowedToolsFormat": { "passed": true },
+    "argumentHintFormat": { "passed": true },
+    "keepCodingInstructionsFormat": { "passed": true },
+    "toolsFormat": { "passed": true },
+    "colorFormat": { "passed": true },
+    "disableModelInvocationFormat": { "passed": true },
+    "versionFormat": { "passed": true },
+    "allowedToolsFormat": { "passed": true },
+    "nameMatchesDirectory": { "passed": true },
+    "fileSize": { "passed": true }
   },
   "errors": [],
   "warnings": []
 }
 ```
+
+### List Installed Skills
+
+Use the `list` command (alias `ls`) to view installed Claude Code skills:
+
+```bash
+# List all installed skills (project + personal)
+asm list
+
+# List only project skills
+asm list --scope project
+
+# List only personal skills
+asm list --scope personal
+
+# JSON output (for programmatic use)
+asm list --json
+
+# Quiet mode - one name per line
+asm list --quiet
+
+# Shorthand alias
+asm ls
+```
+
+#### Recursive Discovery
+
+Discover skills in nested `.claude/skills` directories (useful for monorepos and workspaces):
+
+```bash
+# Scan nested directories for skills
+asm list --recursive
+
+# Limit search depth (default: 3)
+asm list --recursive --depth 2
+
+# Recursive with JSON output
+asm list --recursive --json
+```
+
+#### List Options
+
+| Option | Description |
+|--------|-------------|
+| `-s, --scope <scope>` | Scope filter: `all` (default), `project`, or `personal` |
+| `-j, --json` | Output as JSON |
+| `-q, --quiet` | Quiet mode - show only skill names |
+| `-r, --recursive` | Discover skills in nested `.claude/skills` directories |
+| `-d, --depth <number>` | Maximum depth for recursive discovery (0-10, default: 3) |
+
+#### Output Formats
+
+**Normal output (default):**
+```
+Project skills (.claude/skills/):
+  my-skill        A helpful skill for code reviews
+  git-workflow    Manages git operations with validation
+
+Personal skills (~/.claude/skills/):
+  code-reviewer   Reviews code and suggests improvements
+```
+
+**JSON output:**
+```json
+[
+  {
+    "name": "my-skill",
+    "scope": "project",
+    "path": ".claude/skills/my-skill",
+    "description": "A helpful skill for code reviews"
+  }
+]
+```
+
+**Quiet output:**
+```
+my-skill
+git-workflow
+code-reviewer
+```
+
+#### Exit Codes
+
+- `0` - Success (even if no skills found)
+- `1` - File system error (permission denied, etc.)
 
 ### Package a Skill
 
@@ -611,6 +796,17 @@ const result = await scaffold({
   output: './custom/path',    // Optional: custom output directory
   allowedTools: ['Bash'],     // Optional: allowed tools list
   force: false,               // Optional: overwrite existing
+  template: {                 // Optional: template configuration
+    templateType: 'agent',    //   'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent'
+    context: 'fork',          //   Optional: set context field
+    agent: 'Explore',         //   Optional: set agent field
+    userInvocable: false,     //   Optional: set user-invocable field
+    includeHooks: true,       //   Optional: include hook examples
+    minimal: false,           //   Optional: shorter templates without guidance
+    memory: 'project',        //   Optional: 'user' | 'project' | 'local'
+    model: 'sonnet',          //   Optional: model for agent execution
+    argumentHint: '<query>',  //   Optional: argument hint (max 100 chars)
+  },
 });
 
 // Result: { path: string, files: string[] }
@@ -710,19 +906,26 @@ Lists installed skills.
 
 ```typescript
 // List all skills
-const allSkills = await list();
+const { skills } = await list();
 
 // List only project skills
-const projectSkills = await list({ scope: 'project' });
+const { skills: projectSkills } = await list({ scope: 'project' });
 
 // List only personal skills
-const personalSkills = await list({ scope: 'personal' });
+const { skills: personalSkills } = await list({ scope: 'personal' });
 
 // List skills in custom directory
-const customSkills = await list({ targetPath: '/custom/path' });
+const { skills: customSkills } = await list({ targetPath: '/custom/path' });
 
-// Result: InstalledSkill[]
-// Each skill: { name: string, path: string, scope: string, version?: string, description?: string }
+// Recursive discovery for monorepos
+const result = await list({ recursive: true, depth: 2 });
+if (result.depthLimitReached) {
+  console.log('Some directories were not scanned');
+}
+
+// Result: ListResult
+// { skills: InstalledSkill[], depthLimitReached?: boolean }
+// Each skill: { name: string, path: string, scope: string, version?: string, description?: string, location?: string }
 ```
 
 ### Error Handling
@@ -802,6 +1005,7 @@ import type {
   UpdateOptions,
   UninstallOptions,
   ListOptions,
+  RecursiveListOptions,
 
   // Result types
   ScaffoldResult,
@@ -811,9 +1015,11 @@ import type {
   UpdateResult,
   UninstallResult,
   InstalledSkill,
+  ListResult,
 
   // Common types
   ApiScope,
+  ApiListScope,
   ValidationIssue,
   ValidationWarning,
 } from 'ai-skills-manager';
@@ -928,7 +1134,7 @@ Make sure the path points to a skill directory containing a SKILL.md file, or di
 Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
 
 **Error: Unknown frontmatter property**
-Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`. Remove any other keys.
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `memory`, `skills`, `model`, `permissionMode`, `disallowedTools`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.

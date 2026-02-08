@@ -5,7 +5,36 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.0] - 2026-02-08
+
+### Added
+
+- **Skill Template System** (FEAT-013): New `--template` flag for `asm scaffold` with five template variants: `basic` (default), `forked` (isolated context), `with-hooks` (hook configuration examples), `internal` (non-user-invocable helper), and `agent` (autonomous agent with model, memory, and tool config)
+- **Scaffold Frontmatter Flags** (FEAT-013): New flags `--context fork`, `--agent <name>`, `--no-user-invocable`, and `--hooks` for fine-grained control over generated SKILL.md frontmatter
+- **Agent Template Type** (FEAT-017): New `agent` template variant and scaffold flags `--memory <scope>`, `--model <name>`, and `--argument-hint <hint>` for creating custom Claude Code agent skills
+- **Minimal Scaffold Mode** (FEAT-016): New `--minimal` flag generates shorter, production-ready templates without educational guidance text
+- **Interactive Scaffold Mode** (FEAT-019): New `--interactive` / `-i` flag launches a guided prompt-driven workflow for template selection and configuration
+- **Frontmatter Schema v2** (FEAT-014): 11 new field validators for Claude Code v2.0.30–v2.1.33 fields: `memory`, `skills`, `model`, `permissionMode`, `disallowedTools`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`
+- **Advanced Allowed-Tools Patterns** (FEAT-014): Validation now accepts `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}`, and `Bash(git:*)` colon syntax in allowed-tools
+- **Nested Skill Discovery** (FEAT-012): New `asm list --recursive` flag discovers skills in nested `.claude/skills` directories for monorepos and workspaces
+- **Recursive Depth Control** (FEAT-012): New `--depth <0-10>` flag limits recursive discovery traversal depth (default: 3)
+- **Depth Limit Warning** (CHORE-008): `asm list --recursive` now warns when max depth is reached and subdirectories remain unscanned
+- **Recursive JSON Metadata** (CHORE-009): `asm list --recursive --json` now returns a result object with `depthLimitReached` metadata instead of a raw array
+
+### Changed
+
+- **Frontmatter Validation** (FEAT-011): Added support for Claude Code 2.1.x frontmatter fields: `context`, `agent`, `hooks`, `user-invocable`
+- **Discovery Behavior** (FEAT-015): Recursive discovery no longer respects `.gitignore` patterns, aligning with Claude Code v2.0.28+ behavior; hardcoded skip list trimmed to only `.git` and `node_modules`
+- **YAML List Format** (#35): `allowed-tools` field now supports YAML-style list format in addition to comma-separated inline format
+- **Documentation & Plugin Awareness** (FEAT-018): Updated CLI help text, template guidance, and documentation to reflect Claude Code's skills/slash-commands unification, plugin system, auto-approval behavior, and skill size budget
+- **Template Guidance** (FEAT-017, FEAT-018): All templates updated with documentation for new frontmatter fields, permissions model, and plugin distribution
+
+### Fixed
+
+- **Flaky Performance Test** (CHORE-010): Replaced unreliable wall-clock timing comparison in depth-limiting test with behavioral assertion
+- **Test Stability**: Fixed flaky progress threshold test using fake timers; replaced non-null assertions with type-narrowing guards in tests
+
+## [1.6.0] - 2026-01-11
 
 ### Added
 
