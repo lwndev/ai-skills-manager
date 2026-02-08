@@ -43,7 +43,7 @@ This is a behavioral correction to FEAT-012's Phase 2 (Gitignore Support), which
 
 ### Phase 2: Remove Gitignore Parser and Dependency
 **Feature:** [FEAT-015](../features/FEAT-015-discovery-gitignore-alignment.md) | [#53](https://github.com/lwndev/ai-skills-manager/issues/53)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Dead code removal**: With gitignore integration removed in Phase 1, the `gitignore-parser.ts` utility and the `ignore` package are unused
@@ -60,10 +60,10 @@ This is a behavioral correction to FEAT-012's Phase 2 (Gitignore Support), which
    - `grep -r "from 'ignore'" src/` should return nothing
 
 #### Deliverables
-- [ ] Deleted `src/utils/gitignore-parser.ts`
-- [ ] Deleted `tests/unit/utils/gitignore-parser.test.ts`
-- [ ] Updated `package.json` — `ignore` dependency removed
-- [ ] Updated `package-lock.json` — lock file reflects removal
+- [x] Deleted `src/utils/gitignore-parser.ts`
+- [x] Deleted `tests/unit/utils/gitignore-parser.test.ts`
+- [x] Updated `package.json` — `ignore` dependency removed
+- [x] Updated `package-lock.json` — lock file reflects removal
 
 ---
 
