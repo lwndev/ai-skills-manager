@@ -4,6 +4,7 @@ import { validateDescription } from '../validators';
 import { AsmError, ValidationError, FileSystemError, SecurityError } from '../errors';
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
+import { isTTY, detectConflictingFlags, runInteractiveScaffold } from './scaffold-interactive';
 
 /** FEAT-018: Skills auto-load note for help text */
 export const SCAFFOLD_AUTOLOAD_NOTE =
@@ -39,6 +40,7 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--memory <scope>', 'Set memory scope (user, project, local)')
     .option('--model <name>', 'Set model for agent execution')
     .option('--argument-hint <hint>', 'Set argument hint for skill invocation')
+    .option('-i, --interactive', 'Launch guided prompt-driven scaffold workflow')
     .addHelpText(
       'after',
       `
@@ -51,6 +53,11 @@ Examples:
   $ asm scaffold my-skill --allowed-tools "Read,Write,Bash"
   $ asm scaffold my-skill --force
   $ asm scaffold my-skill --minimal
+
+Interactive mode:
+  $ asm scaffold my-skill -i
+  $ asm scaffold my-skill --interactive
+  $ asm scaffold my-skill --interactive --project
 
 Template options:
   $ asm scaffold my-skill --template forked
@@ -86,6 +93,14 @@ Minimal mode:
   --minimal   Generate shorter templates without educational guidance text.
               Works with all template types.
 
+Interactive mode:
+  -i, --interactive  Launch a guided prompt-driven workflow that walks through
+                     template selection and configuration step by step.
+                     Requires a TTY (interactive terminal).
+                     Template-content flags are ignored when --interactive is set.
+                     Output-location flags (--output, --project, --personal, --force)
+                     are still respected.
+
 Flags can be combined with templates. Explicit flags override template defaults.`
     )
     .action(async (name: string, options: CliScaffoldOptions) => {
@@ -98,7 +113,7 @@ Flags can be combined with templates. Explicit flags override template defaults.
     });
 }
 
-interface CliScaffoldOptions {
+export interface CliScaffoldOptions {
   description?: string;
   output?: string;
   project?: boolean;
@@ -114,6 +129,7 @@ interface CliScaffoldOptions {
   memory?: string;
   model?: string;
   argumentHint?: string;
+  interactive?: boolean;
 }
 
 /**
@@ -280,6 +296,24 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
 }
 
 async function handleScaffold(name: string, options: CliScaffoldOptions): Promise<void> {
+  // Interactive mode branch
+  if (options.interactive) {
+    if (!isTTY()) {
+      output.displayError(
+        'Error: --interactive requires a TTY. Use explicit flags for non-interactive environments.'
+      );
+      process.exit(1);
+    }
+
+    const conflictingFlags = detectConflictingFlags(options);
+    if (conflictingFlags.length > 0) {
+      output.displayWarning('Interactive mode enabled — template flags will be ignored.');
+    }
+
+    await runInteractiveScaffold(name, options);
+    return;
+  }
+
   // Validate description if provided
   if (options.description) {
     const descValidation = validateDescription(options.description);

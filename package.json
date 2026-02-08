@@ -63,6 +63,7 @@
     "release:major": "npm version major"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.2.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
     "commander": "^14.0.2",
