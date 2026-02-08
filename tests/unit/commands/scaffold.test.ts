@@ -490,6 +490,122 @@ describe('scaffold CLI command', () => {
     });
   });
 
+  describe('--minimal option', () => {
+    it('generates minimal template when --minimal flag is passed', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'minimal-skill',
+        '--output',
+        tempDir,
+        '--minimal',
+      ]);
+
+      const skillMd = await fs.readFile(path.join(tempDir, 'minimal-skill', 'SKILL.md'), 'utf-8');
+      // Should have minimal structure
+      expect(skillMd).toContain('## Overview');
+      expect(skillMd).toContain('## Instructions');
+      expect(skillMd).toContain('## Examples');
+      // Should NOT have verbose guidance
+      expect(skillMd).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(skillMd).not.toContain('## Usage');
+      expect(skillMd).not.toContain('## Implementation Notes');
+    });
+
+    it('shows (minimal) in template type output', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'minimal-output-skill',
+        '--output',
+        tempDir,
+        '--minimal',
+      ]);
+
+      expect(consoleOutput.some((line) => line.includes('(minimal)'))).toBe(true);
+    });
+
+    it('shows minimal next steps (2 items only)', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'minimal-steps-skill',
+        '--output',
+        tempDir,
+        '--minimal',
+      ]);
+
+      expect(consoleOutput.some((line) => line.includes('asm validate'))).toBe(true);
+      // Should NOT have the verbose next steps
+      expect(consoleOutput.some((line) => line.includes('scripts/ directory'))).toBe(false);
+    });
+
+    it('combines --minimal with --template forked', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'minimal-forked',
+        '--output',
+        tempDir,
+        '--minimal',
+        '--template',
+        'forked',
+      ]);
+
+      const skillMd = await fs.readFile(path.join(tempDir, 'minimal-forked', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain('context: fork');
+      expect(skillMd).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(skillMd).not.toContain('FORKED CONTEXT SKILL');
+    });
+
+    it('combines --minimal with --context fork --agent --no-user-invocable --hooks', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'minimal-all-flags',
+        '--output',
+        tempDir,
+        '--minimal',
+        '--context',
+        'fork',
+        '--agent',
+        'Plan',
+        '--no-user-invocable',
+        '--hooks',
+      ]);
+
+      const skillMd = await fs.readFile(
+        path.join(tempDir, 'minimal-all-flags', 'SKILL.md'),
+        'utf-8'
+      );
+      expect(skillMd).toContain('context: fork');
+      expect(skillMd).toContain('agent: Plan');
+      expect(skillMd).toContain('user-invocable: false');
+      expect(skillMd).toContain('hooks:');
+      expect(skillMd).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('default behavior without --minimal produces verbose output', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync(['node', 'asm', 'scaffold', 'verbose-skill', '--output', tempDir]);
+
+      const skillMd = await fs.readFile(path.join(tempDir, 'verbose-skill', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(skillMd).toContain('## Usage');
+      expect(skillMd).toContain('## Implementation Notes');
+    });
+  });
+
   describe('backward compatibility', () => {
     it('produces same output when no template options are specified', async () => {
       const program = await createTestProgram();

@@ -746,6 +746,304 @@ describe('generateSkillMd', () => {
     });
   });
 
+  describe('minimal template generation', () => {
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    describe('basic minimal template', () => {
+      it('generates frontmatter + Overview + Instructions + Examples', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).toContain('---');
+        expect(result).toContain('name: test-skill');
+        expect(result).toContain('## Overview');
+        expect(result).toContain('## Instructions');
+        expect(result).toContain('## Examples');
+      });
+
+      it('does not include HTML comment guidance block', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+        expect(result).not.toContain('FRONTMATTER FIELDS');
+        expect(result).not.toContain('BEST PRACTICES');
+        expect(result).not.toContain('<!--');
+      });
+
+      it('does not include Usage or Implementation Notes sections', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).not.toContain('## Usage');
+        expect(result).not.toContain('## Implementation Notes');
+      });
+
+      it('does not include Example 1 subheading', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).not.toContain('### Example 1');
+      });
+
+      it('uses minimal description placeholder', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).toContain(
+          'description: "TODO: Describe what this skill does and when to use it."'
+        );
+      });
+
+      it('omits commented allowed-tools placeholder', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).not.toContain('# allowed-tools:');
+      });
+
+      it('includes basic overview TODO', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: true });
+
+        expect(result).toContain('TODO: Brief description of what this skill does.');
+      });
+    });
+
+    describe('forked minimal template', () => {
+      it('includes context: fork in frontmatter', () => {
+        const result = generateSkillMd(
+          { name: 'forked-skill' },
+          { templateType: 'forked', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('context: fork');
+      });
+
+      it('includes default read-only tools', () => {
+        const result = generateSkillMd(
+          { name: 'forked-skill' },
+          { templateType: 'forked', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('- Read');
+        expect(frontmatter).toContain('- Glob');
+        expect(frontmatter).toContain('- Grep');
+      });
+
+      it('overview mentions forked context', () => {
+        const result = generateSkillMd(
+          { name: 'forked-skill' },
+          { templateType: 'forked', minimal: true }
+        );
+
+        expect(result).toContain('This skill runs in a forked context.');
+      });
+
+      it('does not include forked context guidance', () => {
+        const result = generateSkillMd(
+          { name: 'forked-skill' },
+          { templateType: 'forked', minimal: true }
+        );
+
+        expect(result).not.toContain('FORKED CONTEXT SKILL');
+        expect(result).not.toContain('WHEN TO USE FORKED CONTEXTS');
+        expect(result).not.toContain('LIMITATIONS');
+      });
+    });
+
+    describe('with-hooks minimal template', () => {
+      it('includes hooks YAML with minimal commands', () => {
+        const result = generateSkillMd(
+          { name: 'hooks-skill' },
+          { templateType: 'with-hooks', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('hooks:');
+        expect(frontmatter).toContain('PreToolUse:');
+        expect(frontmatter).toContain('PostToolUse:');
+        expect(frontmatter).toContain("echo 'TODO: pre-tool hook'");
+        expect(frontmatter).toContain("echo 'TODO: post-tool hook'");
+      });
+
+      it('does not include commented Stop hook example', () => {
+        const result = generateSkillMd(
+          { name: 'hooks-skill' },
+          { templateType: 'with-hooks', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).not.toContain('# Stop:');
+      });
+
+      it('overview mentions hooks', () => {
+        const result = generateSkillMd(
+          { name: 'hooks-skill' },
+          { templateType: 'with-hooks', minimal: true }
+        );
+
+        expect(result).toContain('This skill uses hooks for tool lifecycle events.');
+      });
+
+      it('does not include hooks guidance', () => {
+        const result = generateSkillMd(
+          { name: 'hooks-skill' },
+          { templateType: 'with-hooks', minimal: true }
+        );
+
+        expect(result).not.toContain('SKILL WITH HOOKS');
+        expect(result).not.toContain('SUPPORTED HOOK TYPES FOR SKILLS');
+      });
+    });
+
+    describe('internal minimal template', () => {
+      it('includes user-invocable: false in frontmatter', () => {
+        const result = generateSkillMd(
+          { name: 'internal-skill' },
+          { templateType: 'internal', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('user-invocable: false');
+      });
+
+      it('overview mentions internal', () => {
+        const result = generateSkillMd(
+          { name: 'internal-skill' },
+          { templateType: 'internal', minimal: true }
+        );
+
+        expect(result).toContain('This is an internal helper skill.');
+      });
+
+      it('uses internal-specific description placeholder', () => {
+        const result = generateSkillMd(
+          { name: 'internal-skill' },
+          { templateType: 'internal', minimal: true }
+        );
+
+        expect(result).toContain(
+          'description: "TODO: Internal helper for other skills. Not for direct user invocation."'
+        );
+      });
+
+      it('does not include internal guidance', () => {
+        const result = generateSkillMd(
+          { name: 'internal-skill' },
+          { templateType: 'internal', minimal: true }
+        );
+
+        expect(result).not.toContain('INTERNAL HELPER SKILL');
+        expect(result).not.toContain('WHAT THIS MEANS');
+      });
+    });
+
+    describe('minimal output size comparison', () => {
+      it('minimal basic is shorter than verbose basic', () => {
+        const minimal = generateSkillMd({ name: 'test' }, { minimal: true });
+        const verbose = generateSkillMd({ name: 'test' });
+
+        expect(minimal.length).toBeLessThan(verbose.length);
+      });
+
+      it('minimal forked is shorter than verbose forked', () => {
+        const minimal = generateSkillMd(
+          { name: 'test' },
+          { templateType: 'forked', minimal: true }
+        );
+        const verbose = generateSkillMd({ name: 'test' }, { templateType: 'forked' });
+
+        expect(minimal.length).toBeLessThan(verbose.length);
+      });
+
+      it('minimal with-hooks is shorter than verbose with-hooks', () => {
+        const minimal = generateSkillMd(
+          { name: 'test' },
+          { templateType: 'with-hooks', minimal: true }
+        );
+        const verbose = generateSkillMd({ name: 'test' }, { templateType: 'with-hooks' });
+
+        expect(minimal.length).toBeLessThan(verbose.length);
+      });
+
+      it('minimal internal is shorter than verbose internal', () => {
+        const minimal = generateSkillMd(
+          { name: 'test' },
+          { templateType: 'internal', minimal: true }
+        );
+        const verbose = generateSkillMd({ name: 'test' }, { templateType: 'internal' });
+
+        expect(minimal.length).toBeLessThan(verbose.length);
+      });
+    });
+
+    describe('minimal with custom options', () => {
+      it('custom allowedTools overrides template defaults', () => {
+        const result = generateSkillMd(
+          { name: 'test', allowedTools: ['Bash', 'Write'] },
+          { templateType: 'forked', minimal: true }
+        );
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('- Bash');
+        expect(frontmatter).toContain('- Write');
+        expect(frontmatter).not.toContain('- Glob');
+        expect(frontmatter).not.toContain('- Grep');
+      });
+
+      it('custom description replaces TODO placeholder', () => {
+        const result = generateSkillMd(
+          { name: 'test', description: 'My custom description' },
+          { minimal: true }
+        );
+
+        expect(result).toContain('description: My custom description');
+        expect(result).not.toContain('TODO: Describe what this skill does');
+      });
+
+      it('agent option adds agent field', () => {
+        const result = generateSkillMd({ name: 'test' }, { minimal: true, agent: 'Explore' });
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('agent: Explore');
+      });
+
+      it('includeHooks option adds hooks to minimal basic template', () => {
+        const result = generateSkillMd({ name: 'test' }, { minimal: true, includeHooks: true });
+        const frontmatter = getFrontmatter(result);
+
+        expect(frontmatter).toContain('hooks:');
+        expect(frontmatter).toContain("echo 'TODO: pre-tool hook'");
+      });
+    });
+
+    describe('default output unchanged', () => {
+      it('no minimal flag produces verbose output with guidance', () => {
+        const result = generateSkillMd({ name: 'test-skill' });
+
+        expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+        expect(result).toContain('## Usage');
+        expect(result).toContain('## Implementation Notes');
+        expect(result).toContain('### Example 1');
+        expect(result).toContain('# allowed-tools:');
+      });
+
+      it('minimal: false produces verbose output', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { minimal: false });
+
+        expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+        expect(result).toContain('## Usage');
+      });
+
+      it('minimal: undefined produces verbose output', () => {
+        const result = generateSkillMd({ name: 'test-skill' }, { templateType: 'basic' });
+
+        expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+        expect(result).toContain('## Usage');
+      });
+    });
+  });
+
   describe('template type and explicit option interactions', () => {
     // Helper to extract frontmatter from generated output
     const getFrontmatter = (result: string): string => {

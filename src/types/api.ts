@@ -214,6 +214,12 @@ export interface ScaffoldTemplateOptions {
    * Include commented hook examples in frontmatter.
    */
   includeHooks?: boolean;
+
+  /**
+   * Generate shorter templates without educational guidance text.
+   * When true, produces minimal SKILL.md with concise TODO placeholders.
+   */
+  minimal?: boolean;
 }
 
 /**
