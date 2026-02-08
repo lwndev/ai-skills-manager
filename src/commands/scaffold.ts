@@ -22,6 +22,7 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--agent <name>', 'Set agent field in frontmatter')
     .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
     .option('--hooks', 'Include commented hook examples in frontmatter')
+    .option('--minimal', 'Generate shorter templates without educational guidance text')
     .addHelpText(
       'after',
       `
@@ -33,6 +34,7 @@ Examples:
   $ asm scaffold my-skill --output ./custom/path
   $ asm scaffold my-skill --allowed-tools "Read,Write,Bash"
   $ asm scaffold my-skill --force
+  $ asm scaffold my-skill --minimal
 
 Template options:
   $ asm scaffold my-skill --template forked
@@ -54,6 +56,10 @@ Template types:
   forked      - For skills running in isolated (forked) context
   with-hooks  - Template demonstrating hook configuration
   internal    - For non-user-invocable helper skills
+
+Minimal mode:
+  --minimal   Generate shorter templates without educational guidance text.
+              Works with all template types.
 
 Flags can be combined with templates. Explicit flags override template defaults.`
     )
@@ -79,6 +85,7 @@ interface CliScaffoldOptions {
   agent?: string;
   userInvocable?: boolean;
   hooks?: boolean;
+  minimal?: boolean;
 }
 
 /**
@@ -166,6 +173,12 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
     hasOptions = true;
   }
 
+  // Set minimal
+  if (options.minimal) {
+    templateOptions.minimal = true;
+    hasOptions = true;
+  }
+
   return hasOptions ? templateOptions : undefined;
 }
 
@@ -218,10 +231,16 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
 
   // Display success message with template info
   output.displayCreatedFiles(result.path, result.files);
-  if (template?.templateType && template.templateType !== 'basic') {
-    output.displayInfo(`Using "${template.templateType}" template`);
+  const templateType = template?.templateType ?? 'basic';
+  if (template?.minimal) {
+    output.displayInfo(`Using "${templateType} (minimal)" template`);
+    output.displayMinimalNextSteps(result.path);
+  } else {
+    if (templateType !== 'basic') {
+      output.displayInfo(`Using "${templateType}" template`);
+    }
+    output.displayNextSteps(result.path, name);
   }
-  output.displayNextSteps(result.path, name);
 }
 
 function handleError(error: unknown): void {

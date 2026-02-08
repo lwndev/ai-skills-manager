@@ -51,7 +51,7 @@ The implementation is split into 3 phases: types and template generation (core l
 
 ### Phase 2: Command and API Integration
 **Feature:** [FEAT-016](../features/FEAT-016-minimal-scaffold-flag.md) | [#44](https://github.com/lwndev/ai-skills-manager/issues/44)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Depends on Phase 1**: Requires the template generation logic to be in place
@@ -77,9 +77,9 @@ The implementation is split into 3 phases: types and template generation (core l
    - Add `--minimal` entry to the Note section
 
 #### Deliverables
-- [ ] Updated `src/commands/scaffold.ts` — `--minimal` flag, option parsing, output changes
-- [ ] Updated `src/api/scaffold.ts` — `minimal` passthrough in template options mapping
-- [ ] Updated `src/utils/output.ts` — minimal next-steps variant
+- [x] Updated `src/commands/scaffold.ts` — `--minimal` flag, option parsing, output changes
+- [x] Updated `src/api/scaffold.ts` — `minimal` passthrough in template options mapping
+- [x] Updated `src/utils/output.ts` — minimal next-steps variant
 
 ---
 

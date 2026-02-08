@@ -66,6 +66,17 @@ export function displayNextSteps(skillPath: string, _skillName: string): void {
 }
 
 /**
+ * Display next steps after successful minimal scaffold
+ */
+export function displayMinimalNextSteps(skillPath: string): void {
+  console.log('\nNext steps:');
+  console.log('  1. Edit the SKILL.md file to add your skill instructions');
+  console.log('  2. Validate with: asm validate');
+  console.log('\nSkill location:');
+  console.log(filePath(skillPath));
+}
+
+/**
  * Display error with context
  */
 export function displayError(message: string, context?: string): void {

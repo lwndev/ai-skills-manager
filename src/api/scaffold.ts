@@ -153,6 +153,7 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
           agent: options.template.agent,
           userInvocable: options.template.userInvocable,
           includeHooks: options.template.includeHooks,
+          minimal: options.template.minimal,
         }
       : undefined;
 
