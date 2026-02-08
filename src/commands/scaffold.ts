@@ -234,7 +234,7 @@ async function handleScaffold(name: string, options: CliScaffoldOptions): Promis
   const templateType = template?.templateType ?? 'basic';
   if (template?.minimal) {
     output.displayInfo(`Using "${templateType} (minimal)" template`);
-    output.displayMinimalNextSteps(result.path);
+    output.displayMinimalNextSteps(result.path, name);
   } else {
     if (templateType !== 'basic') {
       output.displayInfo(`Using "${templateType}" template`);
