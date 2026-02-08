@@ -9,7 +9,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { collectNestedSkillDirectories } from '../../src/utils/nested-discovery';
-import { createIgnoreFromContent } from '../../src/utils/gitignore-parser';
 
 describe('Nested Discovery Performance', () => {
   let tempDir: string;
@@ -112,34 +111,6 @@ description: Test skill
       // Should find root + 20 package skills
       expect(result.directories).toHaveLength(21);
       expect(duration).toBeLessThan(5000);
-    });
-  });
-
-  describe('gitignore filtering performance', () => {
-    it('gitignore filtering does not significantly impact performance', async () => {
-      const testRoot = await createDir('perf-gitignore');
-      await createSkillsDir('perf-gitignore');
-
-      // Create directories that would be ignored
-      for (let i = 0; i < 50; i++) {
-        await createDir('perf-gitignore', `ignored-${i}`);
-        await createDir('perf-gitignore', `included-${i}`);
-      }
-
-      const ignore = createIgnoreFromContent('ignored-*/\n');
-
-      // Without gitignore
-      const startWithout = Date.now();
-      await collectNestedSkillDirectories(testRoot, 3);
-      const durationWithout = Date.now() - startWithout;
-
-      // With gitignore
-      const startWith = Date.now();
-      await collectNestedSkillDirectories(testRoot, 3, { ignore });
-      const durationWith = Date.now() - startWith;
-
-      // Gitignore filtering should not add more than 50% overhead
-      expect(durationWith).toBeLessThan(durationWithout * 1.5 + 100);
     });
   });
 

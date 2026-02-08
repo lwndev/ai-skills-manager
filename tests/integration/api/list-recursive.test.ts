@@ -268,8 +268,8 @@ description: ${options.description || `Description for ${name}`}${metadata}
   });
 
   describe('gitignore respect', () => {
-    it('skips directories matching gitignore patterns', async () => {
-      // Create .gitignore
+    it('does not filter directories by gitignore patterns', async () => {
+      // Create .gitignore — discovery should ignore it
       await fs.writeFile(path.join(tempDir, '.gitignore'), 'ignored-pkg/\n');
 
       const rootSkillsDir = await createSkillsDir();
@@ -286,7 +286,8 @@ description: ${options.description || `Description for ${name}`}${metadata}
       const names = skills.map((s) => s.name);
       expect(names).toContain('root-skill');
       expect(names).toContain('included-skill');
-      expect(names).not.toContain('ignored-skill');
+      // Skills in gitignored directories ARE now discovered (aligns with Claude Code v2.0.28+)
+      expect(names).toContain('ignored-skill');
     });
 
     it('skips node_modules by default (hardcoded)', async () => {

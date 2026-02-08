@@ -9,37 +9,18 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { Ignore } from 'ignore';
 
 /**
  * Directories to always skip during traversal.
- * These are common build output, dependency, and VCS directories.
+ * Only dependency and VCS directories are skipped; build output directories
+ * like dist/ and build/ may legitimately contain .claude/skills.
  */
-const HARDCODED_SKIP_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'build',
-  '.git',
-  'vendor',
-  'coverage',
-  '__pycache__',
-]);
+const HARDCODED_SKIP_DIRS = new Set(['node_modules', '.git']);
 
 /**
  * The target directory pattern we're searching for.
  */
 const SKILLS_DIR_PATH = '.claude/skills';
-
-/**
- * Options for nested skill directory discovery.
- */
-export interface NestedDiscoveryOptions {
-  /**
-   * Optional gitignore instance for filtering paths.
-   * When provided, paths matching gitignore patterns are skipped.
-   */
-  ignore?: Ignore;
-}
 
 /**
  * Result of nested skill directory discovery.
@@ -123,7 +104,6 @@ function shouldSkipDirectory(name: string): boolean {
  *
  * @param rootDir - Absolute path to the root directory to search
  * @param maxDepth - Maximum depth to traverse (0 = only root level)
- * @param options - Optional discovery options including gitignore
  * @param state - Optional mutable state object for tracking metadata (internal use)
  * @yields Absolute paths to `.claude/skills` directories found
  *
@@ -138,7 +118,6 @@ function shouldSkipDirectory(name: string): boolean {
 export async function* findNestedSkillDirectories(
   rootDir: string,
   maxDepth: number,
-  options?: NestedDiscoveryOptions,
   state?: DiscoveryState
 ): AsyncGenerator<string> {
   // Validate inputs
@@ -214,15 +193,6 @@ export async function* findNestedSkillDirectories(
     for (const subdir of subdirs) {
       const subdirPath = path.join(dirPath, subdir.name);
 
-      // Check gitignore patterns if provided
-      if (options?.ignore) {
-        const relativePath = path.relative(rootDir, subdirPath);
-        // Add trailing slash to indicate directory for gitignore matching
-        if (options.ignore.ignores(relativePath + '/')) {
-          continue;
-        }
-      }
-
       // For symlinks, resolve the target to check if it's a directory
       if (subdir.isSymbolicLink()) {
         try {
@@ -247,7 +217,6 @@ export async function* findNestedSkillDirectories(
  *
  * @param rootDir - Absolute path to the root directory to search
  * @param maxDepth - Maximum depth to traverse (0 = only root level)
- * @param options - Optional discovery options including gitignore
  * @returns Promise resolving to result object with directories and metadata
  *
  * @example
@@ -262,12 +231,11 @@ export async function* findNestedSkillDirectories(
  */
 export async function collectNestedSkillDirectories(
   rootDir: string,
-  maxDepth: number,
-  options?: NestedDiscoveryOptions
+  maxDepth: number
 ): Promise<NestedDiscoveryResult> {
   const state: DiscoveryState = { depthLimitReached: false };
   const directories: string[] = [];
-  for await (const dir of findNestedSkillDirectories(rootDir, maxDepth, options, state)) {
+  for await (const dir of findNestedSkillDirectories(rootDir, maxDepth, state)) {
     directories.push(dir);
   }
   return { directories, depthLimitReached: state.depthLimitReached };

@@ -194,24 +194,24 @@ describe('Nested Discovery Utilities', () => {
         expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
       });
 
-      it('skips dist directories', async () => {
+      it('traverses dist directories', async () => {
         const testRoot = await createDir('dist-root');
         await createSkillsDir('dist-root');
         await createDir('dist-root', 'dist', '.claude', 'skills');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toHaveLength(2);
       });
 
-      it('skips build directories', async () => {
+      it('traverses build directories', async () => {
         const testRoot = await createDir('build-root');
         await createSkillsDir('build-root');
         await createDir('build-root', 'build', '.claude', 'skills');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toHaveLength(2);
       });
 
       it('skips .git directories', async () => {
@@ -224,37 +224,37 @@ describe('Nested Discovery Utilities', () => {
         expect(result.directories).toHaveLength(1);
       });
 
-      it('skips vendor directories', async () => {
+      it('traverses vendor directories', async () => {
         const testRoot = await createDir('vendor-root');
         await createSkillsDir('vendor-root');
         await createDir('vendor-root', 'vendor', 'some-lib', '.claude', 'skills');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toHaveLength(2);
       });
 
-      it('skips coverage directories', async () => {
+      it('traverses coverage directories', async () => {
         const testRoot = await createDir('coverage-root');
         await createSkillsDir('coverage-root');
         await createDir('coverage-root', 'coverage', '.claude', 'skills');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toHaveLength(2);
       });
 
-      it('skips __pycache__ directories', async () => {
+      it('traverses __pycache__ directories', async () => {
         const testRoot = await createDir('pycache-root');
         await createSkillsDir('pycache-root');
         await createDir('pycache-root', '__pycache__', '.claude', 'skills');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        expect(result.directories).toHaveLength(2);
       });
 
-      it('skips all hardcoded patterns in same tree', async () => {
+      it('only skips node_modules and .git in same tree', async () => {
         const testRoot = await createDir('all-skip-root');
         await createSkillsDir('all-skip-root');
         await createDir('all-skip-root', 'node_modules', '.claude', 'skills');
@@ -267,8 +267,13 @@ describe('Nested Discovery Utilities', () => {
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
-        expect(result.directories[0]).toBe(path.join(testRoot, '.claude', 'skills'));
+        // root + dist + build + vendor + coverage + __pycache__ = 6
+        // node_modules and .git are still skipped
+        expect(result.directories).toHaveLength(6);
+        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
+        expect(result.directories).not.toContain(
+          path.join(testRoot, 'node_modules', '.claude', 'skills')
+        );
       });
     });
 
@@ -401,112 +406,34 @@ describe('Nested Discovery Utilities', () => {
       });
     });
 
-    describe('gitignore integration', () => {
-      it('accepts ignore option', async () => {
-        // We use a mock Ignore object to test the integration
-        const testRoot = await createDir('gitignore-root');
-        await createSkillsDir('gitignore-root');
-        await createSkillsDir('gitignore-root', 'ignored-pkg');
-        await createSkillsDir('gitignore-root', 'included-pkg');
+    describe('no gitignore filtering', () => {
+      it('discovers skills in directories that would match gitignore patterns', async () => {
+        const testRoot = await createDir('no-gitignore-root');
+        await createSkillsDir('no-gitignore-root');
+        await createSkillsDir('no-gitignore-root', 'ignored-pkg');
+        await createSkillsDir('no-gitignore-root', 'included-pkg');
 
-        // Create a mock Ignore instance
-        const mockIgnore = {
-          ignores: (relativePath: string) => relativePath.startsWith('ignored-pkg'),
-        };
-
-        const result = await collectNestedSkillDirectories(testRoot, 3, {
-          ignore: mockIgnore as import('ignore').Ignore,
-        });
-
-        expect(result.directories).toHaveLength(2);
-        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(result.directories).toContain(
-          path.join(testRoot, 'included-pkg', '.claude', 'skills')
-        );
-        expect(result.directories).not.toContain(
-          path.join(testRoot, 'ignored-pkg', '.claude', 'skills')
-        );
-      });
-
-      it('skips directories matching gitignore patterns', async () => {
-        const testRoot = await createDir('gitignore-patterns-root');
-        await createSkillsDir('gitignore-patterns-root');
-        await createSkillsDir('gitignore-patterns-root', 'packages', 'api');
-        await createSkillsDir('gitignore-patterns-root', 'packages', 'web');
-        // These should be ignored
-        await createDir('gitignore-patterns-root', 'temp-build', '.claude', 'skills');
-        await createDir('gitignore-patterns-root', 'output', '.claude', 'skills');
-
-        const mockIgnore = {
-          ignores: (relativePath: string) =>
-            relativePath.startsWith('temp-build') || relativePath.startsWith('output'),
-        };
-
-        const result = await collectNestedSkillDirectories(testRoot, 3, {
-          ignore: mockIgnore as import('ignore').Ignore,
-        });
-
-        expect(result.directories).toHaveLength(3);
-        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
-        expect(result.directories).toContain(
-          path.join(testRoot, 'packages', 'api', '.claude', 'skills')
-        );
-        expect(result.directories).toContain(
-          path.join(testRoot, 'packages', 'web', '.claude', 'skills')
-        );
-      });
-
-      it('skips nested directories inside gitignored parent', async () => {
-        const testRoot = await createDir('gitignore-nested-root');
-        await createSkillsDir('gitignore-nested-root');
-        // Create skills inside ignored directory structure
-        await createDir('gitignore-nested-root', 'ignored', 'deep', 'nested', '.claude', 'skills');
-
-        const mockIgnore = {
-          ignores: (relativePath: string) => relativePath.startsWith('ignored'),
-        };
-
-        const result = await collectNestedSkillDirectories(testRoot, 5, {
-          ignore: mockIgnore as import('ignore').Ignore,
-        });
-
-        expect(result.directories).toHaveLength(1);
-        expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
-      });
-
-      it('works without ignore option (all directories scanned)', async () => {
-        const testRoot = await createDir('no-ignore-root');
-        await createSkillsDir('no-ignore-root');
-        await createSkillsDir('no-ignore-root', 'pkg1');
-        await createSkillsDir('no-ignore-root', 'pkg2');
-
-        // No ignore option provided
+        // All directories are scanned regardless of .gitignore
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
         expect(result.directories).toHaveLength(3);
-      });
-
-      it('handles glob-style patterns via ignore instance', async () => {
-        const testRoot = await createDir('gitignore-glob-root');
-        await createSkillsDir('gitignore-glob-root');
-        await createSkillsDir('gitignore-glob-root', 'src', 'main');
-        await createDir('gitignore-glob-root', 'test-output', '.claude', 'skills');
-        await createDir('gitignore-glob-root', 'test-fixtures', '.claude', 'skills');
-
-        // Simulate a pattern like "test-*/"
-        const mockIgnore = {
-          ignores: (relativePath: string) => relativePath.match(/^test-[^/]+\//) !== null,
-        };
-
-        const result = await collectNestedSkillDirectories(testRoot, 3, {
-          ignore: mockIgnore as import('ignore').Ignore,
-        });
-
-        expect(result.directories).toHaveLength(2);
         expect(result.directories).toContain(path.join(testRoot, '.claude', 'skills'));
         expect(result.directories).toContain(
-          path.join(testRoot, 'src', 'main', '.claude', 'skills')
+          path.join(testRoot, 'ignored-pkg', '.claude', 'skills')
         );
+        expect(result.directories).toContain(
+          path.join(testRoot, 'included-pkg', '.claude', 'skills')
+        );
+      });
+
+      it('does not accept an ignore option', async () => {
+        // collectNestedSkillDirectories only accepts rootDir and maxDepth
+        const testRoot = await createDir('no-ignore-option-root');
+        await createSkillsDir('no-ignore-option-root');
+
+        const result = await collectNestedSkillDirectories(testRoot, 3);
+
+        expect(result.directories).toHaveLength(1);
       });
     });
   });
@@ -612,10 +539,8 @@ describe('Nested Discovery Utilities', () => {
     it('ignores hardcoded skip directories when determining depthLimitReached', async () => {
       const testRoot = await createDir('skip-depth-root');
       await createSkillsDir('skip-depth-root');
-      // Create directories that should be skipped
+      // Create directories that should be skipped (only node_modules and .git)
       await createDir('skip-depth-root', 'node_modules', 'nested');
-      await createDir('skip-depth-root', 'dist', 'output');
-      await createDir('skip-depth-root', 'build', 'artifacts');
 
       // Depth 0 with only skipped subdirs should not trigger depthLimitReached
       const result = await collectNestedSkillDirectories(testRoot, 0);
