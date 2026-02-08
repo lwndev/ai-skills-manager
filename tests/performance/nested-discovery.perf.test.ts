@@ -130,7 +130,9 @@ description: Test skill
       }
 
       // Full depth scan should find all 5 skills
+      const startFull = Date.now();
       const fullResult = await collectNestedSkillDirectories(testRoot, 10);
+      const durationFull = Date.now() - startFull;
 
       // Limited depth scan (depth 2) should find fewer skills
       const limitedResult = await collectNestedSkillDirectories(testRoot, 2);
@@ -141,11 +143,8 @@ description: Test skill
       expect(limitedResult.directories.length).toBeGreaterThan(0);
       expect(limitedResult.depthLimitReached).toBe(true);
 
-      // Absolute time budget: both scans should complete quickly
-      const start = Date.now();
-      await collectNestedSkillDirectories(testRoot, 10);
-      const duration = Date.now() - start;
-      expect(duration).toBeLessThan(2000);
+      // Absolute time budget: full scan should complete quickly
+      expect(durationFull).toBeLessThan(2000);
     });
   });
 
