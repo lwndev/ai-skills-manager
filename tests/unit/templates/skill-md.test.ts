@@ -1044,6 +1044,401 @@ describe('generateSkillMd', () => {
     });
   });
 
+  describe('agent template', () => {
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('includes model: sonnet by default in frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('model: sonnet');
+    });
+
+    it('includes memory: project by default in frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: project');
+    });
+
+    it('includes skills: [] in frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('skills: []');
+    });
+
+    it('includes disallowedTools: [] in frontmatter', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('disallowedTools: []');
+    });
+
+    it('sets default allowed-tools to full agent set', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('allowed-tools:');
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Glob');
+      expect(frontmatter).toContain('  - Grep');
+      expect(frontmatter).toContain('  - Edit');
+      expect(frontmatter).toContain('  - Write');
+      expect(frontmatter).toContain('  - Bash');
+    });
+
+    it('allows explicit allowedTools to override defaults', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd(
+        { name: 'custom-agent', allowedTools: ['Read', 'Bash'] },
+        options
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('  - Read');
+      expect(frontmatter).toContain('  - Bash');
+      expect(frontmatter).not.toContain('  - Write');
+      expect(frontmatter).not.toContain('  - Edit');
+    });
+
+    it('uses agent-specific description placeholder', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+
+      expect(result).toContain(
+        'description: "TODO: Describe what this agent does and when it should be used."'
+      );
+    });
+
+    it('includes agent-specific guidance in verbose body', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+
+      expect(result).toContain('AGENT SKILL');
+      expect(result).toContain('HOW AGENTS DIFFER FROM REGULAR SKILLS');
+      expect(result).toContain('MODEL SELECTION');
+      expect(result).toContain('MEMORY SCOPES');
+      expect(result).toContain('DEPENDENT SKILLS');
+      expect(result).toContain('TOOL ACCESS CONTROL');
+      expect(result).toContain('PERMISSION MODE');
+    });
+
+    it('still includes standard guidance sections', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+
+      expect(result).toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(result).toContain('FRONTMATTER FIELDS (Open Agent Skills Spec)');
+      expect(result).toContain('FRONTMATTER FIELDS (Claude Code Extensions)');
+      expect(result).toContain('BEST PRACTICES');
+    });
+
+    it('produces correct frontmatter field ordering', () => {
+      const options: TemplateOptions = { templateType: 'agent' };
+      const result = generateSkillMd({ name: 'my-agent' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      // Verify field ordering: name → description → model → memory → skills → allowed-tools → disallowedTools
+      const nameIdx = frontmatter.indexOf('name:');
+      const descIdx = frontmatter.indexOf('description:');
+      const modelIdx = frontmatter.indexOf('model:');
+      const memoryIdx = frontmatter.indexOf('memory:');
+      const skillsIdx = frontmatter.indexOf('skills:');
+      const allowedIdx = frontmatter.indexOf('allowed-tools:');
+      const disallowedIdx = frontmatter.indexOf('disallowedTools:');
+
+      expect(nameIdx).toBeLessThan(descIdx);
+      expect(descIdx).toBeLessThan(modelIdx);
+      expect(modelIdx).toBeLessThan(memoryIdx);
+      expect(memoryIdx).toBeLessThan(skillsIdx);
+      expect(skillsIdx).toBeLessThan(allowedIdx);
+      expect(allowedIdx).toBeLessThan(disallowedIdx);
+    });
+  });
+
+  describe('agent minimal template', () => {
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('includes agent frontmatter fields in minimal mode', () => {
+      const result = generateSkillMd(
+        { name: 'minimal-agent' },
+        { templateType: 'agent', minimal: true }
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('model: sonnet');
+      expect(frontmatter).toContain('memory: project');
+      expect(frontmatter).toContain('skills: []');
+      expect(frontmatter).toContain('disallowedTools: []');
+      expect(frontmatter).toContain('allowed-tools:');
+    });
+
+    it('overview mentions agent', () => {
+      const result = generateSkillMd(
+        { name: 'minimal-agent' },
+        { templateType: 'agent', minimal: true }
+      );
+
+      expect(result).toContain('This is a custom Claude Code agent.');
+    });
+
+    it('does not include agent guidance in minimal mode', () => {
+      const result = generateSkillMd(
+        { name: 'minimal-agent' },
+        { templateType: 'agent', minimal: true }
+      );
+
+      expect(result).not.toContain('AGENT SKILL');
+      expect(result).not.toContain('HOW AGENTS DIFFER FROM REGULAR SKILLS');
+      expect(result).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+    });
+
+    it('minimal agent is shorter than verbose agent', () => {
+      const minimal = generateSkillMd({ name: 'test' }, { templateType: 'agent', minimal: true });
+      const verbose = generateSkillMd({ name: 'test' }, { templateType: 'agent' });
+
+      expect(minimal.length).toBeLessThan(verbose.length);
+    });
+
+    it('uses agent-specific description in minimal mode', () => {
+      const result = generateSkillMd(
+        { name: 'minimal-agent' },
+        { templateType: 'agent', minimal: true }
+      );
+
+      expect(result).toContain(
+        'description: "TODO: Describe what this agent does and when it should be used."'
+      );
+    });
+  });
+
+  describe('TemplateType agent value', () => {
+    it('accepts agent template type', () => {
+      const templateType: TemplateType = 'agent';
+      expect(templateType).toBe('agent');
+    });
+  });
+
+  describe('new flag frontmatter generation', () => {
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('--memory user adds memory: user to basic template', () => {
+      const result = generateSkillMd({ name: 'test' }, { memory: 'user' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: user');
+    });
+
+    it('--memory project adds memory: project to forked template', () => {
+      const result = generateSkillMd(
+        { name: 'test' },
+        { templateType: 'forked', memory: 'project' }
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: project');
+    });
+
+    it('--memory local adds memory: local', () => {
+      const result = generateSkillMd({ name: 'test' }, { memory: 'local' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: local');
+    });
+
+    it('--model haiku adds model: haiku to any template', () => {
+      const result = generateSkillMd({ name: 'test' }, { model: 'haiku' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('model: haiku');
+    });
+
+    it('--model adds model to forked template', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'forked', model: 'opus' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('model: opus');
+    });
+
+    it('--argument-hint adds argument-hint to frontmatter', () => {
+      const result = generateSkillMd({ name: 'test' }, { argumentHint: '<query>' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('argument-hint: <query>');
+    });
+
+    it('--argument-hint without special chars is unquoted', () => {
+      const result = generateSkillMd({ name: 'test' }, { argumentHint: 'search term' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('argument-hint: search term');
+    });
+
+    it('--argument-hint with special chars is escaped', () => {
+      const result = generateSkillMd({ name: 'test' }, { argumentHint: 'query: with colon' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('argument-hint: "query: with colon"');
+    });
+
+    it('--memory user overrides agent default memory: project', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'agent', memory: 'user' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: user');
+      expect(frontmatter).not.toMatch(/memory: project/);
+    });
+
+    it('--model haiku overrides agent default model: sonnet', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'agent', model: 'haiku' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('model: haiku');
+      expect(frontmatter).not.toMatch(/model: sonnet/);
+    });
+
+    it('no memory option on basic template does not add memory field', () => {
+      const result = generateSkillMd({ name: 'test' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toMatch(/^memory:/m);
+    });
+
+    it('no model option on basic template does not add model field', () => {
+      const result = generateSkillMd({ name: 'test' });
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toMatch(/^model:/m);
+    });
+
+    it('combines memory, model, and argument-hint on basic template', () => {
+      const result = generateSkillMd(
+        { name: 'test' },
+        { memory: 'local', model: 'opus', argumentHint: 'file path' }
+      );
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('memory: local');
+      expect(frontmatter).toContain('model: opus');
+      expect(frontmatter).toContain('argument-hint: file path');
+    });
+  });
+
+  describe('hooks once:true in verbose mode', () => {
+    const getFrontmatter = (result: string): string => {
+      const match = result.match(/^---\n([\s\S]*?)\n---/);
+      return match ? match[1] : '';
+    };
+
+    it('verbose with-hooks YAML includes once: true on PreToolUse', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks' };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('once: true');
+      expect(frontmatter).toContain('# Only runs on first matching tool use');
+    });
+
+    it('minimal with-hooks YAML does not include once: true', () => {
+      const options: TemplateOptions = { templateType: 'with-hooks', minimal: true };
+      const result = generateSkillMd({ name: 'hooked-skill' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).not.toContain('once: true');
+    });
+
+    it('includeHooks on basic template in verbose mode includes once: true', () => {
+      const options: TemplateOptions = { includeHooks: true };
+      const result = generateSkillMd({ name: 'basic-hooks' }, options);
+      const frontmatter = getFrontmatter(result);
+
+      expect(frontmatter).toContain('once: true');
+    });
+  });
+
+  describe('template field documentation', () => {
+    it('basic template guidance mentions memory, model, and other new fields', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'basic' });
+
+      expect(result).toContain('memory:');
+      expect(result).toContain('model:');
+      expect(result).toContain('skills:');
+      expect(result).toContain('disallowedTools:');
+      expect(result).toContain('permissionMode:');
+      expect(result).toContain('argument-hint:');
+    });
+
+    it('forked template guidance includes additional frontmatter fields', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'forked' });
+
+      expect(result).toContain('ADDITIONAL FRONTMATTER FIELDS');
+      expect(result).toContain('memory:');
+      expect(result).toContain('model:');
+      expect(result).toContain('permissionMode:');
+    });
+
+    it('internal template guidance includes additional frontmatter fields', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'internal' });
+
+      expect(result).toContain('ADDITIONAL FRONTMATTER FIELDS');
+      expect(result).toContain('memory:');
+      expect(result).toContain('model:');
+    });
+
+    it('with-hooks template guidance includes additional frontmatter fields', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'with-hooks' });
+
+      expect(result).toContain('ADDITIONAL FRONTMATTER FIELDS');
+      expect(result).toContain('memory:');
+      expect(result).toContain('model:');
+    });
+
+    it('agent guidance explains memory scopes', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'agent' });
+
+      expect(result).toContain('MEMORY SCOPES');
+      expect(result).toContain('user');
+      expect(result).toContain('project');
+      expect(result).toContain('local');
+    });
+
+    it('agent guidance explains model selection', () => {
+      const result = generateSkillMd({ name: 'test' }, { templateType: 'agent' });
+
+      expect(result).toContain('MODEL SELECTION');
+      expect(result).toContain('sonnet');
+      expect(result).toContain('opus');
+      expect(result).toContain('haiku');
+    });
+
+    it('shared guidance block documents new fields', () => {
+      const result = generateSkillMd({ name: 'test' });
+
+      // Check the shared SKILL DEVELOPMENT GUIDANCE block
+      expect(result).toContain('memory:');
+      expect(result).toContain('model:');
+      expect(result).toContain('skills:');
+      expect(result).toContain('disallowedTools:');
+      expect(result).toContain('permissionMode:');
+      expect(result).toContain('argument-hint:');
+    });
+  });
+
   describe('template type and explicit option interactions', () => {
     // Helper to extract frontmatter from generated output
     const getFrontmatter = (result: string): string => {

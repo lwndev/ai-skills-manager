@@ -180,8 +180,9 @@ export interface ValidateOptions {
  * - forked: Template for skills that run in forked (isolated) context
  * - with-hooks: Template demonstrating hook configuration
  * - internal: Template for non-user-invocable helper skills
+ * - agent: Template for autonomous agent skills with model, memory, and tool configuration
  */
-export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
+export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent';
 
 /**
  * Template-specific options for scaffolding.
@@ -220,6 +221,28 @@ export interface ScaffoldTemplateOptions {
    * When true, produces minimal SKILL.md with concise TODO placeholders.
    */
   minimal?: boolean;
+
+  /**
+   * Memory scope for the skill.
+   * - `'user'`: Cross-project memory, stored in ~/.claude/
+   * - `'project'`: Repo-specific memory, stored in .claude/
+   * - `'local'`: Machine-specific, not committed to version control
+   */
+  memory?: 'user' | 'project' | 'local';
+
+  /**
+   * Model for agent execution.
+   * Controls which model runs the agent (e.g., 'sonnet', 'opus', 'haiku').
+   * If omitted, the agent inherits the model from its parent context.
+   */
+  model?: string;
+
+  /**
+   * Argument hint for skill invocation.
+   * Displayed in the UI to suggest expected arguments (e.g., '<query> [--deep]').
+   * Maximum 100 characters.
+   */
+  argumentHint?: string;
 }
 
 /**

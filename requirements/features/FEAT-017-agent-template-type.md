@@ -253,18 +253,18 @@ Error: Argument hint must be 100 characters or fewer, got 142 characters.
 
 ## Acceptance Criteria
 
-- [ ] `--template agent` produces agent-specific SKILL.md
-- [ ] Agent template includes `model`, `memory`, `skills`, `disallowedTools` fields
-- [ ] `--memory <scope>` flag works with all templates
-- [ ] `--model <name>` flag works with all templates
-- [ ] `--argument-hint <hint>` flag works with all templates
-- [ ] Invalid `--memory` value produces clear error
-- [ ] Over-length `--argument-hint` produces clear error
-- [ ] `with-hooks` template documents `once: true` option
-- [ ] All templates updated with new field documentation in guidance
-- [ ] Flags override template defaults
-- [ ] All flag combinations produce valid SKILL.md
-- [ ] All existing scaffold tests continue to pass
-- [ ] New unit tests for agent template and new flags
-- [ ] Integration tests validate scaffolded skills
-- [ ] `npm run quality` passes
+- [x] `--template agent` produces agent-specific SKILL.md
+- [x] Agent template includes `model`, `memory`, `skills`, `disallowedTools` fields
+- [x] `--memory <scope>` flag works with all templates
+- [x] `--model <name>` flag works with all templates
+- [x] `--argument-hint <hint>` flag works with all templates
+- [x] Invalid `--memory` value produces clear error
+- [x] Over-length `--argument-hint` produces clear error
+- [x] `with-hooks` template documents `once: true` option
+- [x] All templates updated with new field documentation in guidance
+- [x] Flags override template defaults
+- [x] All flag combinations produce valid SKILL.md
+- [x] All existing scaffold tests continue to pass
+- [x] New unit tests for agent template and new flags
+- [x] Integration tests validate scaffolded skills
+- [x] `npm run quality` passes

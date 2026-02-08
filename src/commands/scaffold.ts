@@ -5,7 +5,13 @@ import { AsmError, ValidationError, FileSystemError, SecurityError } from '../er
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
 
-const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
+const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = [
+  'basic',
+  'forked',
+  'with-hooks',
+  'internal',
+  'agent',
+];
 
 export function registerScaffoldCommand(program: Command): void {
   program
@@ -17,12 +23,18 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--personal', 'Create as a personal skill in ~/.claude/skills/')
     .option('-a, --allowed-tools <tools>', 'Comma-separated list of allowed tools')
     .option('-f, --force', 'Overwrite existing directory without prompting')
-    .option('-t, --template <type>', 'Template variant (basic, forked, with-hooks, internal)')
+    .option(
+      '-t, --template <type>',
+      'Template variant (basic, forked, with-hooks, internal, agent)'
+    )
     .option('--context <context>', 'Set context in frontmatter (fork)')
     .option('--agent <name>', 'Set agent field in frontmatter')
     .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
     .option('--hooks', 'Include commented hook examples in frontmatter')
     .option('--minimal', 'Generate shorter templates without educational guidance text')
+    .option('--memory <scope>', 'Set memory scope (user, project, local)')
+    .option('--model <name>', 'Set model for agent execution')
+    .option('--argument-hint <hint>', 'Set argument hint for skill invocation')
     .addHelpText(
       'after',
       `
@@ -40,11 +52,18 @@ Template options:
   $ asm scaffold my-skill --template forked
   $ asm scaffold my-skill --template with-hooks
   $ asm scaffold my-skill --template internal
+  $ asm scaffold my-skill --template agent
   $ asm scaffold my-skill --context fork
   $ asm scaffold my-skill --agent Explore
   $ asm scaffold my-skill --no-user-invocable
   $ asm scaffold my-skill --hooks
   $ asm scaffold my-skill --template basic --context fork --hooks
+
+Agent and field options:
+  $ asm scaffold code-reviewer --template agent --memory project --model sonnet
+  $ asm scaffold safe-refactor --template agent --model haiku --minimal
+  $ asm scaffold search-helper --template forked --argument-hint "<query> [--deep]"
+  $ asm scaffold learning-assistant --memory user
 
 Note:
   By default, skills are created in .claude/skills/ (project scope).
@@ -56,6 +75,7 @@ Template types:
   forked      - For skills running in isolated (forked) context
   with-hooks  - Template demonstrating hook configuration
   internal    - For non-user-invocable helper skills
+  agent       - For autonomous agent skills with model, memory, and tool config
 
 Minimal mode:
   --minimal   Generate shorter templates without educational guidance text.
@@ -86,6 +106,9 @@ interface CliScaffoldOptions {
   userInvocable?: boolean;
   hooks?: boolean;
   minimal?: boolean;
+  memory?: string;
+  model?: string;
+  argumentHint?: string;
 }
 
 /**
@@ -134,6 +157,57 @@ function validateAgent(agent: string): string {
   return trimmed;
 }
 
+const VALID_MEMORY_SCOPES = ['user', 'project', 'local'] as const;
+
+/**
+ * Validates memory scope against allowed values.
+ */
+function validateMemoryScope(memory: string): 'user' | 'project' | 'local' {
+  if (!VALID_MEMORY_SCOPES.includes(memory as (typeof VALID_MEMORY_SCOPES)[number])) {
+    throw new ValidationError(
+      `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
+      [
+        {
+          code: 'INVALID_MEMORY_SCOPE',
+          message: `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
+        },
+      ]
+    );
+  }
+  return memory as 'user' | 'project' | 'local';
+}
+
+/**
+ * Validates model value is non-empty.
+ */
+function validateModel(model: string): string {
+  const trimmed = model.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('Model name cannot be empty', [
+      { code: 'EMPTY_MODEL', message: 'Model name cannot be empty' },
+    ]);
+  }
+  return trimmed;
+}
+
+/**
+ * Validates argument hint length.
+ */
+function validateArgumentHint(hint: string): string {
+  if (hint.length > 100) {
+    throw new ValidationError(
+      `Argument hint must be 100 characters or fewer, got ${hint.length} characters.`,
+      [
+        {
+          code: 'ARGUMENT_HINT_TOO_LONG',
+          message: `Argument hint must be 100 characters or fewer, got ${hint.length} characters.`,
+        },
+      ]
+    );
+  }
+  return hint;
+}
+
 /**
  * Builds template options from CLI flags.
  * Returns undefined if no template options were specified.
@@ -176,6 +250,24 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
   // Set minimal
   if (options.minimal) {
     templateOptions.minimal = true;
+    hasOptions = true;
+  }
+
+  // Validate and set memory scope
+  if (options.memory) {
+    templateOptions.memory = validateMemoryScope(options.memory);
+    hasOptions = true;
+  }
+
+  // Validate and set model
+  if (options.model !== undefined && options.model !== null) {
+    templateOptions.model = validateModel(options.model);
+    hasOptions = true;
+  }
+
+  // Validate and set argument hint
+  if (options.argumentHint !== undefined && options.argumentHint !== null) {
+    templateOptions.argumentHint = validateArgumentHint(options.argumentHint);
     hasOptions = true;
   }
 
