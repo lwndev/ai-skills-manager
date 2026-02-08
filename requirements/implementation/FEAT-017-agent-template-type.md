@@ -60,7 +60,7 @@ The implementation is split into 4 phases: types and agent template generation, 
 
 ### Phase 2: New CLI Flags — `--memory`, `--model`, `--argument-hint`
 **Feature:** [FEAT-017](../features/FEAT-017-agent-template-type.md) | [#52](https://github.com/lwndev/ai-skills-manager/issues/52)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Depends on Phase 1**: The `--memory` and `--model` flags override agent template defaults, so the agent template must exist first
@@ -104,10 +104,10 @@ The implementation is split into 4 phases: types and agent template generation, 
    - Flag combination examples (e.g., `asm scaffold code-reviewer --template agent --memory project --model sonnet`)
 
 #### Deliverables
-- [ ] Updated `src/types/api.ts` — `memory`, `model`, `argumentHint` fields on `ScaffoldTemplateOptions`
-- [ ] Updated `src/templates/skill-md.ts` — frontmatter generation for new fields with override logic
-- [ ] Updated `src/commands/scaffold.ts` — three new CLI flags with validation, help text
-- [ ] Updated `src/api/scaffold.ts` — passthrough for new template option fields
+- [x] Updated `src/types/api.ts` — `memory`, `model`, `argumentHint` fields on `ScaffoldTemplateOptions`
+- [x] Updated `src/templates/skill-md.ts` — frontmatter generation for new fields with override logic
+- [x] Updated `src/commands/scaffold.ts` — three new CLI flags with validation, help text
+- [x] Updated `src/api/scaffold.ts` — passthrough for new template option fields
 
 ---
 

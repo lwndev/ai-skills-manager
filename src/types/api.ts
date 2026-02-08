@@ -221,6 +221,28 @@ export interface ScaffoldTemplateOptions {
    * When true, produces minimal SKILL.md with concise TODO placeholders.
    */
   minimal?: boolean;
+
+  /**
+   * Memory scope for the skill.
+   * - `'user'`: Cross-project memory, stored in ~/.claude/
+   * - `'project'`: Repo-specific memory, stored in .claude/
+   * - `'local'`: Machine-specific, not committed to version control
+   */
+  memory?: 'user' | 'project' | 'local';
+
+  /**
+   * Model for agent execution.
+   * Controls which model runs the agent (e.g., 'sonnet', 'opus', 'haiku').
+   * If omitted, the agent inherits the model from its parent context.
+   */
+  model?: string;
+
+  /**
+   * Argument hint for skill invocation.
+   * Displayed in the UI to suggest expected arguments (e.g., '<query> [--deep]').
+   * Maximum 100 characters.
+   */
+  argumentHint?: string;
 }
 
 /**

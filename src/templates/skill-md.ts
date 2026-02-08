@@ -199,6 +199,11 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
     lines.push('disallowedTools: []');
   }
 
+  // Add argument-hint if specified
+  if (options?.argumentHint) {
+    lines.push(`argument-hint: ${escapeYamlString(options.argumentHint)}`);
+  }
+
   // Add context: fork for forked template or if explicitly specified
   if (templateType === 'forked' || options?.context === 'fork') {
     lines.push('context: fork');
