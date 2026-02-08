@@ -195,7 +195,7 @@ The main HTML comment block already uses "skill" terminology consistently. No "s
 
 ### Phase 3: Tests and Verification
 **Feature:** [FEAT-018](../features/FEAT-018-docs-and-plugin-awareness.md) | [#54](https://github.com/lwndev/ai-skills-manager/issues/54)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Depends on Phases 1-2**: All text changes must be in place before testing
@@ -233,13 +233,13 @@ The main HTML comment block already uses "skill" terminology consistently. No "s
    - No audit failures
 
 #### Deliverables
-- [ ] Updated `tests/unit/templates/skill-md.test.ts` — terminology, auto-approval, size budget, plugin guidance, minimal exclusion tests
-- [ ] Updated `tests/unit/commands/scaffold.test.ts` — scaffold help text assertions
-- [ ] Updated `tests/unit/commands/package.test.ts` — package help text assertions
-- [ ] Updated `tests/unit/commands/list.test.ts` — list help text assertions
-- [ ] Updated `tests/integration/api/scaffold.test.ts` — validation still passes with updated guidance
-- [ ] Verified external link `https://code.claude.com/docs/en/plugins` resolves
-- [ ] `npm run quality` passes
+- [x] Updated `tests/unit/templates/skill-md.test.ts` — terminology, auto-approval, size budget, plugin guidance, minimal exclusion tests
+- [x] Updated `tests/unit/commands/scaffold.test.ts` — scaffold help text assertions
+- [x] Updated `tests/unit/commands/package.test.ts` — package help text assertions
+- [x] Updated `tests/unit/commands/list.test.ts` — list help text assertions
+- [x] Updated `tests/integration/api/scaffold.test.ts` — validation still passes with updated guidance
+- [x] Verified external link `https://code.claude.com/docs/en/plugins` resolves
+- [x] `npm run quality` passes
 
 ---
 

@@ -5,6 +5,10 @@ import { AsmError, ValidationError, FileSystemError, SecurityError } from '../er
 import type { ApiScope, ScaffoldTemplateType, ScaffoldTemplateOptions } from '../types/api';
 import * as output from '../utils/output';
 
+/** FEAT-018: Skills auto-load note for help text */
+export const SCAFFOLD_AUTOLOAD_NOTE =
+  'Skills auto-load from .claude/skills/ directories and appear as slash\n  commands in Claude Code.';
+
 const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = [
   'basic',
   'forked',
@@ -69,8 +73,7 @@ Note:
   By default, skills are created in .claude/skills/ (project scope).
   Use --personal to create in ~/.claude/skills/ (user scope).
   Use --output to specify a custom directory.
-  Skills auto-load from .claude/skills/ directories and appear as slash
-  commands in Claude Code.
+  ${SCAFFOLD_AUTOLOAD_NOTE}
 
 Template types:
   basic       - Default template with general guidance

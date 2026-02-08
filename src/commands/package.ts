@@ -47,6 +47,13 @@ export interface PackageCommandOptions {
   quiet?: boolean;
 }
 
+/** FEAT-018: Plugin distribution note for help text */
+export const PACKAGE_DISTRIBUTION_NOTE = `Distribution:
+  ASM packages (.skill files) are for standalone skill distribution.
+  For distribution that includes hooks, MCP servers, or multiple coordinated
+  components, consider the Claude Code plugin system instead.
+  See: https://code.claude.com/docs/en/plugins`;
+
 /**
  * Register the package command with the CLI program
  */
@@ -82,11 +89,7 @@ Excluded Files:
   - __pycache__/ directories
   - *.pyc files
 
-Distribution:
-  ASM packages (.skill files) are for standalone skill distribution.
-  For distribution that includes hooks, MCP servers, or multiple coordinated
-  components, consider the Claude Code plugin system instead.
-  See: https://code.claude.com/docs/en/plugins
+${PACKAGE_DISTRIBUTION_NOTE}
 
 Exit Codes:
   0 - Package created successfully
