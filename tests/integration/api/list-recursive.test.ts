@@ -267,7 +267,7 @@ description: ${options.description || `Description for ${name}`}${metadata}
     });
   });
 
-  describe('gitignore respect', () => {
+  describe('no gitignore filtering', () => {
     it('does not filter directories by gitignore patterns', async () => {
       // Create .gitignore — discovery should ignore it
       await fs.writeFile(path.join(tempDir, '.gitignore'), 'ignored-pkg/\n');

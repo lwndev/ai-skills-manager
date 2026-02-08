@@ -69,7 +69,7 @@ This is a behavioral correction to FEAT-012's Phase 2 (Gitignore Support), which
 
 ### Phase 3: Update Tests for New Behavior
 **Feature:** [FEAT-015](../features/FEAT-015-discovery-gitignore-alignment.md) | [#53](https://github.com/lwndev/ai-skills-manager/issues/53)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Tests must reflect the new behavior**: Existing tests assert gitignore filtering works — these need to be removed or inverted
@@ -99,11 +99,11 @@ This is a behavioral correction to FEAT-012's Phase 2 (Gitignore Support), which
    - Coverage remains above threshold
 
 #### Deliverables
-- [ ] Updated `tests/unit/utils/nested-discovery.test.ts` — gitignore tests removed, new no-gitignore tests added
-- [ ] Updated `tests/performance/nested-discovery.perf.test.ts` — gitignore references removed
-- [ ] Updated `tests/integration/api/list-recursive.test.ts` — behavior aligned
-- [ ] Updated `tests/commands/list-recursive.test.ts` — behavior aligned
-- [ ] `npm run quality` passes
+- [x] Updated `tests/unit/utils/nested-discovery.test.ts` — gitignore tests removed, new no-gitignore tests added
+- [x] Updated `tests/performance/nested-discovery.perf.test.ts` — gitignore references removed
+- [x] Updated `tests/integration/api/list-recursive.test.ts` — behavior aligned
+- [x] Updated `tests/commands/list-recursive.test.ts` — behavior aligned
+- [x] `npm run quality` passes
 
 ---
 
@@ -169,21 +169,21 @@ This is a behavioral correction to FEAT-012's Phase 2 (Gitignore Support), which
 ## Success Criteria
 
 ### Per-Phase Criteria
-- [ ] Phase 1: Gitignore integration removed from discovery and API paths
-- [ ] Phase 2: `gitignore-parser.ts` deleted, `ignore` package removed
-- [ ] Phase 3: All tests updated, `npm run quality` passes
+- [x] Phase 1: Gitignore integration removed from discovery and API paths
+- [x] Phase 2: `gitignore-parser.ts` deleted, `ignore` package removed
+- [x] Phase 3: All tests updated, `npm run quality` passes
 
 ### Overall Success (from Requirements)
-- [ ] `asm list --recursive` does NOT read `.gitignore` files
-- [ ] `.claude/skills` in `.gitignore`'d directories are discovered
-- [ ] `node_modules` and `.git` directories are still skipped
-- [ ] `dist`, `build`, `vendor` directories are scanned
-- [ ] `--depth` limiting still works correctly
-- [ ] Non-recursive `asm list` behavior is unchanged
-- [ ] Performance within 5 seconds for typical monorepos
-- [ ] Existing FEAT-012 tests updated for new behavior
-- [ ] New tests verify `.gitignore` is not applied
-- [ ] `npm run quality` passes
+- [x] `asm list --recursive` does NOT read `.gitignore` files
+- [x] `.claude/skills` in `.gitignore`'d directories are discovered
+- [x] `node_modules` and `.git` directories are still skipped
+- [x] `dist`, `build`, `vendor` directories are scanned
+- [x] `--depth` limiting still works correctly
+- [x] Non-recursive `asm list` behavior is unchanged
+- [x] Performance within 5 seconds for typical monorepos
+- [x] Existing FEAT-012 tests updated for new behavior
+- [x] New tests verify `.gitignore` is not applied
+- [x] `npm run quality` passes
 
 ---
 
