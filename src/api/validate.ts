@@ -37,7 +37,7 @@ function categorizeWarningCode(message: string): string {
   if (message.includes('Unknown hook')) {
     return 'UNKNOWN_HOOK_KEY';
   }
-  if (message.includes('lines') || message.includes('tokens')) {
+  if (message.startsWith('Skill body has')) {
     return 'FILE_SIZE_WARNING';
   }
   return 'VALIDATION_WARNING';
