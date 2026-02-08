@@ -426,14 +426,17 @@ describe('Nested Discovery Utilities', () => {
         );
       });
 
-      it('does not accept an ignore option', async () => {
-        // collectNestedSkillDirectories only accepts rootDir and maxDepth
-        const testRoot = await createDir('no-ignore-option-root');
-        await createSkillsDir('no-ignore-option-root');
+      it('discovers all subdirectories without filtering', async () => {
+        const testRoot = await createDir('no-filter-root');
+        await createSkillsDir('no-filter-root');
+        await createSkillsDir('no-filter-root', 'dist');
+        await createSkillsDir('no-filter-root', 'build');
+        await createSkillsDir('no-filter-root', 'vendor');
 
         const result = await collectNestedSkillDirectories(testRoot, 3);
 
-        expect(result.directories).toHaveLength(1);
+        // All directories are discovered — no gitignore or build-output filtering
+        expect(result.directories).toHaveLength(4);
       });
     });
   });
@@ -539,8 +542,9 @@ describe('Nested Discovery Utilities', () => {
     it('ignores hardcoded skip directories when determining depthLimitReached', async () => {
       const testRoot = await createDir('skip-depth-root');
       await createSkillsDir('skip-depth-root');
-      // Create directories that should be skipped (only node_modules and .git)
+      // Create both hardcoded skip directories (node_modules and .git)
       await createDir('skip-depth-root', 'node_modules', 'nested');
+      await createDir('skip-depth-root', '.git', 'objects');
 
       // Depth 0 with only skipped subdirs should not trigger depthLimitReached
       const result = await collectNestedSkillDirectories(testRoot, 0);
