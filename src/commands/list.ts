@@ -71,6 +71,10 @@ Scopes:
   project     List skills from .claude/skills/ in current directory
   personal    List skills from ~/.claude/skills/ for all projects
 
+Skills:
+  Listed skills correspond to what Claude Code shows in the /skills menu.
+  Skills with user-invocable: false are loaded but hidden from this listing.
+
 Recursive Discovery:
   --recursive    Scan for skills in nested .claude/skills directories
                  (e.g., packages/api/.claude/skills/, libs/shared/.claude/skills/)

@@ -69,6 +69,8 @@ Note:
   By default, skills are created in .claude/skills/ (project scope).
   Use --personal to create in ~/.claude/skills/ (user scope).
   Use --output to specify a custom directory.
+  Skills auto-load from .claude/skills/ directories and appear as slash
+  commands in Claude Code.
 
 Template types:
   basic       - Default template with general guidance

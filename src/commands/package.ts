@@ -82,6 +82,12 @@ Excluded Files:
   - __pycache__/ directories
   - *.pyc files
 
+Distribution:
+  ASM packages (.skill files) are for standalone skill distribution.
+  For distribution that includes hooks, MCP servers, or multiple coordinated
+  components, consider the Claude Code plugin system instead.
+  See: https://code.claude.com/docs/en/plugins
+
 Exit Codes:
   0 - Package created successfully
   1 - Skill validation failed
