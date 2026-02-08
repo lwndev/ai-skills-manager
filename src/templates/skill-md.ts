@@ -122,6 +122,11 @@ function generateHooksYaml(minimal?: boolean): string {
   const postCmd = minimal ? `"echo 'TODO: post-tool hook'"` : 'echo "Tool execution complete"';
 
   lines.push(`          command: ${preCmd}`);
+
+  if (!minimal) {
+    lines.push('          once: true  # Only runs on first matching tool use');
+  }
+
   lines.push('  PostToolUse:');
   lines.push('    - matcher: "*"');
   lines.push('      hooks:');
@@ -261,6 +266,14 @@ BEST PRACTICES FOR DATA RETURN:
 DEFAULT TOOLS:
 This template defaults to read-only tools (Read, Glob, Grep). Modify
 allowed-tools if you need additional capabilities.
+
+ADDITIONAL FRONTMATTER FIELDS:
+- memory: Scope for persisting data — "user" (cross-project), "project" (repo-specific), "local" (machine-specific)
+- model: Which model runs this skill (e.g., sonnet, opus, haiku)
+- skills: List of dependent skills to auto-load
+- disallowedTools: Blocklist specific tools from being used
+- permissionMode: Control permission behavior (default, plan, bypassPermissions)
+- argument-hint: Display hint for skill arguments in the UI
 `;
 
     case 'internal':
@@ -295,6 +308,14 @@ EXAMPLE USE CASES:
 DEFAULT TOOLS:
 This template defaults to minimal tools (Read, Grep). Modify allowed-tools
 based on what operations your helper needs to perform.
+
+ADDITIONAL FRONTMATTER FIELDS:
+- memory: Scope for persisting data — "user" (cross-project), "project" (repo-specific), "local" (machine-specific)
+- model: Which model runs this skill (e.g., sonnet, opus, haiku)
+- skills: List of dependent skills to auto-load
+- disallowedTools: Blocklist specific tools from being used
+- permissionMode: Control permission behavior (default, plan, bypassPermissions)
+- argument-hint: Display hint for skill arguments in the UI
 `;
 
     case 'with-hooks':
@@ -370,6 +391,14 @@ DEFAULT TOOLS:
 This template defaults to tools commonly used with hooks (Bash, Read, Write).
 Modify allowed-tools based on your specific workflow needs.
 
+ADDITIONAL FRONTMATTER FIELDS:
+- memory: Scope for persisting data — "user" (cross-project), "project" (repo-specific), "local" (machine-specific)
+- model: Which model runs this skill (e.g., sonnet, opus, haiku)
+- skills: List of dependent skills to auto-load
+- disallowedTools: Blocklist specific tools from being used
+- permissionMode: Control permission behavior (default, plan, bypassPermissions)
+- argument-hint: Display hint for skill arguments in the UI
+
 IMPORTANT NOTES:
 - Hook commands run in the shell environment, not in Claude's context
 - Keep hook commands fast to avoid slowing down the skill
@@ -424,8 +453,16 @@ Add \`permissionMode\` to control agent permissions:
 `;
 
     default:
-      // Basic template - return empty string (uses standard guidance)
-      return '';
+      // Basic template - additional field documentation only
+      return `
+ADDITIONAL FRONTMATTER FIELDS:
+- memory: Scope for persisting data — "user" (cross-project), "project" (repo-specific), "local" (machine-specific)
+- model: Which model runs this skill (e.g., sonnet, opus, haiku)
+- skills: List of dependent skills to auto-load
+- disallowedTools: Blocklist specific tools from being used
+- permissionMode: Control permission behavior (default, plan, bypassPermissions)
+- argument-hint: Display hint for skill arguments in the UI
+`;
   }
 }
 
@@ -522,6 +559,12 @@ FRONTMATTER FIELDS (Claude Code Extensions):
 - agent: Specify which agent type should handle this skill (e.g., "Explore", "Plan")
 - user-invocable: Set to false for internal helper skills not directly invocable
 - hooks: Configure lifecycle hooks (PreToolUse, PostToolUse, SessionStart, Stop)
+- memory: Scope for persisting data — "user" (cross-project), "project" (repo-specific), "local" (machine-specific)
+- model: Which model executes this skill (e.g., sonnet, opus, haiku)
+- skills: List of dependent skills to auto-load when this skill runs
+- disallowedTools: Blocklist specific tools from being used
+- permissionMode: Control permission behavior (default, plan, bypassPermissions)
+- argument-hint: Display hint for skill arguments in the UI
 
 ALLOWED TOOLS - WILDCARD PATTERNS:
 You can use wildcards for more granular tool permissions:

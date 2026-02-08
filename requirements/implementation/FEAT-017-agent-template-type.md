@@ -113,7 +113,7 @@ The implementation is split into 4 phases: types and agent template generation, 
 
 ### Phase 3: Template Updates — Hooks `once: true` & Field Documentation
 **Feature:** [FEAT-017](../features/FEAT-017-agent-template-type.md) | [#52](https://github.com/lwndev/ai-skills-manager/issues/52)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Independent of Phases 1-2 functionally**, but sequenced here because it modifies the same files (avoids merge conflicts if done in parallel)
@@ -147,7 +147,7 @@ The implementation is split into 4 phases: types and agent template generation, 
    - Add `memory`, `model`, `skills`, `disallowedTools`, `permissionMode`, `argument-hint` to the available fields list
 
 #### Deliverables
-- [ ] Updated `src/templates/skill-md.ts` — `once: true` in hooks YAML, new field documentation across all template guidance blocks
+- [x] Updated `src/templates/skill-md.ts` — `once: true` in hooks YAML, new field documentation across all template guidance blocks
 
 ---
 
