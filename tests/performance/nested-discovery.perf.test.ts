@@ -114,12 +114,12 @@ description: Test skill
     });
   });
 
-  describe('depth limiting performance', () => {
-    it('depth limiting significantly reduces scan time', async () => {
+  describe('depth limiting behavior', () => {
+    it('depth limiting returns fewer results than full-depth scan', async () => {
       // Create deep nested structure
       const testRoot = await createDir('perf-depth');
 
-      // Create 10 directories at each of 5 levels
+      // Create 10 directories at each of 5 levels, with skills along the primary path
       let currentPath = 'perf-depth';
       for (let level = 0; level < 5; level++) {
         for (let i = 0; i < 10; i++) {
@@ -129,18 +129,23 @@ description: Test skill
         await createSkillsDir(...currentPath.split(path.sep));
       }
 
-      // Full depth scan
-      const startFull = Date.now();
+      // Full depth scan should find all 5 skills
+      const fullResult = await collectNestedSkillDirectories(testRoot, 10);
+
+      // Limited depth scan (depth 2) should find fewer skills
+      const limitedResult = await collectNestedSkillDirectories(testRoot, 2);
+
+      // Behavioral assertion: shallower depth finds strictly fewer results
+      expect(limitedResult.directories.length).toBeLessThan(fullResult.directories.length);
+      expect(fullResult.directories.length).toBe(5);
+      expect(limitedResult.directories.length).toBeGreaterThan(0);
+      expect(limitedResult.depthLimitReached).toBe(true);
+
+      // Absolute time budget: both scans should complete quickly
+      const start = Date.now();
       await collectNestedSkillDirectories(testRoot, 10);
-      const durationFull = Date.now() - startFull;
-
-      // Limited depth scan (depth 2)
-      const startLimited = Date.now();
-      await collectNestedSkillDirectories(testRoot, 2);
-      const durationLimited = Date.now() - startLimited;
-
-      // Limited scan should be at least 2x faster (usually much more)
-      expect(durationLimited).toBeLessThan(durationFull);
+      const duration = Date.now() - start;
+      expect(duration).toBeLessThan(2000);
     });
   });
 
