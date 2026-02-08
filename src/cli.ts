@@ -18,7 +18,9 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 
 
 program
   .name('asm')
-  .description('AI Skills Manager - CLI tool for managing Claude Code Agent Skills')
+  .description(
+    "AI Skills Manager (ASM) - Create, validate, and distribute Claude Code skills.\n\nSkills are markdown files that extend Claude Code's capabilities, appearing as\nslash commands in the Claude Code interface."
+  )
   .version(packageJson.version);
 
 registerScaffoldCommand(program);

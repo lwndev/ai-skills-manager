@@ -1439,6 +1439,111 @@ describe('generateSkillMd', () => {
     });
   });
 
+  describe('FEAT-018 template guidance content', () => {
+    const templateTypes: TemplateType[] = ['basic', 'forked', 'with-hooks', 'internal', 'agent'];
+
+    describe('terminology consistency', () => {
+      it.each(templateTypes)(
+        '%s verbose template does not use "slash command" as standalone concept',
+        (templateType) => {
+          const result = generateSkillMd({ name: 'test' }, { templateType });
+
+          // Remove the acceptable usage "appearing as slash commands"
+          const filtered = result.replace(/appearing as\s+slash commands/g, '');
+          expect(filtered).not.toMatch(/slash command/i);
+        }
+      );
+    });
+
+    describe('auto-approval notes', () => {
+      it('basic verbose template mentions auto-approval', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'basic' });
+
+        expect(result).toMatch(/auto-approved|automatically\s+approved/i);
+      });
+
+      it('forked verbose template mentions auto-approval', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'forked' });
+
+        expect(result).toMatch(/auto-approved|automatically\s+approved/i);
+      });
+
+      it('with-hooks verbose template mentions NOT auto-approved', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'with-hooks' });
+
+        expect(result).toContain('NOT auto-approved');
+      });
+    });
+
+    describe('size budget in all verbose templates', () => {
+      it.each(templateTypes)(
+        '%s verbose template includes size budget guidance',
+        (templateType) => {
+          const result = generateSkillMd({ name: 'test' }, { templateType });
+
+          expect(result).toMatch(/2% of the context window|SIZE CONSIDERATIONS/);
+        }
+      );
+    });
+
+    describe('plugin distribution mentions', () => {
+      it('basic verbose template includes DISTRIBUTION OPTIONS and plugin', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'basic' });
+
+        expect(result).toContain('DISTRIBUTION OPTIONS');
+        expect(result).toMatch(/plugin/i);
+      });
+
+      it('with-hooks verbose template includes DISTRIBUTION OPTIONS and plugin', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'with-hooks' });
+
+        expect(result).toContain('DISTRIBUTION OPTIONS');
+        expect(result).toMatch(/plugin/i);
+      });
+
+      it('agent verbose template includes DISTRIBUTION OPTIONS and plugin', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'agent' });
+
+        expect(result).toContain('DISTRIBUTION OPTIONS');
+        expect(result).toMatch(/plugin/i);
+      });
+
+      it('forked verbose template does NOT include DISTRIBUTION OPTIONS', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'forked' });
+
+        expect(result).not.toContain('DISTRIBUTION OPTIONS');
+      });
+
+      it('internal verbose template does NOT include DISTRIBUTION OPTIONS', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'internal' });
+
+        expect(result).not.toContain('DISTRIBUTION OPTIONS');
+      });
+    });
+
+    describe('internal visibility note', () => {
+      it('internal verbose template includes /skills menu visibility note', () => {
+        const result = generateSkillMd({ name: 'test' }, { templateType: 'internal' });
+
+        expect(result).toMatch(/\/skills menu|user-invocable: false/);
+      });
+    });
+
+    describe('minimal templates not affected', () => {
+      it.each(templateTypes)(
+        '%s minimal template does NOT contain new guidance sections',
+        (templateType) => {
+          const result = generateSkillMd({ name: 'test' }, { templateType, minimal: true });
+
+          expect(result).not.toContain('PERMISSIONS NOTE');
+          expect(result).not.toContain('SIZE CONSIDERATIONS');
+          expect(result).not.toContain('DISTRIBUTION OPTIONS');
+          expect(result).not.toContain('VISIBILITY NOTE');
+        }
+      );
+    });
+  });
+
   describe('template type and explicit option interactions', () => {
     // Helper to extract frontmatter from generated output
     const getFrontmatter = (result: string): string => {

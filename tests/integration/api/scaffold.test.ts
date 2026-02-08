@@ -1073,6 +1073,41 @@ describe('scaffold API integration', () => {
     });
   });
 
+  describe('verbose templates with FEAT-018 guidance pass validation', () => {
+    it('basic verbose skill with updated guidance passes validation', async () => {
+      const result = await scaffold({
+        name: 'verbose-basic-guidance',
+        output: tempDir,
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('PERMISSIONS NOTE');
+      expect(content).toContain('SIZE CONSIDERATIONS');
+      expect(content).toContain('DISTRIBUTION OPTIONS');
+    });
+
+    it('with-hooks verbose skill with updated guidance passes validation', async () => {
+      const result = await scaffold({
+        name: 'verbose-hooks-guidance',
+        output: tempDir,
+        template: { templateType: 'with-hooks' },
+      });
+
+      const validateResult = await validate(result.path);
+      expect(validateResult.valid).toBe(true);
+      expect(validateResult.errors).toHaveLength(0);
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('NOT auto-approved');
+      expect(content).toContain('SIZE CONSIDERATIONS');
+      expect(content).toContain('DISTRIBUTION OPTIONS');
+    });
+  });
+
   describe('CLI scaffold with template options (FEAT-013 Phase 4)', () => {
     // These tests verify the CLI command correctly passes template options
     // to the API and produces valid skills.

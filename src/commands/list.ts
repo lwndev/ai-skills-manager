@@ -36,6 +36,11 @@ export interface ListCommandOptions {
   depth?: string;
 }
 
+/** FEAT-018: Skills menu correspondence note for help text */
+export const LIST_SKILLS_NOTE = `Skills:
+  Listed skills correspond to what Claude Code shows in the /skills menu.
+  Skills with user-invocable: false are loaded but hidden from this listing.`;
+
 /**
  * Register the list command with the CLI program
  */
@@ -70,6 +75,8 @@ Scopes:
   all         List skills from both project and personal directories (default)
   project     List skills from .claude/skills/ in current directory
   personal    List skills from ~/.claude/skills/ for all projects
+
+${LIST_SKILLS_NOTE}
 
 Recursive Discovery:
   --recursive    Scan for skills in nested .claude/skills directories

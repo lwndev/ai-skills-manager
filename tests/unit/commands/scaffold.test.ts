@@ -874,6 +874,23 @@ describe('scaffold CLI command', () => {
     });
   });
 
+  describe('FEAT-018 help text', () => {
+    it('help text includes the autoload note', async () => {
+      const { SCAFFOLD_AUTOLOAD_NOTE } = await import('../../../src/commands/scaffold');
+      const program = await createTestProgram();
+      const scaffoldCmd = program.commands.find((cmd) => cmd.name() === 'scaffold')!;
+      let helpText = '';
+      scaffoldCmd.configureOutput({ writeOut: (str: string) => (helpText += str) });
+      try {
+        await program.parseAsync(['node', 'asm', 'scaffold', '--help']);
+      } catch {
+        // commander throws on --help with exitOverride
+      }
+
+      expect(helpText).toContain(SCAFFOLD_AUTOLOAD_NOTE);
+    });
+  });
+
   describe('backward compatibility', () => {
     it('produces same output when no template options are specified', async () => {
       const program = await createTestProgram();
