@@ -1,5 +1,7 @@
 # Implementation Plan: Agent Template Type & Template Updates
 
+> **Superseded by [CHORE-013](../chores/CHORE-013-fix-scaffold-template-schema.md)** — The agent template type and agent-only fields (`model`, `memory`, `skills`, `disallowedTools`) were removed from the scaffold system. Skills and subagents are distinct systems; agent-specific configuration belongs in `.claude/agents/` files, not `.claude/skills/`.
+
 ## Overview
 
 This plan adds a new `agent` template variant to `asm scaffold` and three new CLI flags (`--memory`, `--model`, `--argument-hint`), while updating existing templates with new field documentation and `once: true` hook support. The feature builds on the existing template system (FEAT-013) and frontmatter schema v2 (FEAT-014), extending both the template generator and CLI command with agent-specific scaffolding capabilities.

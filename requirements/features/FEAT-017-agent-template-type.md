@@ -1,5 +1,7 @@
 # Feature Requirements: Agent Template Type & Template Updates
 
+> **Superseded by [CHORE-013](../chores/CHORE-013-fix-scaffold-template-schema.md)** — The agent template type and agent-only fields (`model`, `memory`, `skills`, `disallowedTools`) were removed from the scaffold system. Skills and subagents are distinct systems; agent-specific configuration belongs in `.claude/agents/` files, not `.claude/skills/`.
+
 ## Overview
 
 Add a new `agent` template variant to ASM's `asm scaffold` command that demonstrates agent-specific frontmatter fields (`memory`, `model`, `skills`, `permissionMode`, `disallowedTools`), and update existing templates to document newly supported fields and patterns.

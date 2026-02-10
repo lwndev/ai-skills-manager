@@ -180,9 +180,8 @@ export interface ValidateOptions {
  * - forked: Template for skills that run in forked (isolated) context
  * - with-hooks: Template demonstrating hook configuration
  * - internal: Template for non-user-invocable helper skills
- * - agent: Template for autonomous agent skills with model, memory, and tool configuration
  */
-export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent';
+export type ScaffoldTemplateType = 'basic' | 'forked' | 'with-hooks' | 'internal';
 
 /**
  * Template-specific options for scaffolding.
@@ -223,26 +222,30 @@ export interface ScaffoldTemplateOptions {
   minimal?: boolean;
 
   /**
-   * Memory scope for the skill.
-   * - `'user'`: Cross-project memory, stored in ~/.claude/
-   * - `'project'`: Repo-specific memory, stored in .claude/
-   * - `'local'`: Machine-specific, not committed to version control
-   */
-  memory?: 'user' | 'project' | 'local';
-
-  /**
-   * Model for agent execution.
-   * Controls which model runs the agent (e.g., 'sonnet', 'opus', 'haiku').
-   * If omitted, the agent inherits the model from its parent context.
-   */
-  model?: string;
-
-  /**
    * Argument hint for skill invocation.
    * Displayed in the UI to suggest expected arguments (e.g., '<query> [--deep]').
    * Maximum 100 characters.
    */
   argumentHint?: string;
+
+  /**
+   * License for the skill (e.g., 'MIT', 'Apache-2.0').
+   * Can be a license identifier or reference to a bundled license file.
+   */
+  license?: string;
+
+  /**
+   * Environment compatibility requirements.
+   * Describes required tools, platforms, or network access (1-500 characters).
+   * Most skills do not need this field.
+   */
+  compatibility?: string;
+
+  /**
+   * Arbitrary key-value metadata for the skill.
+   * Clients can use this to store additional properties not defined by the spec.
+   */
+  metadata?: Record<string, string>;
 }
 
 /**

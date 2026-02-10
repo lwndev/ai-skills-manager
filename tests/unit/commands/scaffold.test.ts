@@ -606,161 +606,6 @@ describe('scaffold CLI command', () => {
     });
   });
 
-  describe('--template agent option', () => {
-    it('accepts agent template type', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'agent-skill',
-        '--output',
-        tempDir,
-        '--template',
-        'agent',
-      ]);
-
-      const skillMd = await fs.readFile(path.join(tempDir, 'agent-skill', 'SKILL.md'), 'utf-8');
-      expect(skillMd).toContain('model: sonnet');
-      expect(skillMd).toContain('memory: project');
-      expect(skillMd).toContain('skills: []');
-      expect(skillMd).toContain('disallowedTools: []');
-    });
-
-    it('shows agent template type in output', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'agent-output-skill',
-        '--output',
-        tempDir,
-        '--template',
-        'agent',
-      ]);
-
-      expect(consoleOutput.some((line) => line.includes('"agent" template'))).toBe(true);
-    });
-  });
-
-  describe('--memory option', () => {
-    it('accepts user memory scope', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'memory-user-skill',
-        '--output',
-        tempDir,
-        '--memory',
-        'user',
-      ]);
-
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'memory-user-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('memory: user');
-    });
-
-    it('accepts project memory scope', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'memory-project-skill',
-        '--output',
-        tempDir,
-        '--memory',
-        'project',
-      ]);
-
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'memory-project-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('memory: project');
-    });
-
-    it('accepts local memory scope', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'memory-local-skill',
-        '--output',
-        tempDir,
-        '--memory',
-        'local',
-      ]);
-
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'memory-local-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('memory: local');
-    });
-
-    it('rejects invalid memory scope', async () => {
-      const program = await createTestProgram();
-      await expect(
-        program.parseAsync([
-          'node',
-          'asm',
-          'scaffold',
-          'test-skill',
-          '--output',
-          tempDir,
-          '--memory',
-          'global',
-        ])
-      ).rejects.toThrow();
-
-      expect(consoleOutput.some((line) => line.includes('Invalid memory scope'))).toBe(true);
-    });
-  });
-
-  describe('--model option', () => {
-    it('sets model field in frontmatter', async () => {
-      const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'model-skill',
-        '--output',
-        tempDir,
-        '--model',
-        'haiku',
-      ]);
-
-      const skillMd = await fs.readFile(path.join(tempDir, 'model-skill', 'SKILL.md'), 'utf-8');
-      expect(skillMd).toContain('model: haiku');
-    });
-
-    it('rejects empty model value', async () => {
-      const program = await createTestProgram();
-      await expect(
-        program.parseAsync([
-          'node',
-          'asm',
-          'scaffold',
-          'test-skill',
-          '--output',
-          tempDir,
-          '--model',
-          '',
-        ])
-      ).rejects.toThrow();
-
-      expect(consoleOutput.some((line) => line.includes('Model name cannot be empty'))).toBe(true);
-    });
-  });
-
   describe('--argument-hint option', () => {
     it('sets argument-hint in frontmatter', async () => {
       const program = await createTestProgram();
@@ -799,78 +644,99 @@ describe('scaffold CLI command', () => {
     });
   });
 
-  describe('new flag combinations with --template agent', () => {
-    it('combines --template agent with --memory user --model haiku', async () => {
+  describe('--license option', () => {
+    it('sets license in frontmatter', async () => {
       const program = await createTestProgram();
       await program.parseAsync([
         'node',
         'asm',
         'scaffold',
-        'agent-combo-skill',
+        'licensed-skill',
         '--output',
         tempDir,
-        '--template',
-        'agent',
-        '--memory',
-        'user',
-        '--model',
-        'haiku',
+        '--license',
+        'MIT',
       ]);
 
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'agent-combo-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('model: haiku');
-      expect(skillMd).toContain('memory: user');
-      expect(skillMd).toContain('skills: []');
-      expect(skillMd).toContain('disallowedTools: []');
+      const skillMd = await fs.readFile(path.join(tempDir, 'licensed-skill', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain('license: MIT');
+    });
+  });
+
+  describe('--compatibility option', () => {
+    it('sets compatibility in frontmatter', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'compat-skill',
+        '--output',
+        tempDir,
+        '--compatibility',
+        'Requires git',
+      ]);
+
+      const skillMd = await fs.readFile(path.join(tempDir, 'compat-skill', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain('compatibility: Requires git');
     });
 
-    it('combines --template agent with --argument-hint', async () => {
+    it('rejects compatibility over 500 characters', async () => {
+      const longCompat = 'a'.repeat(501);
+      const program = await createTestProgram();
+      await expect(
+        program.parseAsync([
+          'node',
+          'asm',
+          'scaffold',
+          'test-skill',
+          '--output',
+          tempDir,
+          '--compatibility',
+          longCompat,
+        ])
+      ).rejects.toThrow();
+
+      expect(consoleOutput.some((line) => line.includes('500 characters or fewer'))).toBe(true);
+    });
+  });
+
+  describe('--metadata option', () => {
+    it('sets metadata key=value pairs in frontmatter', async () => {
       const program = await createTestProgram();
       await program.parseAsync([
         'node',
         'asm',
         'scaffold',
-        'agent-hint-skill',
+        'meta-skill',
         '--output',
         tempDir,
-        '--template',
-        'agent',
-        '--argument-hint',
-        'task description',
+        '--metadata',
+        'author=my-org',
+        'version=1.0',
       ]);
 
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'agent-hint-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('model: sonnet');
-      expect(skillMd).toContain('argument-hint: task description');
+      const skillMd = await fs.readFile(path.join(tempDir, 'meta-skill', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain('metadata:');
+      expect(skillMd).toContain('  author: my-org');
     });
 
-    it('combines --template agent with --minimal', async () => {
+    it('rejects metadata without = separator', async () => {
       const program = await createTestProgram();
-      await program.parseAsync([
-        'node',
-        'asm',
-        'scaffold',
-        'agent-minimal-skill',
-        '--output',
-        tempDir,
-        '--template',
-        'agent',
-        '--minimal',
-      ]);
+      await expect(
+        program.parseAsync([
+          'node',
+          'asm',
+          'scaffold',
+          'test-skill',
+          '--output',
+          tempDir,
+          '--metadata',
+          'invalid-format',
+        ])
+      ).rejects.toThrow();
 
-      const skillMd = await fs.readFile(
-        path.join(tempDir, 'agent-minimal-skill', 'SKILL.md'),
-        'utf-8'
-      );
-      expect(skillMd).toContain('model: sonnet');
-      expect(skillMd).toContain('memory: project');
-      expect(skillMd).not.toContain('SKILL DEVELOPMENT GUIDANCE');
+      expect(consoleOutput.some((line) => line.includes('Expected key=value format'))).toBe(true);
     });
   });
 
@@ -966,7 +832,6 @@ describe('scaffold CLI command', () => {
       expect(errorOutput).toContain('forked');
       expect(errorOutput).toContain('with-hooks');
       expect(errorOutput).toContain('internal');
-      expect(errorOutput).toContain('agent');
     });
 
     it('shows clear error for invalid context value', async () => {

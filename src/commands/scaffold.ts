@@ -9,13 +9,7 @@ import * as output from '../utils/output';
 export const SCAFFOLD_AUTOLOAD_NOTE =
   'Skills auto-load from .claude/skills/ directories and appear as slash\n  commands in Claude Code.';
 
-const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = [
-  'basic',
-  'forked',
-  'with-hooks',
-  'internal',
-  'agent',
-];
+const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
 
 export function registerScaffoldCommand(program: Command): void {
   program
@@ -27,18 +21,16 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--personal', 'Create as a personal skill in ~/.claude/skills/')
     .option('-a, --allowed-tools <tools>', 'Comma-separated list of allowed tools')
     .option('-f, --force', 'Overwrite existing directory without prompting')
-    .option(
-      '-t, --template <type>',
-      'Template variant (basic, forked, with-hooks, internal, agent)'
-    )
+    .option('-t, --template <type>', 'Template variant (basic, forked, with-hooks, internal)')
     .option('--context <context>', 'Set context in frontmatter (fork)')
     .option('--agent <name>', 'Set agent field in frontmatter')
     .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
     .option('--hooks', 'Include commented hook examples in frontmatter')
     .option('--minimal', 'Generate shorter templates without educational guidance text')
-    .option('--memory <scope>', 'Set memory scope (user, project, local)')
-    .option('--model <name>', 'Set model for agent execution')
     .option('--argument-hint <hint>', 'Set argument hint for skill invocation')
+    .option('--license <license>', 'Set license (e.g., MIT, Apache-2.0)')
+    .option('--compatibility <requirements>', 'Set environment compatibility requirements')
+    .option('--metadata <pairs...>', 'Set metadata key=value pairs (e.g., author=org version=1.0)')
     .addHelpText(
       'after',
       `
@@ -56,18 +48,17 @@ Template options:
   $ asm scaffold my-skill --template forked
   $ asm scaffold my-skill --template with-hooks
   $ asm scaffold my-skill --template internal
-  $ asm scaffold my-skill --template agent
   $ asm scaffold my-skill --context fork
   $ asm scaffold my-skill --agent Explore
   $ asm scaffold my-skill --no-user-invocable
   $ asm scaffold my-skill --hooks
   $ asm scaffold my-skill --template basic --context fork --hooks
 
-Agent and field options:
-  $ asm scaffold code-reviewer --template agent --memory project --model sonnet
-  $ asm scaffold safe-refactor --template agent --model haiku --minimal
+Spec and field options:
   $ asm scaffold search-helper --template forked --argument-hint "<query> [--deep]"
-  $ asm scaffold learning-assistant --memory user
+  $ asm scaffold my-skill --license MIT
+  $ asm scaffold my-skill --compatibility "Requires git, docker"
+  $ asm scaffold my-skill --metadata author=my-org version=1.0
 
 Note:
   By default, skills are created in .claude/skills/ (project scope).
@@ -80,7 +71,6 @@ Template types:
   forked      - For skills running in isolated (forked) context
   with-hooks  - Template demonstrating hook configuration
   internal    - For non-user-invocable helper skills
-  agent       - For autonomous agent skills with model, memory, and tool config
 
 Minimal mode:
   --minimal   Generate shorter templates without educational guidance text.
@@ -111,9 +101,10 @@ interface CliScaffoldOptions {
   userInvocable?: boolean;
   hooks?: boolean;
   minimal?: boolean;
-  memory?: string;
-  model?: string;
   argumentHint?: string;
+  license?: string;
+  compatibility?: string;
+  metadata?: string[];
 }
 
 /**
@@ -162,37 +153,55 @@ function validateAgent(agent: string): string {
   return trimmed;
 }
 
-const VALID_MEMORY_SCOPES = ['user', 'project', 'local'] as const;
-
 /**
- * Validates memory scope against allowed values.
+ * Validates compatibility string length (1-500 characters).
  */
-function validateMemoryScope(memory: string): 'user' | 'project' | 'local' {
-  if (!VALID_MEMORY_SCOPES.includes(memory as (typeof VALID_MEMORY_SCOPES)[number])) {
+function validateCompatibility(compatibility: string): string {
+  const trimmed = compatibility.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('Compatibility string cannot be empty', [
+      { code: 'EMPTY_COMPATIBILITY', message: 'Compatibility string cannot be empty' },
+    ]);
+  }
+  if (trimmed.length > 500) {
     throw new ValidationError(
-      `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
+      `Compatibility must be 500 characters or fewer, got ${trimmed.length} characters.`,
       [
         {
-          code: 'INVALID_MEMORY_SCOPE',
-          message: `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
+          code: 'COMPATIBILITY_TOO_LONG',
+          message: `Compatibility must be 500 characters or fewer, got ${trimmed.length} characters.`,
         },
       ]
     );
   }
-  return memory as 'user' | 'project' | 'local';
+  return trimmed;
 }
 
 /**
- * Validates model value is non-empty.
+ * Parses metadata key=value pairs from CLI arguments.
  */
-function validateModel(model: string): string {
-  const trimmed = model.trim();
-  if (trimmed.length === 0) {
-    throw new ValidationError('Model name cannot be empty', [
-      { code: 'EMPTY_MODEL', message: 'Model name cannot be empty' },
-    ]);
+function parseMetadata(pairs: string[]): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  for (const pair of pairs) {
+    const eqIndex = pair.indexOf('=');
+    if (eqIndex === -1) {
+      throw new ValidationError(`Invalid metadata format: "${pair}". Expected key=value format.`, [
+        {
+          code: 'INVALID_METADATA_FORMAT',
+          message: `Invalid metadata format: "${pair}". Expected key=value format.`,
+        },
+      ]);
+    }
+    const key = pair.substring(0, eqIndex).trim();
+    const value = pair.substring(eqIndex + 1).trim();
+    if (key.length === 0) {
+      throw new ValidationError('Metadata key cannot be empty', [
+        { code: 'EMPTY_METADATA_KEY', message: 'Metadata key cannot be empty' },
+      ]);
+    }
+    metadata[key] = value;
   }
-  return trimmed;
+  return metadata;
 }
 
 /**
@@ -258,21 +267,27 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
     hasOptions = true;
   }
 
-  // Validate and set memory scope
-  if (options.memory) {
-    templateOptions.memory = validateMemoryScope(options.memory);
-    hasOptions = true;
-  }
-
-  // Validate and set model
-  if (options.model !== undefined && options.model !== null) {
-    templateOptions.model = validateModel(options.model);
-    hasOptions = true;
-  }
-
   // Validate and set argument hint
   if (options.argumentHint !== undefined && options.argumentHint !== null) {
     templateOptions.argumentHint = validateArgumentHint(options.argumentHint);
+    hasOptions = true;
+  }
+
+  // Set license
+  if (options.license) {
+    templateOptions.license = options.license;
+    hasOptions = true;
+  }
+
+  // Validate and set compatibility
+  if (options.compatibility) {
+    templateOptions.compatibility = validateCompatibility(options.compatibility);
+    hasOptions = true;
+  }
+
+  // Parse and set metadata
+  if (options.metadata && options.metadata.length > 0) {
+    templateOptions.metadata = parseMetadata(options.metadata);
     hasOptions = true;
   }
 

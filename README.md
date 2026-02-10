@@ -79,6 +79,16 @@ asm scaffold my-skill --force
 | `--personal` | Create as a personal skill in `~/.claude/skills/` |
 | `-a, --allowed-tools <tools>` | Comma-separated list of allowed tools |
 | `-f, --force` | Overwrite existing directory without prompting |
+| `-t, --template <type>` | Template variant: `basic`, `forked`, `with-hooks`, `internal` |
+| `--context <context>` | Set context in frontmatter (`fork`) |
+| `--agent <name>` | Set agent field in frontmatter |
+| `--no-user-invocable` | Set `user-invocable: false` in frontmatter |
+| `--hooks` | Include commented hook examples in frontmatter |
+| `--minimal` | Generate shorter templates without educational guidance |
+| `--argument-hint <hint>` | Set argument hint for skill invocation (max 100 chars) |
+| `--license <license>` | Set license (e.g., `MIT`, `Apache-2.0`) |
+| `--compatibility <reqs>` | Set environment compatibility requirements (max 500 chars) |
+| `--metadata <pairs...>` | Set metadata key=value pairs (e.g., `author=org version=1.0`) |
 
 #### Skill Name Requirements
 
@@ -928,7 +938,7 @@ Make sure the path points to a skill directory containing a SKILL.md file, or di
 Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
 
 **Error: Unknown frontmatter property**
-Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`. Remove any other keys.
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `argument-hint`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.
