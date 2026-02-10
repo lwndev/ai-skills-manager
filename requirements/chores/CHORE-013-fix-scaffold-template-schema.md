@@ -108,7 +108,7 @@ Per the Anthropic docs (`docs/anthropic/agents/create-custom-subagents.md`) and 
 
 **Completed:** 2026-02-10
 
-**Pull Request:** TBD
+**Pull Request:** [#66](https://github.com/lwndev/ai-skills-manager/pull/66)
 
 ## Notes
 
