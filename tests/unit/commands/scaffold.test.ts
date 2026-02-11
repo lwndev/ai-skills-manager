@@ -661,6 +661,63 @@ describe('scaffold CLI command', () => {
       const skillMd = await fs.readFile(path.join(tempDir, 'licensed-skill', 'SKILL.md'), 'utf-8');
       expect(skillMd).toContain('license: MIT');
     });
+
+    it('trims whitespace from license value', async () => {
+      const program = await createTestProgram();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'trimmed-license-skill',
+        '--output',
+        tempDir,
+        '--license',
+        '  Apache-2.0  ',
+      ]);
+
+      const skillMd = await fs.readFile(
+        path.join(tempDir, 'trimmed-license-skill', 'SKILL.md'),
+        'utf-8'
+      );
+      expect(skillMd).toContain('license: Apache-2.0');
+    });
+
+    it('rejects empty license value', async () => {
+      const program = await createTestProgram();
+      await expect(
+        program.parseAsync([
+          'node',
+          'asm',
+          'scaffold',
+          'test-skill',
+          '--output',
+          tempDir,
+          '--license',
+          '',
+        ])
+      ).rejects.toThrow();
+
+      expect(consoleOutput.some((line) => line.includes('License cannot be empty'))).toBe(true);
+    });
+
+    it('rejects license over 100 characters', async () => {
+      const longLicense = 'a'.repeat(101);
+      const program = await createTestProgram();
+      await expect(
+        program.parseAsync([
+          'node',
+          'asm',
+          'scaffold',
+          'test-skill',
+          '--output',
+          tempDir,
+          '--license',
+          longLicense,
+        ])
+      ).rejects.toThrow();
+
+      expect(consoleOutput.some((line) => line.includes('100 characters or fewer'))).toBe(true);
+    });
   });
 
   describe('--compatibility option', () => {
@@ -737,6 +794,26 @@ describe('scaffold CLI command', () => {
       ).rejects.toThrow();
 
       expect(consoleOutput.some((line) => line.includes('Expected key=value format'))).toBe(true);
+    });
+
+    it('rejects metadata with empty key', async () => {
+      const program = await createTestProgram();
+      await expect(
+        program.parseAsync([
+          'node',
+          'asm',
+          'scaffold',
+          'test-skill',
+          '--output',
+          tempDir,
+          '--metadata',
+          '=value',
+        ])
+      ).rejects.toThrow();
+
+      expect(consoleOutput.some((line) => line.includes('Metadata key cannot be empty'))).toBe(
+        true
+      );
     });
   });
 

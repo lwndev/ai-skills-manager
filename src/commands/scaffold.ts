@@ -154,6 +154,30 @@ function validateAgent(agent: string): string {
 }
 
 /**
+ * Validates license string is non-empty and within length limit (1-100 characters).
+ */
+function validateLicense(license: string): string {
+  const trimmed = license.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('License cannot be empty', [
+      { code: 'EMPTY_LICENSE', message: 'License cannot be empty' },
+    ]);
+  }
+  if (trimmed.length > 100) {
+    throw new ValidationError(
+      `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
+      [
+        {
+          code: 'LICENSE_TOO_LONG',
+          message: `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
+        },
+      ]
+    );
+  }
+  return trimmed;
+}
+
+/**
  * Validates compatibility string length (1-500 characters).
  */
 function validateCompatibility(compatibility: string): string {
@@ -273,9 +297,9 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
     hasOptions = true;
   }
 
-  // Set license
-  if (options.license) {
-    templateOptions.license = options.license;
+  // Validate and set license
+  if (options.license !== undefined && options.license !== null) {
+    templateOptions.license = validateLicense(options.license);
     hasOptions = true;
   }
 

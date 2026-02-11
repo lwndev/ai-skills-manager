@@ -100,7 +100,9 @@ Per the Anthropic docs (`docs/anthropic/agents/create-custom-subagents.md`) and 
 - [x] Update `tests/integration/scaffold.test.ts` — remove agent template integration tests
 - [x] Update `tests/integration/api/scaffold.test.ts` — remove agent template default tests (~line 828+)
 - [x] Add tests for new `license`, `compatibility`, `metadata` fields
-- [x] `npm run quality` passes
+- [x] Add `validateLicense()` with trim, empty check, and 100-char length cap (consistency with `validateCompatibility` and `validateArgumentHint`)
+- [x] Add test for metadata empty-key rejection (`=value`)
+- [x] `npm run quality` passes (3030 tests)
 
 ## Completion
 
