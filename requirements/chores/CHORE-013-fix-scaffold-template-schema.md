@@ -137,6 +137,7 @@ This chore is executed as a single phase. The type-driven removal strategy lets 
 
 **Status:** `Completed`
 **Date:** 2026-02-11
+**PR:** [#68](https://github.com/lwndev/ai-skills-manager/pull/68)
 
 ## Notes
 
