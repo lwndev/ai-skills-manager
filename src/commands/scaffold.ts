@@ -15,13 +15,7 @@ import {
 export const SCAFFOLD_AUTOLOAD_NOTE =
   'Skills auto-load from .claude/skills/ directories and appear as slash\n  commands in Claude Code.';
 
-const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = [
-  'basic',
-  'forked',
-  'with-hooks',
-  'internal',
-  'agent',
-];
+const VALID_TEMPLATE_TYPES: ScaffoldTemplateType[] = ['basic', 'forked', 'with-hooks', 'internal'];
 
 export function registerScaffoldCommand(program: Command): void {
   program
@@ -33,18 +27,16 @@ export function registerScaffoldCommand(program: Command): void {
     .option('--personal', 'Create as a personal skill in ~/.claude/skills/')
     .option('-a, --allowed-tools <tools>', 'Comma-separated list of allowed tools')
     .option('-f, --force', 'Overwrite existing directory without prompting')
-    .option(
-      '-t, --template <type>',
-      'Template variant (basic, forked, with-hooks, internal, agent)'
-    )
+    .option('-t, --template <type>', 'Template variant (basic, forked, with-hooks, internal)')
     .option('--context <context>', 'Set context in frontmatter (fork)')
     .option('--agent <name>', 'Set agent field in frontmatter')
     .option('--no-user-invocable', 'Set user-invocable: false in frontmatter')
     .option('--hooks', 'Include commented hook examples in frontmatter')
     .option('--minimal', 'Generate shorter templates without educational guidance text')
-    .option('--memory <scope>', 'Set memory scope (user, project, local)')
-    .option('--model <name>', 'Set model for agent execution')
     .option('--argument-hint <hint>', 'Set argument hint for skill invocation')
+    .option('--license <license>', 'Set license identifier (e.g., MIT, Apache-2.0)')
+    .option('--compatibility <compat>', 'Set compatibility constraint (e.g., claude-code>=2.1)')
+    .option('--metadata <pairs...>', 'Set metadata key=value pairs')
     .option('-i, --interactive', 'Launch guided prompt-driven scaffold workflow')
     .addHelpText(
       'after',
@@ -68,18 +60,17 @@ Template options:
   $ asm scaffold my-skill --template forked
   $ asm scaffold my-skill --template with-hooks
   $ asm scaffold my-skill --template internal
-  $ asm scaffold my-skill --template agent
   $ asm scaffold my-skill --context fork
   $ asm scaffold my-skill --agent Explore
   $ asm scaffold my-skill --no-user-invocable
   $ asm scaffold my-skill --hooks
   $ asm scaffold my-skill --template basic --context fork --hooks
 
-Agent and field options:
-  $ asm scaffold code-reviewer --template agent --memory project --model sonnet
-  $ asm scaffold safe-refactor --template agent --model haiku --minimal
+Spec and field options:
   $ asm scaffold search-helper --template forked --argument-hint "<query> [--deep]"
-  $ asm scaffold learning-assistant --memory user
+  $ asm scaffold my-skill --license MIT
+  $ asm scaffold my-skill --compatibility "claude-code>=2.1"
+  $ asm scaffold my-skill --metadata author=team version=1.0
 
 Note:
   By default, skills are created in .claude/skills/ (project scope).
@@ -92,7 +83,6 @@ Template types:
   forked      - For skills running in isolated (forked) context
   with-hooks  - Template demonstrating hook configuration
   internal    - For non-user-invocable helper skills
-  agent       - For autonomous agent skills with model, memory, and tool config
 
 Minimal mode:
   --minimal   Generate shorter templates without educational guidance text.
@@ -135,9 +125,10 @@ export interface CliScaffoldOptions {
   userInvocable?: boolean;
   hooks?: boolean;
   minimal?: boolean;
-  memory?: string;
-  model?: string;
   argumentHint?: string;
+  license?: string;
+  compatibility?: string;
+  metadata?: string[];
   interactive?: boolean;
 }
 
@@ -187,39 +178,6 @@ function validateAgent(agent: string): string {
   return trimmed;
 }
 
-const VALID_MEMORY_SCOPES = ['user', 'project', 'local'] as const;
-
-/**
- * Validates memory scope against allowed values.
- */
-function validateMemoryScope(memory: string): 'user' | 'project' | 'local' {
-  if (!VALID_MEMORY_SCOPES.includes(memory as (typeof VALID_MEMORY_SCOPES)[number])) {
-    throw new ValidationError(
-      `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
-      [
-        {
-          code: 'INVALID_MEMORY_SCOPE',
-          message: `Invalid memory scope: "${memory}". Valid values: ${VALID_MEMORY_SCOPES.join(', ')}`,
-        },
-      ]
-    );
-  }
-  return memory as 'user' | 'project' | 'local';
-}
-
-/**
- * Validates model value is non-empty.
- */
-function validateModel(model: string): string {
-  const trimmed = model.trim();
-  if (trimmed.length === 0) {
-    throw new ValidationError('Model name cannot be empty', [
-      { code: 'EMPTY_MODEL', message: 'Model name cannot be empty' },
-    ]);
-  }
-  return trimmed;
-}
-
 /**
  * Validates argument hint length.
  */
@@ -236,6 +194,81 @@ function validateArgumentHint(hint: string): string {
     );
   }
   return hint;
+}
+
+/**
+ * Validates license is non-empty and within length limit.
+ */
+function validateLicense(license: string): string {
+  const trimmed = license.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('License cannot be empty', [
+      { code: 'EMPTY_LICENSE', message: 'License cannot be empty' },
+    ]);
+  }
+  if (trimmed.length > 100) {
+    throw new ValidationError(
+      `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
+      [
+        {
+          code: 'LICENSE_TOO_LONG',
+          message: `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
+        },
+      ]
+    );
+  }
+  return trimmed;
+}
+
+/**
+ * Validates compatibility is non-empty and within length limit.
+ */
+function validateCompatibility(compat: string): string {
+  const trimmed = compat.trim();
+  if (trimmed.length === 0) {
+    throw new ValidationError('Compatibility cannot be empty', [
+      { code: 'EMPTY_COMPATIBILITY', message: 'Compatibility cannot be empty' },
+    ]);
+  }
+  if (trimmed.length > 100) {
+    throw new ValidationError(
+      `Compatibility must be 100 characters or fewer, got ${trimmed.length} characters.`,
+      [
+        {
+          code: 'COMPATIBILITY_TOO_LONG',
+          message: `Compatibility must be 100 characters or fewer, got ${trimmed.length} characters.`,
+        },
+      ]
+    );
+  }
+  return trimmed;
+}
+
+/**
+ * Parses and validates metadata key=value pairs.
+ */
+function parseMetadata(pairs: string[]): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  for (const pair of pairs) {
+    const eqIndex = pair.indexOf('=');
+    if (eqIndex === -1) {
+      throw new ValidationError(`Invalid metadata format: "${pair}". Expected key=value.`, [
+        {
+          code: 'INVALID_METADATA_FORMAT',
+          message: `Invalid metadata format: "${pair}". Expected key=value.`,
+        },
+      ]);
+    }
+    const key = pair.substring(0, eqIndex).trim();
+    const value = pair.substring(eqIndex + 1).trim();
+    if (key.length === 0) {
+      throw new ValidationError(`Metadata key cannot be empty in "${pair}".`, [
+        { code: 'EMPTY_METADATA_KEY', message: `Metadata key cannot be empty in "${pair}".` },
+      ]);
+    }
+    metadata[key] = value;
+  }
+  return metadata;
 }
 
 /**
@@ -283,21 +316,27 @@ function buildTemplateOptions(options: CliScaffoldOptions): ScaffoldTemplateOpti
     hasOptions = true;
   }
 
-  // Validate and set memory scope
-  if (options.memory) {
-    templateOptions.memory = validateMemoryScope(options.memory);
-    hasOptions = true;
-  }
-
-  // Validate and set model
-  if (options.model !== undefined && options.model !== null) {
-    templateOptions.model = validateModel(options.model);
-    hasOptions = true;
-  }
-
   // Validate and set argument hint
   if (options.argumentHint !== undefined && options.argumentHint !== null) {
     templateOptions.argumentHint = validateArgumentHint(options.argumentHint);
+    hasOptions = true;
+  }
+
+  // Validate and set license
+  if (options.license !== undefined && options.license !== null) {
+    templateOptions.license = validateLicense(options.license);
+    hasOptions = true;
+  }
+
+  // Validate and set compatibility
+  if (options.compatibility !== undefined && options.compatibility !== null) {
+    templateOptions.compatibility = validateCompatibility(options.compatibility);
+    hasOptions = true;
+  }
+
+  // Parse and set metadata
+  if (options.metadata && options.metadata.length > 0) {
+    templateOptions.metadata = parseMetadata(options.metadata);
     hasOptions = true;
   }
 

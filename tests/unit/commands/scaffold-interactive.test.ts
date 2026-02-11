@@ -130,8 +130,9 @@ describe('scaffold-interactive', () => {
       expect(TEMPLATE_CONTENT_FLAGS).toContain('minimal');
       expect(TEMPLATE_CONTENT_FLAGS).toContain('description');
       expect(TEMPLATE_CONTENT_FLAGS).toContain('allowedTools');
-      expect(TEMPLATE_CONTENT_FLAGS).toContain('memory');
-      expect(TEMPLATE_CONTENT_FLAGS).toContain('model');
+      expect(TEMPLATE_CONTENT_FLAGS).toContain('license');
+      expect(TEMPLATE_CONTENT_FLAGS).toContain('compatibility');
+      expect(TEMPLATE_CONTENT_FLAGS).toContain('metadata');
       expect(TEMPLATE_CONTENT_FLAGS).toContain('argumentHint');
     });
 
@@ -223,20 +224,20 @@ describe('scaffold-interactive', () => {
       expect(detectConflictingFlags(options)).toContain('allowedTools');
     });
 
-    it('detects --memory flag', () => {
+    it('detects --license flag', () => {
       const options: CliScaffoldOptions = {
         interactive: true,
-        memory: 'project',
+        license: 'MIT',
       };
-      expect(detectConflictingFlags(options)).toContain('memory');
+      expect(detectConflictingFlags(options)).toContain('license');
     });
 
-    it('detects --model flag', () => {
+    it('detects --compatibility flag', () => {
       const options: CliScaffoldOptions = {
         interactive: true,
-        model: 'sonnet',
+        compatibility: 'claude-code>=2.1',
       };
-      expect(detectConflictingFlags(options)).toContain('model');
+      expect(detectConflictingFlags(options)).toContain('compatibility');
     });
 
     it('detects --argument-hint flag', () => {
@@ -250,14 +251,14 @@ describe('scaffold-interactive', () => {
     it('detects multiple conflicting flags at once', () => {
       const options: CliScaffoldOptions = {
         interactive: true,
-        template: 'agent',
-        memory: 'user',
-        model: 'haiku',
+        template: 'forked',
+        license: 'MIT',
+        compatibility: 'claude-code>=2.1',
       };
       const conflicts = detectConflictingFlags(options);
       expect(conflicts).toContain('template');
-      expect(conflicts).toContain('memory');
-      expect(conflicts).toContain('model');
+      expect(conflicts).toContain('license');
+      expect(conflicts).toContain('compatibility');
       expect(conflicts).toHaveLength(3);
     });
 
@@ -427,54 +428,60 @@ describe('scaffold-interactive', () => {
         templateType?: string;
         context?: string;
         agent?: string;
-        memory?: string;
-        model?: string;
         hooks?: boolean;
         minimal?: boolean;
         description?: string;
         argumentHint?: string;
         allowedTools?: string;
+        license?: string;
+        compatibility?: string;
+        metadata?: string;
       } = {}
     ) {
       const {
         templateType = 'basic',
         context = 'inherit',
         agent = '',
-        memory = 'skip',
-        model = 'skip',
         hooks = false,
         minimal = false,
         description = '',
         argumentHint = '',
         allowedTools = '',
+        license = '',
+        compatibility: compat = '',
+        metadata = '',
       } = overrides;
 
-      // Track call order for conditional logic verification
       let selectCallIndex = 0;
       let inputCallIndex = 0;
       let confirmCallIndex = 0;
 
-      // select is called for: template, context (if basic), memory, model
+      // select is called for: template, context (if basic)
       const selectAnswers: string[] = [templateType];
       if (templateType === 'basic') {
         selectAnswers.push(context);
       }
-      selectAnswers.push(memory); // memory
-      selectAnswers.push(model); // model
 
       mockSelect.mockImplementation(async () => {
         const answer = selectAnswers[selectCallIndex++];
         return answer;
       });
 
-      // input is called for: agent, description, argumentHint, allowedTools
-      const inputAnswers = [agent, description, argumentHint, allowedTools];
+      // input is called for: agent, description, argumentHint, allowedTools, license, compatibility, metadata
+      const inputAnswers = [
+        agent,
+        description,
+        argumentHint,
+        allowedTools,
+        license,
+        compat,
+        metadata,
+      ];
       mockInput.mockImplementation(
         async (config: {
           validate?: (value: string) => boolean | string | Promise<string | boolean>;
         }) => {
           const answer = inputAnswers[inputCallIndex++];
-          // Run validation if provided to cover that code path
           if (config.validate) {
             config.validate(answer);
           }
@@ -494,10 +501,10 @@ describe('scaffold-interactive', () => {
     }
 
     it('template type prompt produces correct templateType in options', async () => {
-      setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
+      setupPromptMocks({ templateType: 'forked' });
 
       const result = await runInteractivePrompts();
-      expect(result.templateOptions.templateType).toBe('agent');
+      expect(result.templateOptions.templateType).toBe('forked');
     });
 
     it('basic template produces correct templateType', async () => {
@@ -518,8 +525,8 @@ describe('scaffold-interactive', () => {
       setupPromptMocks({ templateType: 'basic', context: 'fork' });
       await runInteractivePrompts();
 
-      // select called 4 times: template, context, memory, model
-      expect(mockSelect).toHaveBeenCalledTimes(4);
+      // select called 2 times: template, context
+      expect(mockSelect).toHaveBeenCalledTimes(2);
       // Second select call should be the context prompt
       expect(mockSelect.mock.calls[1][0]).toEqual(
         expect.objectContaining({ message: 'Select context type:' })
@@ -530,16 +537,16 @@ describe('scaffold-interactive', () => {
       setupPromptMocks({ templateType: 'forked' });
       await runInteractivePrompts();
 
-      // select called 3 times: template, memory, model (no context)
-      expect(mockSelect).toHaveBeenCalledTimes(3);
+      // select called 1 time: template (no context)
+      expect(mockSelect).toHaveBeenCalledTimes(1);
       const messages = mockSelect.mock.calls.map(
         (call) => (call[0] as { message: string }).message
       );
       expect(messages).not.toContain('Select context type:');
     });
 
-    it('context prompt is NOT shown for agent template', async () => {
-      setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
+    it('context prompt is NOT shown for with-hooks template', async () => {
+      setupPromptMocks({ templateType: 'with-hooks' });
       await runInteractivePrompts();
 
       const messages = mockSelect.mock.calls.map(
@@ -574,82 +581,6 @@ describe('scaffold-interactive', () => {
 
       const result = await runInteractivePrompts();
       expect(result.templateOptions.agent).toBeUndefined();
-    });
-
-    it('memory defaults to project for agent template', async () => {
-      setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts();
-
-      // Find the memory select call — for agent, the message is "Memory scope:"
-      const memoryCall = mockSelect.mock.calls.find(
-        (call) => (call[0] as { message: string }).message === 'Memory scope:'
-      );
-      if (!memoryCall) throw new Error('Expected memory select call');
-      expect((memoryCall[0] as { default?: string }).default).toBe('project');
-    });
-
-    it('memory defaults to skip for non-agent templates', async () => {
-      setupPromptMocks({ templateType: 'basic' });
-      await runInteractivePrompts();
-
-      const memoryCall = mockSelect.mock.calls.find(
-        (call) =>
-          (call[0] as { message: string }).message ===
-          'Memory scope (optional, press Enter to skip):'
-      );
-      if (!memoryCall) throw new Error('Expected memory select call');
-      expect((memoryCall[0] as { default?: string }).default).toBe('skip');
-    });
-
-    it('memory skip omits memory from options for non-agent', async () => {
-      setupPromptMocks({ templateType: 'basic', memory: 'skip' });
-
-      const result = await runInteractivePrompts();
-      expect(result.templateOptions.memory).toBeUndefined();
-    });
-
-    it('memory value is set when selected for non-agent', async () => {
-      setupPromptMocks({ templateType: 'basic', memory: 'user' });
-
-      const result = await runInteractivePrompts();
-      expect(result.templateOptions.memory).toBe('user');
-    });
-
-    it('model defaults to sonnet for agent template', async () => {
-      setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
-      await runInteractivePrompts();
-
-      const modelCall = mockSelect.mock.calls.find(
-        (call) => (call[0] as { message: string }).message === 'Model:'
-      );
-      if (!modelCall) throw new Error('Expected model select call');
-      expect((modelCall[0] as { default?: string }).default).toBe('sonnet');
-    });
-
-    it('model defaults to skip for non-agent templates', async () => {
-      setupPromptMocks({ templateType: 'basic' });
-      await runInteractivePrompts();
-
-      const modelCall = mockSelect.mock.calls.find(
-        (call) =>
-          (call[0] as { message: string }).message === 'Model (optional, press Enter to skip):'
-      );
-      if (!modelCall) throw new Error('Expected model select call');
-      expect((modelCall[0] as { default?: string }).default).toBe('skip');
-    });
-
-    it('model skip omits model from options for non-agent', async () => {
-      setupPromptMocks({ templateType: 'basic', model: 'skip' });
-
-      const result = await runInteractivePrompts();
-      expect(result.templateOptions.model).toBeUndefined();
-    });
-
-    it('model value is set when selected', async () => {
-      setupPromptMocks({ templateType: 'basic', model: 'opus' });
-
-      const result = await runInteractivePrompts();
-      expect(result.templateOptions.model).toBe('opus');
     });
 
     it('hooks prompt is shown for basic template', async () => {
@@ -687,17 +618,6 @@ describe('scaffold-interactive', () => {
 
     it('hooks prompt is skipped for internal template', async () => {
       setupPromptMocks({ templateType: 'internal' });
-      await runInteractivePrompts();
-
-      const hooksCall = mockConfirm.mock.calls.find(
-        (call) =>
-          (call[0] as { message: string }).message === 'Include hook configuration examples? (y/N)'
-      );
-      expect(hooksCall).toBeUndefined();
-    });
-
-    it('hooks prompt is skipped for agent template', async () => {
-      setupPromptMocks({ templateType: 'agent', memory: 'project', model: 'sonnet' });
       await runInteractivePrompts();
 
       const hooksCall = mockConfirm.mock.calls.find(
@@ -780,8 +700,8 @@ describe('scaffold-interactive', () => {
           if (config.message.includes('Argument hint')) {
             capturedValidate = config.validate;
           }
-          // Return values for: agent, description, argumentHint, allowedTools
-          const answers = ['', '', '', ''];
+          // Return values for: agent, description, argumentHint, allowedTools, license, compatibility, metadata
+          const answers = ['', '', '', '', '', '', ''];
           return answers[inputCallCount.count - 1] ?? '';
         }
       );
@@ -822,26 +742,30 @@ describe('scaffold-interactive', () => {
       expect(result.allowedTools).toBeUndefined();
     });
 
-    it('agent template with all options set produces correct result', async () => {
+    it('forked template with all options set produces correct result', async () => {
       setupPromptMocks({
-        templateType: 'agent',
+        templateType: 'forked',
         agent: 'code-reviewer',
-        memory: 'project',
-        model: 'sonnet',
+        hooks: true,
         minimal: false,
         description: 'Reviews code',
         argumentHint: '<file>',
         allowedTools: 'Read, Glob, Grep',
+        license: 'MIT',
+        compatibility: 'claude-code>=2.1',
+        metadata: 'author=team, version=1.0',
       });
 
       const result = await runInteractivePrompts();
 
       expect(result.templateOptions).toEqual({
-        templateType: 'agent',
+        templateType: 'forked',
         agent: 'code-reviewer',
-        memory: 'project',
-        model: 'sonnet',
+        includeHooks: true,
         argumentHint: '<file>',
+        license: 'MIT',
+        compatibility: 'claude-code>=2.1',
+        metadata: { author: 'team', version: '1.0' },
       });
       expect(result.description).toBe('Reviews code');
       expect(result.allowedTools).toEqual(['Read', 'Glob', 'Grep']);
@@ -921,11 +845,11 @@ describe('scaffold-interactive', () => {
     it('calls scaffold API with correct options and displays success output', async () => {
       // Set up mocks for a basic flow
       let selectIdx = 0;
-      const selectAnswers = ['basic', 'inherit', 'skip', 'skip'];
+      const selectAnswers = ['basic', 'inherit'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      const inputAnswers = ['', 'A test skill', '', ''];
+      const inputAnswers = ['', 'A test skill', '', '', '', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
@@ -954,16 +878,16 @@ describe('scaffold-interactive', () => {
 
     it('displays summary before confirmation', async () => {
       let selectIdx = 0;
-      const selectAnswers = ['agent', 'project', 'sonnet'];
+      const selectAnswers = ['forked'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      const inputAnswers = ['code-reviewer', 'Reviews code', '', 'Read, Grep'];
+      const inputAnswers = ['code-reviewer', 'Reviews code', '', 'Read, Grep', '', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      // minimal: no, Proceed: yes (no hooks for agent)
-      const confirmAnswers = [false, true];
+      // hooks: no, minimal: no, Proceed: yes (forked gets hooks prompt)
+      const confirmAnswers = [false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -980,24 +904,24 @@ describe('scaffold-interactive', () => {
         expect.stringContaining('Scaffold configuration:')
       );
       expect(mockDisplayInfo).toHaveBeenCalledWith(expect.stringContaining('test-skill'));
-      expect(mockDisplayInfo).toHaveBeenCalledWith(expect.stringContaining('agent'));
+      expect(mockDisplayInfo).toHaveBeenCalledWith(expect.stringContaining('forked'));
     });
 
     it('restarts prompts when user declines summary', async () => {
       let selectIdx = 0;
-      // First pass: agent, then second pass: basic, inherit, skip, skip
-      const selectAnswers = ['agent', 'project', 'sonnet', 'basic', 'inherit', 'skip', 'skip'];
+      // First pass: forked (1 select), second pass: basic, inherit (2 selects)
+      const selectAnswers = ['forked', 'basic', 'inherit'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      // First pass: agent, desc, argHint, tools; second pass: same
-      const inputAnswers = ['', '', '', '', '', '', '', ''];
+      // First pass: 7 inputs; second pass: 7 inputs
+      const inputAnswers = ['', '', '', '', '', '', '', '', '', '', '', '', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      // First pass: minimal: no, Proceed: NO (decline)
+      // First pass: hooks: no, minimal: no, Proceed: NO (decline)
       // Second pass: hooks: no, minimal: no, Proceed: YES
-      const confirmAnswers = [false, false, false, false, true];
+      const confirmAnswers = [false, false, false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -1009,13 +933,13 @@ describe('scaffold-interactive', () => {
       await runInteractiveScaffold('test-skill', options);
 
       // Should have gone through prompts twice
-      // First time: 3 selects (template, memory, model) + second time: 4 selects (template, context, memory, model)
-      expect(mockSelect.mock.calls.length).toBe(7);
+      // First time: 1 select (template) + second time: 2 selects (template, context)
+      expect(mockSelect.mock.calls.length).toBe(3);
     });
 
     it('respects --personal flag for scope', async () => {
       let selectIdx = 0;
-      const selectAnswers = ['basic', 'inherit', 'skip', 'skip'];
+      const selectAnswers = ['basic', 'inherit'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
       mockInput.mockResolvedValue('');
 
@@ -1037,7 +961,7 @@ describe('scaffold-interactive', () => {
 
     it('respects --output and --force flags', async () => {
       let selectIdx = 0;
-      const selectAnswers = ['basic', 'inherit', 'skip', 'skip'];
+      const selectAnswers = ['basic', 'inherit'];
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
       mockInput.mockResolvedValue('');
 
@@ -1107,30 +1031,40 @@ describe('scaffold-interactive', () => {
     });
 
     it('shows Agent when set', () => {
-      const summary = formatSummary('my-skill', { templateType: 'agent', agent: 'Explore' });
+      const summary = formatSummary('my-skill', { templateType: 'basic', agent: 'Explore' });
 
       expect(summary).toContain('Agent');
       expect(summary).toContain('Explore');
     });
 
-    it('shows Memory when set', () => {
+    it('shows License when set', () => {
       const summary = formatSummary('my-skill', {
-        templateType: 'agent',
-        memory: 'project',
+        templateType: 'basic',
+        license: 'MIT',
       });
 
-      expect(summary).toContain('Memory');
-      expect(summary).toContain('project');
+      expect(summary).toContain('License');
+      expect(summary).toContain('MIT');
     });
 
-    it('shows Model when set', () => {
+    it('shows Compatibility when set', () => {
       const summary = formatSummary('my-skill', {
-        templateType: 'agent',
-        model: 'sonnet',
+        templateType: 'basic',
+        compatibility: 'claude-code>=2.1',
       });
 
-      expect(summary).toContain('Model');
-      expect(summary).toContain('sonnet');
+      expect(summary).toContain('Compatibility');
+      expect(summary).toContain('claude-code>=2.1');
+    });
+
+    it('shows Metadata when set', () => {
+      const summary = formatSummary('my-skill', {
+        templateType: 'basic',
+        metadata: { author: 'team', version: '1.0' },
+      });
+
+      expect(summary).toContain('Metadata');
+      expect(summary).toContain('author=team');
     });
 
     it('shows Hooks only when includeHooks is true', () => {
@@ -1201,14 +1135,15 @@ describe('scaffold-interactive', () => {
       const summary = formatSummary(
         'my-skill',
         {
-          templateType: 'agent',
+          templateType: 'forked',
           context: 'fork',
           agent: 'code-reviewer',
-          memory: 'project',
-          model: 'sonnet',
           includeHooks: true,
           minimal: true,
           argumentHint: '<file>',
+          license: 'MIT',
+          compatibility: 'claude-code>=2.1',
+          metadata: { author: 'team' },
         },
         'Reviews code',
         ['Read', 'Glob', 'Grep']
@@ -1218,8 +1153,9 @@ describe('scaffold-interactive', () => {
       expect(summary).toContain('Template');
       expect(summary).toContain('Context');
       expect(summary).toContain('Agent');
-      expect(summary).toContain('Memory');
-      expect(summary).toContain('Model');
+      expect(summary).toContain('License');
+      expect(summary).toContain('Compatibility');
+      expect(summary).toContain('Metadata');
       expect(summary).toContain('Hooks');
       expect(summary).toContain('Minimal');
       expect(summary).toContain('Description');
@@ -1231,10 +1167,10 @@ describe('scaffold-interactive', () => {
       const summary = formatSummary(
         'my-skill',
         {
-          templateType: 'agent',
+          templateType: 'forked',
           agent: 'code-reviewer',
-          memory: 'project',
-          model: 'sonnet',
+          license: 'MIT',
+          compatibility: 'claude-code>=2.1',
           argumentHint: '<file>',
         },
         'Reviews code',

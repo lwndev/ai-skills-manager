@@ -35,7 +35,7 @@ asm scaffold <name> --interactive [options]
 
 - `--interactive` can be combined with `<name>` (skill name is still provided as a positional argument)
 - `--interactive` can be combined with `-o`/`--output`, `-p`/`--project`, `--personal`, and `-f`/`--force` (these configure output location/behavior, not template content)
-- `--interactive` **overrides** template-content flags if both are provided: `--template`, `--context`, `--agent`, `--no-user-invocable`, `--hooks`, `--minimal`, `-d`/`--description`, `-a`/`--allowed-tools`, `--memory`, `--model`, `--argument-hint`
+- `--interactive` **overrides** template-content flags if both are provided: `--template`, `--context`, `--agent`, `--no-user-invocable`, `--hooks`, `--minimal`, `-d`/`--description`, `-a`/`--allowed-tools`, `--argument-hint`, `--license`, `--compatibility`, `--metadata`
 - When overriding, display a warning: `Interactive mode enabled — template flags will be ignored.`
 
 ### Examples
@@ -60,13 +60,16 @@ Launch a sequential prompt flow when `--interactive` is specified:
 1. **Template type selection** (single-select, required)
 2. **Context type selection** (single-select, conditional)
 3. **Agent name** (text input, optional)
-4. **Memory scope** (single-select, conditional)
-5. **Model selection** (single-select, conditional)
+4. ~~**Memory scope** (single-select, conditional)~~ (Removed by CHORE-013)
+5. ~~**Model selection** (single-select, conditional)~~ (Removed by CHORE-013)
 6. **Hooks configuration** (yes/no, conditional)
 7. **Minimal mode** (yes/no)
 8. **Description** (text input, optional)
 9. **Argument hint** (text input, optional)
 10. **Allowed tools** (text input, optional)
+11. **License** (text input, optional) (Added by CHORE-013)
+12. **Compatibility** (text input, optional) (Added by CHORE-013)
+13. **Metadata** (text input, optional, key=value format) (Added by CHORE-013)
 
 Display a summary of selected options before proceeding with scaffold generation.
 
@@ -80,15 +83,15 @@ Prompt the user to select a template type with descriptions:
     forked     - Isolated context with read-only tools
     with-hooks - Includes hook configuration examples
     internal   - Non-user-invocable helper skill
-    agent      - Custom agent with model, memory, and tool control
 ```
 
 - Default selection: `basic`
 - Maps directly to `--template <type>` flag values
+- ~~`agent` template type was previously listed here but was removed in CHORE-013~~
 
 ### FR-3: Context Type Selection
 
-Prompt for context type only when the selected template is `basic` (other templates set context implicitly; `agent` defaults to `fork`):
+Prompt for context type only when the selected template is `basic` (other templates set context implicitly):
 
 ```
 ? Select context type:
@@ -112,42 +115,21 @@ Prompt for an optional agent name:
 - When skipped, omit `agent` field from frontmatter
 - Maps to `--agent <name>` flag
 
-### FR-5: Memory Scope Selection
+### ~~FR-5: Memory Scope Selection~~ (Removed by CHORE-013)
 
-Prompt for memory scope. When the `agent` template is selected, present this as a default-populated selection. For other templates, present as optional:
+~~Prompt for memory scope. When the `agent` template is selected, present this as a default-populated selection. For other templates, present as optional.~~
 
-```
-? Memory scope (optional, press Enter to skip):
-    user    - Persistent across all projects
-    project - Persistent within this project
-    local   - Persistent on this machine only
-```
+**Removed:** The `memory` field is agent-only and does not belong in skill templates. The memory scope prompt and `--memory` CLI option were removed in CHORE-013. See `requirements/chores/CHORE-013-fix-scaffold-template-schema.md`.
 
-- When the `agent` template is selected, default to `project` (matching the agent template default)
-- For all other templates, default to skip (no memory)
-- When skipped, omit `memory` from frontmatter
-- Valid values: `user`, `project`, `local`
-- Maps to `--memory <scope>` flag
+### ~~FR-6: Model Selection~~ (Removed by CHORE-013)
 
-### FR-6: Model Selection
+~~Prompt for model selection. When the `agent` template is selected, present as a default-populated selection. For other templates, present as optional.~~
 
-Prompt for model selection. When the `agent` template is selected, present as a default-populated selection. For other templates, present as optional:
-
-```
-? Model (optional, press Enter to skip):
-  > sonnet - Balanced performance and speed (default)
-    opus   - Most capable
-    haiku  - Fastest and most efficient
-```
-
-- When the `agent` template is selected, default to `sonnet` (matching the agent template default)
-- For all other templates, default to skip (inherits from parent)
-- When skipped, omit `model` from frontmatter
-- Maps to `--model <name>` flag
+**Removed:** The `model` field is agent-only and does not belong in skill templates. The model selection prompt and `--model` CLI option were removed in CHORE-013. See `requirements/chores/CHORE-013-fix-scaffold-template-schema.md`.
 
 ### FR-7: Hooks Configuration
 
-Prompt for hooks only when the selected template is `basic` or `forked` (the `with-hooks` template includes hooks automatically, `internal` and `agent` typically do not use hooks):
+Prompt for hooks only when the selected template is `basic` or `forked` (the `with-hooks` template includes hooks automatically, `internal` does not typically use hooks):
 
 ```
 ? Include hook configuration examples? (y/N)
@@ -213,12 +195,12 @@ Before generating the skill, display a summary of all selected options:
 ```
 Scaffold configuration:
   Name:           my-skill
-  Template:       agent
-  Memory:         project
-  Model:          sonnet
+  Template:       basic
+  Context:        fork
   Minimal:        no
   Description:    A skill that does something
   Argument hint:  <query> [--deep]
+  License:        MIT
 
 Proceed? (Y/n)
 ```
@@ -241,29 +223,32 @@ Only display fields that were set (skip fields left at their defaults or skipped
 The interactive flow produces terminal prompts. Final output matches existing scaffold command output:
 
 ```
-? Select a template type: agent
+? Select a template type: basic
+? Context type: fork
 ? Agent name (optional, press Enter to skip): code-reviewer
-? Memory scope: project
-? Model: sonnet
+? Include hook configuration examples? (y/N) N
 ? Use minimal template? (y/N) N
 ? Skill description (optional, press Enter to skip): Reviews code for best practices
 ? Argument hint (optional, press Enter to skip): <file-or-directory>
 ? Allowed tools (comma-separated, press Enter to skip): Read, Glob, Grep
+? License (optional, press Enter to skip): MIT
+? Compatibility (optional, press Enter to skip):
+? Metadata (optional, key=value, press Enter to skip):
 
 Scaffold configuration:
   Name:           my-skill
-  Template:       agent
+  Template:       basic
+  Context:        fork
   Agent:          code-reviewer
-  Memory:         project
-  Model:          sonnet
   Description:    Reviews code for best practices
   Argument hint:  <file-or-directory>
   Allowed tools:  Read, Glob, Grep
+  License:        MIT
 
 Proceed? (Y/n) Y
 
 Created skill "my-skill" at ~/.claude/skills/my-skill/
-Using "agent" template
+Using "basic" template
 ```
 
 ## Non-Functional Requirements
@@ -289,7 +274,8 @@ Using "agent" template
 
 ## Dependencies
 
-- FEAT-017 (Agent Template Type) — agent template and `--memory`, `--model`, `--argument-hint` flags must exist before interactive mode can expose them
+- FEAT-017 (Agent Template Type) — `--argument-hint` flag must exist before interactive mode can expose it. ~~Agent template, `--memory`, and `--model` flags were removed in CHORE-013.~~
+- CHORE-013 (Fix Scaffold Template Schema) — removes agent template and agent-only fields; adds `--license`, `--compatibility`, `--metadata`
 - Prompt library: `@inquirer/prompts` (or `inquirer`)
 - Existing scaffold command infrastructure (`src/commands/scaffold.ts`)
 - Existing template generator (`src/templates/skill-md.ts`)
@@ -305,18 +291,18 @@ Using "agent" template
 6. **`--interactive` combined with `--project`/`--personal`**: These output-location flags are respected alongside interactive mode
 7. **Very long description input**: Accept as-is — let the template generator handle truncation if needed
 8. **Argument hint over 100 characters**: Display inline validation error and re-prompt
-9. **`agent` template selected**: Memory defaults to `project`, model defaults to `sonnet`, hooks prompt is skipped
+9. ~~**`agent` template selected**: Memory defaults to `project`, model defaults to `sonnet`, hooks prompt is skipped~~ (Removed by CHORE-013)
 
 ## Testing Requirements
 
 ### Unit Tests
 - TTY detection logic
-- Flag conflict detection and warning (including `--memory`, `--model`, `--argument-hint`)
-- Prompt flow produces correct `TemplateOptions` for each template type including `agent`
-- Conditional prompt logic (e.g., hooks prompt skipped for `with-hooks` and `agent` templates)
-- Memory and model prompts default to populated values for `agent` template, skip for others
+- Flag conflict detection and warning (including `--argument-hint`, `--license`, `--compatibility`, `--metadata`)
+- Prompt flow produces correct `TemplateOptions` for each template type
+- Conditional prompt logic (e.g., hooks prompt skipped for `with-hooks` and `internal` templates)
 - Argument hint input validates 100-character max length
-- Summary display formatting includes memory, model, and argument hint when set
+- License, compatibility, and metadata prompts produce correct options
+- Summary display formatting includes argument hint, license, compatibility, and metadata when set
 
 ### Integration Tests
 - Full interactive flow produces valid skill directory
@@ -326,9 +312,8 @@ Using "agent" template
 
 ### Manual Testing
 - Run `asm scaffold test-skill -i` and walk through all prompts
-- Verify each template type (including `agent`) produces correct output
-- Verify `agent` template defaults memory to `project` and model to `sonnet`
-- Verify non-agent templates default memory and model to skip
+- Verify each template type (`basic`, `forked`, `with-hooks`, `internal`) produces correct output
+- Verify license, compatibility, and metadata prompts work correctly
 - Test Ctrl+C at each prompt stage
 - Test in non-TTY environment (e.g., `echo | asm scaffold test-skill -i`)
 - Test `--interactive` combined with `--project` and `--force`
@@ -343,9 +328,9 @@ Using "agent" template
 ## Acceptance Criteria
 
 - [x] `--interactive` / `-i` flag is accepted by `asm scaffold`
-- [x] Interactive prompts guide user through template type, context, agent, memory, model, hooks, minimal, description, argument hint, and allowed tools
-- [x] `agent` template type is available in template selection
-- [x] Memory and model prompts default to populated values for `agent` template
+- [x] Interactive prompts guide user through template type, context, agent, hooks, minimal, description, argument hint, allowed tools, license, compatibility, and metadata
+- ~~[x] `agent` template type is available in template selection~~ (Removed by CHORE-013)
+- ~~[x] Memory and model prompts default to populated values for `agent` template~~ (Removed by CHORE-013)
 - [x] Argument hint input validates max length of 100 characters
 - [x] Conditional prompts are skipped when not applicable to the selected template
 - [x] Configuration summary is displayed before scaffold generation
@@ -356,3 +341,4 @@ Using "agent" template
 - [x] Ctrl+C during prompts exits cleanly without partial files
 - [x] Help text documents the `--interactive` / `-i` flag
 - [x] Tests cover prompt flow logic and edge cases
+- [ ] License, compatibility, and metadata prompts added to interactive flow (CHORE-013)

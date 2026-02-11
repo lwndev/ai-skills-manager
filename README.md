@@ -85,9 +85,6 @@ asm scaffold my-skill --template with-hooks
 
 # Non-user-invocable helper skill
 asm scaffold my-skill --template internal
-
-# Autonomous agent with model, memory, and tool config
-asm scaffold my-skill --template agent
 ```
 
 Individual frontmatter flags can be combined with any template:
@@ -97,8 +94,9 @@ Individual frontmatter flags can be combined with any template:
 asm scaffold my-skill --context fork --hooks
 asm scaffold my-skill --agent Explore --no-user-invocable
 
-# Agent-specific fields work with any template
-asm scaffold code-reviewer --template agent --memory project --model sonnet
+# agentskills.io spec fields
+asm scaffold my-skill --license MIT --compatibility "Claude Code 2.x"
+asm scaffold my-skill --metadata author="Jane Doe" --metadata version="1.0"
 asm scaffold search-helper --template forked --argument-hint "<query> [--deep]"
 ```
 
@@ -108,7 +106,7 @@ Generate shorter templates without educational guidance text:
 
 ```bash
 asm scaffold my-skill --minimal
-asm scaffold my-skill --template agent --minimal
+asm scaffold my-skill --template with-hooks --minimal
 ```
 
 #### Interactive Mode
@@ -133,14 +131,15 @@ Interactive mode requires a TTY (interactive terminal). Template-content flags (
 | `--personal` | Create as a personal skill in `~/.claude/skills/` |
 | `-a, --allowed-tools <tools>` | Comma-separated list of allowed tools |
 | `-f, --force` | Overwrite existing directory without prompting |
-| `-t, --template <type>` | Template variant: `basic`, `forked`, `with-hooks`, `internal`, `agent` |
+| `-t, --template <type>` | Template variant: `basic`, `forked`, `with-hooks`, `internal` |
 | `--context <context>` | Set context in frontmatter (`fork`) |
 | `--agent <name>` | Set agent field in frontmatter |
 | `--no-user-invocable` | Set `user-invocable: false` in frontmatter |
 | `--hooks` | Include commented hook examples in frontmatter |
 | `--minimal` | Generate shorter templates without educational guidance text |
-| `--memory <scope>` | Set memory scope (`user`, `project`, `local`) |
-| `--model <name>` | Set model for agent execution (e.g., `sonnet`, `opus`, `haiku`) |
+| `--license <text>` | Set license field in frontmatter (e.g., `MIT`, `Apache-2.0`) |
+| `--compatibility <text>` | Set compatibility field in frontmatter (max 500 chars) |
+| `--metadata <key=value>` | Set metadata key-value pair (repeatable) |
 | `--argument-hint <hint>` | Set argument hint for skill invocation (max 100 chars) |
 | `-i, --interactive` | Launch guided prompt-driven scaffold workflow |
 
@@ -152,7 +151,6 @@ Interactive mode requires a TTY (interactive terminal). Template-content flags (
 | `forked` | For skills running in isolated (forked) context |
 | `with-hooks` | Template demonstrating hook configuration |
 | `internal` | For non-user-invocable helper skills |
-| `agent` | For autonomous agent skills with model, memory, and tool config |
 
 #### Skill Name Requirements
 
@@ -214,20 +212,16 @@ The validate command performs these checks in order:
 9. **Agent format** - Validates optional agent field (must be non-empty string if present)
 10. **Hooks format** - Validates optional hooks object structure; unknown hook keys produce warnings
 11. **User-invocable format** - Validates optional user-invocable field (must be boolean if present)
-12. **Memory format** - Validates optional memory field (`"user"`, `"project"`, or `"local"`)
-13. **Skills format** - Validates optional skills field (string or string array)
-14. **Model format** - Validates optional model field (warns on unknown values)
-15. **Permission mode format** - Validates optional permissionMode field (non-empty string)
-16. **Disallowed tools format** - Validates optional disallowedTools field (string or string array)
-17. **Argument hint format** - Validates optional argument-hint field (max 200 characters)
-18. **Keep-coding-instructions format** - Validates optional keep-coding-instructions field (boolean)
-19. **Tools format** - Validates optional tools field (string or string array)
-20. **Color format** - Validates optional color field (`blue`, `cyan`, `green`, `yellow`, `magenta`, `red`)
-21. **Disable-model-invocation format** - Validates optional disable-model-invocation field (boolean)
-22. **Version format** - Validates optional version field (non-empty string)
-23. **Allowed tools format** - Validates optional allowed-tools field (supports `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}` patterns)
-24. **Name matches directory** - Validates frontmatter name matches parent directory name
-25. **File size** - Warns when skill body exceeds recommended size budget
+12. **Permission mode format** - Validates optional permissionMode field (non-empty string)
+13. **Argument hint format** - Validates optional argument-hint field (max 200 characters)
+14. **Keep-coding-instructions format** - Validates optional keep-coding-instructions field (boolean)
+15. **Tools format** - Validates optional tools field (string or string array)
+16. **Color format** - Validates optional color field (`blue`, `cyan`, `green`, `yellow`, `magenta`, `red`)
+17. **Disable-model-invocation format** - Validates optional disable-model-invocation field (boolean)
+18. **Version format** - Validates optional version field (non-empty string)
+19. **Allowed tools format** - Validates optional allowed-tools field (supports `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}` patterns)
+20. **Name matches directory** - Validates frontmatter name matches parent directory name
+21. **File size** - Warns when skill body exceeds recommended size budget
 
 #### Exit Codes
 
@@ -274,11 +268,7 @@ PASS
     "agentFormat": { "passed": true },
     "hooksFormat": { "passed": true },
     "userInvocableFormat": { "passed": true },
-    "memoryFormat": { "passed": true },
-    "skillsFormat": { "passed": true },
-    "modelFormat": { "passed": true },
     "permissionModeFormat": { "passed": true },
-    "disallowedToolsFormat": { "passed": true },
     "argumentHintFormat": { "passed": true },
     "keepCodingInstructionsFormat": { "passed": true },
     "toolsFormat": { "passed": true },
@@ -797,14 +787,15 @@ const result = await scaffold({
   allowedTools: ['Bash'],     // Optional: allowed tools list
   force: false,               // Optional: overwrite existing
   template: {                 // Optional: template configuration
-    templateType: 'agent',    //   'basic' | 'forked' | 'with-hooks' | 'internal' | 'agent'
+    templateType: 'basic',    //   'basic' | 'forked' | 'with-hooks' | 'internal'
     context: 'fork',          //   Optional: set context field
     agent: 'Explore',         //   Optional: set agent field
     userInvocable: false,     //   Optional: set user-invocable field
     includeHooks: true,       //   Optional: include hook examples
     minimal: false,           //   Optional: shorter templates without guidance
-    memory: 'project',        //   Optional: 'user' | 'project' | 'local'
-    model: 'sonnet',          //   Optional: model for agent execution
+    license: 'MIT',           //   Optional: license identifier
+    compatibility: 'Claude Code 2.x', // Optional: compatibility info
+    metadata: { author: 'Jane' },     // Optional: key-value metadata
     argumentHint: '<query>',  //   Optional: argument hint (max 100 chars)
   },
 });
@@ -1134,7 +1125,7 @@ Make sure the path points to a skill directory containing a SKILL.md file, or di
 Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
 
 **Error: Unknown frontmatter property**
-Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `memory`, `skills`, `model`, `permissionMode`, `disallowedTools`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`. Remove any other keys.
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `permissionMode`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.

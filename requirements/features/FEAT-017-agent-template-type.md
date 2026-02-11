@@ -1,5 +1,7 @@
 # Feature Requirements: Agent Template Type & Template Updates
 
+**Note:** The agent template type was removed in CHORE-013. See `requirements/chores/CHORE-013-fix-scaffold-template-schema.md`.
+
 ## Overview
 
 Add a new `agent` template variant to ASM's `asm scaffold` command that demonstrates agent-specific frontmatter fields (`memory`, `model`, `skills`, `permissionMode`, `disallowedTools`), and update existing templates to document newly supported fields and patterns.

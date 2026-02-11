@@ -93,20 +93,6 @@ describe('scaffold --interactive integration', () => {
       await expect(fs.access(path.join(skillPath, 'scripts', '.gitkeep'))).resolves.toBeUndefined();
     });
 
-    it('explicit-flag agent scaffold produces valid skill', async () => {
-      execSync(
-        `node "${cliPath}" scaffold agent-skill --output "${tempDir}" --template agent --memory project --model sonnet --force`,
-        { encoding: 'utf-8' }
-      );
-
-      const skillPath = path.join(tempDir, 'agent-skill');
-      const content = await fs.readFile(path.join(skillPath, 'SKILL.md'), 'utf-8');
-
-      expect(content).toContain('name: agent-skill');
-      expect(content).toContain('memory: project');
-      expect(content).toContain('model: sonnet');
-    });
-
     it('generated skill passes asm validate', async () => {
       execSync(
         `node "${cliPath}" scaffold valid-skill --output "${tempDir}" --description "A test skill" --force`,
@@ -114,20 +100,6 @@ describe('scaffold --interactive integration', () => {
       );
 
       const skillPath = path.join(tempDir, 'valid-skill');
-      const result = execSync(`node "${cliPath}" validate "${skillPath}"`, {
-        encoding: 'utf-8',
-      });
-
-      expect(result).toContain('valid');
-    });
-
-    it('agent skill passes asm validate', async () => {
-      execSync(
-        `node "${cliPath}" scaffold agent-valid --output "${tempDir}" --template agent --memory project --model sonnet --description "Agent skill" --force`,
-        { encoding: 'utf-8' }
-      );
-
-      const skillPath = path.join(tempDir, 'agent-valid');
       const result = execSync(`node "${cliPath}" validate "${skillPath}"`, {
         encoding: 'utf-8',
       });
@@ -204,7 +176,6 @@ describe('scaffold --interactive integration', () => {
       ['forked', { template: 'forked' }],
       ['with-hooks', { template: 'with-hooks' }],
       ['internal', { template: 'internal' }],
-      ['agent', { template: 'agent', memory: 'project', model: 'sonnet' }],
     ] as [string, Record<string, string>][])(
       '%s template produces valid skill that passes validate',
       async (templateName, extraFlags) => {

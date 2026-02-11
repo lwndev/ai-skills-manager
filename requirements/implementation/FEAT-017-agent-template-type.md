@@ -1,5 +1,7 @@
 # Implementation Plan: Agent Template Type & Template Updates
 
+**Note:** The agent template type was removed in CHORE-013. See `requirements/chores/CHORE-013-fix-scaffold-template-schema.md`.
+
 ## Overview
 
 This plan adds a new `agent` template variant to `asm scaffold` and three new CLI flags (`--memory`, `--model`, `--argument-hint`), while updating existing templates with new field documentation and `once: true` hook support. The feature builds on the existing template system (FEAT-013) and frontmatter schema v2 (FEAT-014), extending both the template generator and CLI command with agent-specific scaffolding capabilities.
