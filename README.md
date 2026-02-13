@@ -212,16 +212,15 @@ The validate command performs these checks in order:
 9. **Agent format** - Validates optional agent field (must be non-empty string if present)
 10. **Hooks format** - Validates optional hooks object structure; unknown hook keys produce warnings
 11. **User-invocable format** - Validates optional user-invocable field (must be boolean if present)
-12. **Permission mode format** - Validates optional permissionMode field (non-empty string)
-13. **Argument hint format** - Validates optional argument-hint field (max 200 characters)
-14. **Keep-coding-instructions format** - Validates optional keep-coding-instructions field (boolean)
-15. **Tools format** - Validates optional tools field (string or string array)
-16. **Color format** - Validates optional color field (`blue`, `cyan`, `green`, `yellow`, `magenta`, `red`)
-17. **Disable-model-invocation format** - Validates optional disable-model-invocation field (boolean)
-18. **Version format** - Validates optional version field (non-empty string)
-19. **Allowed tools format** - Validates optional allowed-tools field (supports `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}` patterns)
-20. **Name matches directory** - Validates frontmatter name matches parent directory name
-21. **File size** - Warns when skill body exceeds recommended size budget
+12. **Argument hint format** - Validates optional argument-hint field (max 200 characters)
+13. **Keep-coding-instructions format** - Validates optional keep-coding-instructions field (boolean)
+14. **Tools format** - Validates optional tools field (string or string array)
+15. **Color format** - Validates optional color field (`blue`, `cyan`, `green`, `yellow`, `magenta`, `red`)
+16. **Disable-model-invocation format** - Validates optional disable-model-invocation field (boolean)
+17. **Version format** - Validates optional version field (non-empty string)
+18. **Allowed tools format** - Validates optional allowed-tools field (supports `Task(AgentName)`, `mcp__server__*`, `${CLAUDE_PLUGIN_ROOT}` patterns)
+19. **Name matches directory** - Validates frontmatter name matches parent directory name
+20. **File size** - Warns when skill body exceeds recommended size budget
 
 #### Exit Codes
 
@@ -268,7 +267,6 @@ PASS
     "agentFormat": { "passed": true },
     "hooksFormat": { "passed": true },
     "userInvocableFormat": { "passed": true },
-    "permissionModeFormat": { "passed": true },
     "argumentHintFormat": { "passed": true },
     "keepCodingInstructionsFormat": { "passed": true },
     "toolsFormat": { "passed": true },
@@ -1125,7 +1123,7 @@ Make sure the path points to a skill directory containing a SKILL.md file, or di
 Ensure your SKILL.md file starts with `---` followed by YAML content and ends with another `---` on its own line.
 
 **Error: Unknown frontmatter property**
-Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `permissionMode`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`. Remove any other keys.
+Only these top-level keys are allowed in frontmatter: `name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`, `context`, `agent`, `hooks`, `user-invocable`, `argument-hint`, `keep-coding-instructions`, `tools`, `color`, `disable-model-invocation`, `version`. Remove any other keys.
 
 **Command not found: asm**
 Run `npm link` after building, or use `node dist/cli.js` directly.
