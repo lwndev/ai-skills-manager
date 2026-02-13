@@ -154,9 +154,10 @@ export async function scaffold(options: ScaffoldOptions): Promise<ScaffoldResult
           userInvocable: options.template.userInvocable,
           includeHooks: options.template.includeHooks,
           minimal: options.template.minimal,
-          memory: options.template.memory,
-          model: options.template.model,
           argumentHint: options.template.argumentHint,
+          license: options.template.license,
+          compatibility: options.template.compatibility,
+          metadata: options.template.metadata,
         }
       : undefined;
 

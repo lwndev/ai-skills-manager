@@ -346,30 +346,6 @@ Content.
       expect(hookWarning?.message).toContain("Unknown hook 'OnStart'");
       expect(hookWarning?.path).toContain('hook-warn-skill');
     });
-
-    it('includes UNKNOWN_MODEL warning for unknown model', async () => {
-      const skillDir = path.join(tempDir, 'model-warn-skill');
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, 'SKILL.md'),
-        `---
-name: model-warn-skill
-description: Skill with unknown model
-model: gpt-4-turbo
----
-
-Content.
-`
-      );
-
-      const result = await validate(skillDir);
-
-      expect(result.valid).toBe(true);
-      expect(result.warnings.length).toBeGreaterThan(0);
-      const modelWarning = result.warnings.find((w) => w.code === 'UNKNOWN_MODEL');
-      expect(modelWarning).toBeDefined();
-      expect(modelWarning?.message).toContain("Unknown model 'gpt-4-turbo'");
-    });
   });
 
   describe('path handling', () => {

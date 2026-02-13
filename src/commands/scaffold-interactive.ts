@@ -27,9 +27,10 @@ export const TEMPLATE_CONTENT_FLAGS: readonly string[] = [
   'minimal',
   'description',
   'allowedTools',
-  'memory',
-  'model',
   'argumentHint',
+  'license',
+  'compatibility',
+  'metadata',
 ] as const;
 
 /**
@@ -83,8 +84,8 @@ export interface InteractivePromptResult {
 
 /**
  * Runs the full interactive prompt flow, collecting user choices for
- * template type, context, agent, memory, model, hooks, minimal, description,
- * argument hint, and allowed tools.
+ * template type, context, agent, hooks, minimal, description,
+ * argument hint, allowed tools, license, compatibility, and metadata.
  *
  * Throws ExitPromptError on Ctrl+C or EOF (handled by caller).
  */
@@ -112,11 +113,6 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
         value: 'internal',
         name: 'internal',
         description: 'Non-user-invocable helper skill',
-      },
-      {
-        value: 'agent',
-        name: 'agent',
-        description: 'Custom agent with model, memory, and tool control',
       },
     ],
     default: 'basic',
@@ -148,71 +144,6 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
   });
   if (agentName.trim().length > 0) {
     templateOptions.agent = agentName.trim();
-  }
-
-  // FR-5: Memory scope selection
-  const isAgent = templateType === 'agent';
-  if (isAgent) {
-    const memory = await select<'user' | 'project' | 'local'>({
-      message: 'Memory scope:',
-      choices: [
-        { value: 'user', name: 'user', description: 'Persistent across all projects' },
-        { value: 'project', name: 'project', description: 'Persistent within this project' },
-        { value: 'local', name: 'local', description: 'Persistent on this machine only' },
-      ],
-      default: 'project',
-    });
-    templateOptions.memory = memory;
-  } else {
-    const memory = await select<'user' | 'project' | 'local' | 'skip'>({
-      message: 'Memory scope (optional, press Enter to skip):',
-      choices: [
-        { value: 'skip', name: 'skip', description: 'No memory scope' },
-        { value: 'user', name: 'user', description: 'Persistent across all projects' },
-        { value: 'project', name: 'project', description: 'Persistent within this project' },
-        { value: 'local', name: 'local', description: 'Persistent on this machine only' },
-      ],
-      default: 'skip',
-    });
-    if (memory !== 'skip') {
-      templateOptions.memory = memory;
-    }
-  }
-
-  // FR-6: Model selection
-  if (isAgent) {
-    const model = await select<string>({
-      message: 'Model:',
-      choices: [
-        {
-          value: 'sonnet',
-          name: 'sonnet',
-          description: 'Balanced performance and speed (default)',
-        },
-        { value: 'opus', name: 'opus', description: 'Most capable' },
-        { value: 'haiku', name: 'haiku', description: 'Fastest and most efficient' },
-      ],
-      default: 'sonnet',
-    });
-    templateOptions.model = model;
-  } else {
-    const model = await select<string | 'skip'>({
-      message: 'Model (optional, press Enter to skip):',
-      choices: [
-        { value: 'skip', name: 'skip', description: 'Inherit from parent context' },
-        {
-          value: 'sonnet',
-          name: 'sonnet',
-          description: 'Balanced performance and speed',
-        },
-        { value: 'opus', name: 'opus', description: 'Most capable' },
-        { value: 'haiku', name: 'haiku', description: 'Fastest and most efficient' },
-      ],
-      default: 'skip',
-    });
-    if (model !== 'skip') {
-      templateOptions.model = model;
-    }
   }
 
   // FR-7: Hooks configuration (only for basic and forked templates)
@@ -248,8 +179,8 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
     message: 'Argument hint (optional, press Enter to skip):',
     validate: (value: string) => {
       if (value.length === 0) return true; // allow skip
-      if (value.length > 100) {
-        return 'Argument hint must be 100 characters or fewer.';
+      if (value.length > 200) {
+        return 'Argument hint must be 200 characters or fewer.';
       }
       return true;
     },
@@ -269,6 +200,78 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
       .filter((t) => t.length > 0);
     if (allowedTools.length === 0) {
       allowedTools = undefined;
+    }
+  }
+
+  // License input (agentskills.io spec)
+  const licenseInput = await input({
+    message: 'License (optional, press Enter to skip):',
+    validate: (value: string) => {
+      if (value.length === 0) return true;
+      if (value.trim().length === 0) return 'License cannot be empty whitespace.';
+      return true;
+    },
+  });
+  if (licenseInput.trim().length > 0) {
+    templateOptions.license = licenseInput.trim();
+  }
+
+  // Compatibility input (agentskills.io spec)
+  const compatInput = await input({
+    message: 'Compatibility (optional, press Enter to skip):',
+    validate: (value: string) => {
+      if (value.length === 0) return true;
+      if (value.trim().length === 0) return 'Compatibility cannot be empty whitespace.';
+      if (value.length > 500) return 'Compatibility must be 500 characters or fewer.';
+      return true;
+    },
+  });
+  if (compatInput.trim().length > 0) {
+    templateOptions.compatibility = compatInput.trim();
+  }
+
+  // Metadata input (agentskills.io spec)
+  // Note: The validate function rejects invalid pairs with an inline error and re-prompt,
+  // whereas the CLI's parseMetadata() throws a ValidationError that exits immediately.
+  const metadataInput = await input({
+    message: 'Metadata key=value pairs (comma-separated, e.g. author=team,version=1.0):',
+    validate: (value: string) => {
+      if (value.length === 0) return true; // allow skip
+      const pairs = value
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+      const validPairs = pairs.filter((p) => {
+        const eqIndex = p.indexOf('=');
+        return eqIndex > 0 && p.substring(0, eqIndex).trim().length > 0;
+      });
+      if (validPairs.length === 0) {
+        return 'No valid key=value pairs found. Use format: key=value,key2=value2';
+      }
+      if (validPairs.length < pairs.length) {
+        return `${pairs.length - validPairs.length} invalid pair(s) detected. Each pair must be key=value format.`;
+      }
+      return true;
+    },
+  });
+  if (metadataInput.trim().length > 0) {
+    const pairs = metadataInput
+      .split(',')
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0);
+    const metadata: Record<string, string> = {};
+    for (const pair of pairs) {
+      const eqIndex = pair.indexOf('=');
+      if (eqIndex > 0) {
+        const key = pair.substring(0, eqIndex).trim();
+        const value = pair.substring(eqIndex + 1).trim();
+        if (key.length > 0) {
+          metadata[key] = value;
+        }
+      }
+    }
+    if (Object.keys(metadata).length > 0) {
+      templateOptions.metadata = metadata;
     }
   }
 
@@ -299,12 +302,6 @@ export function formatSummary(
   if (options.agent) {
     entries.push(['Agent', options.agent]);
   }
-  if (options.memory) {
-    entries.push(['Memory', options.memory]);
-  }
-  if (options.model) {
-    entries.push(['Model', options.model]);
-  }
   if (options.includeHooks) {
     entries.push(['Hooks', 'yes']);
   }
@@ -319,6 +316,20 @@ export function formatSummary(
   }
   if (allowedTools && allowedTools.length > 0) {
     entries.push(['Allowed tools', allowedTools.join(', ')]);
+  }
+  if (options.license) {
+    entries.push(['License', options.license]);
+  }
+  if (options.compatibility) {
+    entries.push(['Compatibility', options.compatibility]);
+  }
+  if (options.metadata && Object.keys(options.metadata).length > 0) {
+    entries.push([
+      'Metadata',
+      Object.entries(options.metadata)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', '),
+    ]);
   }
 
   // Find the longest label for alignment

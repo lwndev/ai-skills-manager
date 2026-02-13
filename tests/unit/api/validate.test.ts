@@ -286,25 +286,6 @@ ${largeContent}
       expect(result.warnings[0].code).toBe('FILE_SIZE_WARNING');
     });
 
-    it('returns UNKNOWN_MODEL warning code for unknown model', async () => {
-      const skillPath = await createSkill(`---
-name: model-warn
-description: Skill with unknown model
-model: gpt-4
----
-
-Content.
-`);
-
-      const result = await validate(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.warnings.length).toBeGreaterThan(0);
-      const modelWarning = result.warnings.find((w) => w.code === 'UNKNOWN_MODEL');
-      expect(modelWarning).toBeDefined();
-      expect(modelWarning?.message).toContain('Unknown model');
-    });
-
     it('returns UNKNOWN_HOOK_KEY warning code for unknown hook', async () => {
       const skillPath = await createSkill(`---
 name: hook-warn

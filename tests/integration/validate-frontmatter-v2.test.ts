@@ -1,7 +1,7 @@
 /**
  * Integration tests for FEAT-014: Frontmatter Schema v2 — New Claude Code Fields
  *
- * These tests verify end-to-end validation of the 11 new frontmatter fields
+ * These tests verify end-to-end validation of new frontmatter fields
  * through the full validation pipeline (parser → validators → orchestrator → API).
  */
 
@@ -34,17 +34,11 @@ describe('FEAT-014: Frontmatter Schema v2 Integration', () => {
     return skillDir;
   }
 
-  describe('full validation with all 11 new fields', () => {
+  describe('full validation with all new fields', () => {
     it('validates a skill with all FEAT-014 fields populated', async () => {
       const skillPath = await createSkill(`---
 name: full-v2-skill
 description: Skill with all v2 frontmatter fields
-memory: project
-skills: my-helper-skill
-model: sonnet
-permissionMode: bypassPermissions
-disallowedTools:
-  - Bash
 argument-hint: "Provide a file path to analyze"
 keep-coding-instructions: true
 tools:
@@ -68,11 +62,6 @@ This skill uses all new frontmatter fields.
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.skillsFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.checks.permissionModeFormat.passed).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
       expect(result.checks.argumentHintFormat.passed).toBe(true);
       expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
       expect(result.checks.toolsFormat.passed).toBe(true);
@@ -86,13 +75,6 @@ This skill uses all new frontmatter fields.
       const skillPath = await createSkill(`---
 name: api-v2-skill
 description: Skill validated through public API
-memory: user
-skills:
-  - helper-a
-  - helper-b
-model: opus
-permissionMode: default
-disallowedTools: Bash
 argument-hint: "Enter search query"
 keep-coding-instructions: false
 tools: Read
@@ -116,13 +98,6 @@ Content.
       const skillPath = await createSkill(`---
 name: detailed-v2-skill
 description: Skill with detailed API validation
-memory: local
-skills: single-skill
-model: haiku
-permissionMode: plan
-disallowedTools:
-  - Write
-  - Edit
 argument-hint: "Describe the refactoring"
 keep-coding-instructions: true
 tools:
@@ -145,11 +120,6 @@ Content.
       const result = await validate(skillPath, { detailed: true });
 
       expect(result.valid).toBe(true);
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.skillsFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.checks.permissionModeFormat.passed).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
       expect(result.checks.argumentHintFormat.passed).toBe(true);
       expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
       expect(result.checks.toolsFormat.passed).toBe(true);
@@ -162,12 +132,12 @@ Content.
   });
 
   describe('validation with subset of new fields', () => {
-    it('validates skill with only memory and model', async () => {
+    it('validates skill with only argument-hint and version', async () => {
       const skillPath = await createSkill(`---
 name: partial-fields-a
-description: Skill with memory and model only
-memory: user
-model: sonnet
+description: Skill with argument-hint and version only
+argument-hint: "Enter a query"
+version: "1.0.0"
 ---
 
 # Partial Fields A
@@ -178,12 +148,10 @@ Content.
       const result = await validateSkill(skillPath);
 
       expect(result.valid).toBe(true);
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      // Unset optional fields should still pass
-      expect(result.checks.skillsFormat.passed).toBe(true);
-      expect(result.checks.colorFormat.passed).toBe(true);
+      expect(result.checks.argumentHintFormat.passed).toBe(true);
       expect(result.checks.versionFormat.passed).toBe(true);
+      // Unset optional fields should still pass
+      expect(result.checks.colorFormat.passed).toBe(true);
     });
 
     it('validates skill with only tool-related fields', async () => {
@@ -193,8 +161,6 @@ description: Skill with only tool-related v2 fields
 tools:
   - Read
   - Write
-disallowedTools:
-  - Bash
 allowed-tools:
   - Read
   - Write
@@ -210,7 +176,6 @@ Content.
 
       expect(result.valid).toBe(true);
       expect(result.checks.toolsFormat.passed).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
       expect(result.checks.allowedToolsFormat.passed).toBe(true);
     });
 
@@ -257,11 +222,6 @@ This skill predates FEAT-014 and uses none of the new fields.
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
       // All new field checks should pass (fields are optional)
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.skillsFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.checks.permissionModeFormat.passed).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
       expect(result.checks.argumentHintFormat.passed).toBe(true);
       expect(result.checks.keepCodingInstructionsFormat.passed).toBe(true);
       expect(result.checks.toolsFormat.passed).toBe(true);
@@ -311,117 +271,6 @@ Content.
       expect(result.checks.agentFormat.passed).toBe(true);
       expect(result.checks.userInvocableFormat.passed).toBe(true);
       expect(result.checks.hooksFormat.passed).toBe(true);
-      // New fields should still pass
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-    });
-  });
-
-  describe('model warning propagation', () => {
-    it('propagates model warning through validateSkill pipeline', async () => {
-      const skillPath = await createSkill(`---
-name: model-warn-skill
-description: Skill with unknown model value
-model: custom-llm-v4
----
-
-# Model Warning Skill
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.warnings).toBeDefined();
-      expect(result.warnings?.some((w) => w.includes('custom-llm-v4'))).toBe(true);
-      expect(result.warnings?.some((w) => w.includes('Unknown model'))).toBe(true);
-    });
-
-    it('propagates model warning through public API with correct warning code', async () => {
-      const skillPath = await createSkill(`---
-name: api-model-warn
-description: Model warning through API
-model: future-gpt
----
-
-# API Model Warning
-
-Content.
-`);
-
-      const result = await validate(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings.some((w) => w.message.includes('future-gpt'))).toBe(true);
-      expect(result.warnings.some((w) => w.code === 'UNKNOWN_MODEL')).toBe(true);
-    });
-
-    it('propagates model warning through detailed API', async () => {
-      const skillPath = await createSkill(`---
-name: detailed-model-warn
-description: Model warning through detailed API
-model: unknown-model-xyz
----
-
-# Detailed Model Warning
-
-Content.
-`);
-
-      const result = await validate(skillPath, { detailed: true });
-
-      expect(result.valid).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.warnings).toBeDefined();
-      expect(result.warnings?.some((w) => w.includes('unknown-model-xyz'))).toBe(true);
-    });
-
-    it('does not generate warning for known model values', async () => {
-      const skillPath = await createSkill(`---
-name: known-model-skill
-description: Skill with known model
-model: sonnet
----
-
-# Known Model Skill
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.warnings).toEqual(
-        expect.not.arrayContaining([expect.stringContaining('model')])
-      );
-    });
-
-    it('combines hooks and model warnings', async () => {
-      const skillPath = await createSkill(`---
-name: multi-warn-skill
-description: Skill with both hooks and model warnings
-hooks:
-  PreToolUse: valid.sh
-  CustomHook: also-valid.sh
-model: exotic-model
----
-
-# Multi Warning Skill
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.warnings).toBeDefined();
-      expect(result.warnings?.length).toBeGreaterThanOrEqual(2);
-      expect(result.warnings?.some((w) => w.includes('CustomHook'))).toBe(true);
-      expect(result.warnings?.some((w) => w.includes('exotic-model'))).toBe(true);
     });
   });
 
@@ -559,25 +408,22 @@ Content.
       expect(result.checks.toolsFormat.passed).toBe(true);
     });
 
-    it('accepts advanced patterns in disallowedTools field', async () => {
+    it('rejects disallowedTools as an agent-only field', async () => {
       const skillPath = await createSkill(`---
 name: disallowed-patterns-skill
-description: Skill with advanced patterns in disallowedTools
+description: Skill with disallowedTools (agent-only)
 disallowedTools:
-  - "Bash(rm:*)"
-  - "mcp__dangerous__*"
-  - Write
+  - Bash
 ---
-
-# Disallowed Patterns Skill
 
 Content.
 `);
 
       const result = await validateSkill(skillPath);
 
-      expect(result.valid).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
+      expect(result.valid).toBe(false);
+      expect(result.checks.allowedProperties.passed).toBe(false);
+      expect(result.checks.allowedProperties.error).toContain('disallowedTools');
     });
 
     it('accepts string value for tools (parser normalizes to array)', async () => {
@@ -597,44 +443,9 @@ Content.
       expect(result.valid).toBe(true);
       expect(result.checks.toolsFormat.passed).toBe(true);
     });
-
-    it('accepts string value for disallowedTools (parser normalizes to array)', async () => {
-      const skillPath = await createSkill(`---
-name: disallowed-string-skill
-description: Skill with string disallowedTools value
-disallowedTools: "Bash Write"
----
-
-# Disallowed String Skill
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(true);
-      expect(result.checks.disallowedToolsFormat.passed).toBe(true);
-    });
   });
 
   describe('invalid field values produce correct failures', () => {
-    it('fails for invalid memory value', async () => {
-      const skillPath = await createSkill(`---
-name: bad-memory-skill
-description: Skill with invalid memory
-memory: global
----
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(false);
-      expect(result.checks.memoryFormat.passed).toBe(false);
-      expect(result.checks.memoryFormat.error).toBeDefined();
-    });
-
     it('fails for invalid color value', async () => {
       const skillPath = await createSkill(`---
 name: bad-color-skill
@@ -684,22 +495,6 @@ Content.
       expect(result.checks.disableModelInvocationFormat.passed).toBe(false);
     });
 
-    it('fails for empty model string', async () => {
-      const skillPath = await createSkill(`---
-name: empty-model-skill
-description: Skill with empty model
-model: ""
----
-
-Content.
-`);
-
-      const result = await validateSkill(skillPath);
-
-      expect(result.valid).toBe(false);
-      expect(result.checks.modelFormat.passed).toBe(false);
-    });
-
     it('fails for version as YAML number (edge case #22)', async () => {
       // YAML parses `version: 1.0` as a float, not a string
       const skillPath = await createSkill(`---
@@ -739,7 +534,6 @@ Content.
       const skillPath = await createSkill(`---
 name: api-errors-skill
 description: Skill with multiple invalid fields
-memory: invalid
 color: purple
 ---
 
@@ -749,7 +543,6 @@ Content.
       const result = await validate(skillPath);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.code === 'INVALID_MEMORY_FORMAT')).toBe(true);
       expect(result.errors.some((e) => e.code === 'INVALID_COLOR_FORMAT')).toBe(true);
     });
 
@@ -757,10 +550,8 @@ Content.
       const skillPath = await createSkill(`---
 name: multi-error-skill
 description: Skill with many invalid fields
-memory: invalid
 color: orange
 keep-coding-instructions: "yes"
-model: ""
 ---
 
 Content.
@@ -769,11 +560,9 @@ Content.
       const result = await validateSkill(skillPath);
 
       expect(result.valid).toBe(false);
-      expect(result.checks.memoryFormat.passed).toBe(false);
       expect(result.checks.colorFormat.passed).toBe(false);
       expect(result.checks.keepCodingInstructionsFormat.passed).toBe(false);
-      expect(result.checks.modelFormat.passed).toBe(false);
-      expect(result.errors.length).toBeGreaterThanOrEqual(4);
+      expect(result.errors.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -789,12 +578,6 @@ agent: specialized-agent
 user-invocable: true
 hooks:
   PreToolUse: validate.sh
-memory: project
-skills:
-  - helper-a
-  - helper-b
-model: sonnet
-permissionMode: default
 color: blue
 version: "1.2.3"
 allowed-tools:
@@ -824,10 +607,6 @@ This skill uses frontmatter fields from every generation.
       expect(result.checks.userInvocableFormat.passed).toBe(true);
       expect(result.checks.hooksFormat.passed).toBe(true);
       // FEAT-014 fields
-      expect(result.checks.memoryFormat.passed).toBe(true);
-      expect(result.checks.skillsFormat.passed).toBe(true);
-      expect(result.checks.modelFormat.passed).toBe(true);
-      expect(result.checks.permissionModeFormat.passed).toBe(true);
       expect(result.checks.colorFormat.passed).toBe(true);
       expect(result.checks.versionFormat.passed).toBe(true);
     });
