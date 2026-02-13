@@ -341,4 +341,4 @@ Using "basic" template
 - [x] Ctrl+C during prompts exits cleanly without partial files
 - [x] Help text documents the `--interactive` / `-i` flag
 - [x] Tests cover prompt flow logic and edge cases
-- [ ] License, compatibility, and metadata prompts added to interactive flow (CHORE-013)
+- [x] License, compatibility, and metadata prompts added to interactive flow (CHORE-013)

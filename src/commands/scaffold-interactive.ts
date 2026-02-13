@@ -231,9 +231,8 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
   }
 
   // Metadata input (agentskills.io spec)
-  // Note: Interactive mode is intentionally more lenient than CLI validation.
-  // Invalid pairs (missing '=' or empty key) are silently skipped for better UX,
-  // whereas the CLI's parseMetadata() throws ValidationError for strict scripting use.
+  // Note: The validate function rejects invalid pairs with an inline error and re-prompt,
+  // whereas the CLI's parseMetadata() throws a ValidationError that exits immediately.
   const metadataInput = await input({
     message: 'Metadata key=value pairs (comma-separated, e.g. author=team,version=1.0):',
     validate: (value: string) => {
