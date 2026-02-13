@@ -17,11 +17,6 @@ export type CheckName =
   | 'agentFormat'
   | 'hooksFormat'
   | 'userInvocableFormat'
-  | 'memoryFormat'
-  | 'skillsFormat'
-  | 'modelFormat'
-  | 'permissionModeFormat'
-  | 'disallowedToolsFormat'
   | 'argumentHintFormat'
   | 'keepCodingInstructionsFormat'
   | 'toolsFormat'
@@ -87,11 +82,6 @@ export interface ParsedFrontmatter {
   hooks?: HooksConfig;
   'user-invocable'?: boolean;
   // FEAT-014 fields
-  memory?: 'user' | 'project' | 'local';
-  skills?: string | string[];
-  model?: string;
-  permissionMode?: string;
-  disallowedTools?: string | string[];
   'argument-hint'?: string;
   'keep-coding-instructions'?: boolean;
   tools?: string | string[];

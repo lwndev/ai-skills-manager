@@ -4,12 +4,12 @@
  * Rules:
  * - Optional field (absence is valid)
  * - Must be a non-empty string when present
- * - Maximum length: 500 characters
+ * - Maximum length: 100 characters
  */
 
 import { ValidationResult } from './name';
 
-const MAX_LENGTH = 500;
+const MAX_LENGTH = 100;
 
 /**
  * Validate the compatibility field value

@@ -5,11 +5,6 @@
 export { ValidationResult, validateName } from './name';
 export { validateDescription } from './description';
 export { FrontmatterData, validateFrontmatterKeys } from './frontmatter';
-export { validateMemory } from './memory';
-export { validateSkills } from './skills';
-export { ModelValidationResult, validateModel } from './model';
-export { validatePermissionMode } from './permission-mode';
-export { validateDisallowedTools } from './disallowed-tools';
 export { validateArgumentHint } from './argument-hint';
 export { validateKeepCodingInstructions } from './keep-coding-instructions';
 export { validateTools } from './tools';

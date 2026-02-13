@@ -28,11 +28,6 @@ describe('validate formatters', () => {
       agentFormat: { passed: true },
       hooksFormat: { passed: true },
       userInvocableFormat: { passed: true },
-      memoryFormat: { passed: true },
-      skillsFormat: { passed: true },
-      modelFormat: { passed: true },
-      permissionModeFormat: { passed: true },
-      disallowedToolsFormat: { passed: true },
       argumentHintFormat: { passed: true },
       keepCodingInstructionsFormat: { passed: true },
       toolsFormat: { passed: true },
@@ -65,11 +60,6 @@ describe('validate formatters', () => {
       agentFormat: { passed: true },
       hooksFormat: { passed: true },
       userInvocableFormat: { passed: true },
-      memoryFormat: { passed: true },
-      skillsFormat: { passed: true },
-      modelFormat: { passed: true },
-      permissionModeFormat: { passed: true },
-      disallowedToolsFormat: { passed: true },
       argumentHintFormat: { passed: true },
       keepCodingInstructionsFormat: { passed: true },
       toolsFormat: { passed: true },
@@ -101,11 +91,6 @@ describe('validate formatters', () => {
       agentFormat: { passed: false },
       hooksFormat: { passed: false },
       userInvocableFormat: { passed: false },
-      memoryFormat: { passed: false },
-      skillsFormat: { passed: false },
-      modelFormat: { passed: false },
-      permissionModeFormat: { passed: false },
-      disallowedToolsFormat: { passed: false },
       argumentHintFormat: { passed: false },
       keepCodingInstructionsFormat: { passed: false },
       toolsFormat: { passed: false },
@@ -181,11 +166,6 @@ describe('validate formatters', () => {
           agentFormat: { passed: true },
           hooksFormat: { passed: true },
           userInvocableFormat: { passed: true },
-          memoryFormat: { passed: true },
-          skillsFormat: { passed: true },
-          modelFormat: { passed: true },
-          permissionModeFormat: { passed: true },
-          disallowedToolsFormat: { passed: true },
           argumentHintFormat: { passed: true },
           keepCodingInstructionsFormat: { passed: true },
           toolsFormat: { passed: true },
@@ -224,11 +204,6 @@ describe('validate formatters', () => {
           agentFormat: { passed: true },
           hooksFormat: { passed: true },
           userInvocableFormat: { passed: true },
-          memoryFormat: { passed: true },
-          skillsFormat: { passed: true },
-          modelFormat: { passed: true },
-          permissionModeFormat: { passed: true },
-          disallowedToolsFormat: { passed: true },
           argumentHintFormat: { passed: true },
           keepCodingInstructionsFormat: { passed: true },
           toolsFormat: { passed: true },
@@ -246,20 +221,6 @@ describe('validate formatters', () => {
       expect(output).toContain('Warnings:');
       expect(output).toContain('Content size exceeds 50KB');
       expect(output).toContain('Consider splitting into smaller files');
-      expect(output).toContain('✓ Skill is valid!');
-    });
-
-    it('displays model warning in normal output', () => {
-      const resultWithModelWarning: ValidationResult = {
-        ...validResult,
-        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
-      };
-
-      const output = formatNormal(resultWithModelWarning);
-
-      expect(output).toContain('Warnings:');
-      expect(output).toContain('custom-llm-v4');
-      expect(output).toContain('⚠');
       expect(output).toContain('✓ Skill is valid!');
     });
   });
@@ -323,18 +284,18 @@ describe('validate formatters', () => {
       expect(output).toContain('    "fileExists"');
     });
 
-    it('includes model warnings in JSON output', () => {
-      const resultWithModelWarning: ValidationResult = {
+    it('includes warnings in JSON output', () => {
+      const resultWithWarning: ValidationResult = {
         ...validResult,
-        warnings: ['Unknown model "custom-llm-v4". Known models: sonnet, opus, haiku'],
+        warnings: ['Some validation warning'],
       };
 
-      const output = formatJSON(resultWithModelWarning);
+      const output = formatJSON(resultWithWarning);
       const parsed = JSON.parse(output);
 
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
-      expect(parsed.warnings[0]).toContain('custom-llm-v4');
+      expect(parsed.warnings[0]).toContain('Some validation warning');
     });
 
     it('includes all validation checks in output', () => {
@@ -353,12 +314,6 @@ describe('validate formatters', () => {
       expect(parsed.checks).toHaveProperty('agentFormat');
       expect(parsed.checks).toHaveProperty('hooksFormat');
       expect(parsed.checks).toHaveProperty('userInvocableFormat');
-      // FEAT-014 checks
-      expect(parsed.checks).toHaveProperty('memoryFormat');
-      expect(parsed.checks).toHaveProperty('skillsFormat');
-      expect(parsed.checks).toHaveProperty('modelFormat');
-      expect(parsed.checks).toHaveProperty('permissionModeFormat');
-      expect(parsed.checks).toHaveProperty('disallowedToolsFormat');
       expect(parsed.checks).toHaveProperty('argumentHintFormat');
       expect(parsed.checks).toHaveProperty('keepCodingInstructionsFormat');
       expect(parsed.checks).toHaveProperty('toolsFormat');

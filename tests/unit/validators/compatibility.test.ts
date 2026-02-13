@@ -23,8 +23,8 @@ describe('validateCompatibility', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('returns valid for string with exactly 500 characters', () => {
-      const result = validateCompatibility('x'.repeat(500));
+    it('returns valid for string with exactly 100 characters', () => {
+      const result = validateCompatibility('x'.repeat(100));
       expect(result.valid).toBe(true);
     });
 
@@ -57,11 +57,11 @@ describe('validateCompatibility', () => {
       expect(result.error).toBe('Compatibility field cannot be empty when present');
     });
 
-    it('returns invalid for string exceeding 500 characters', () => {
-      const longString = 'x'.repeat(501);
+    it('returns invalid for string exceeding 100 characters', () => {
+      const longString = 'x'.repeat(101);
       const result = validateCompatibility(longString);
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Compatibility field must be 500 characters or less (got 501)');
+      expect(result.error).toBe('Compatibility field must be 100 characters or less (got 101)');
     });
 
     it('returns invalid for number type', () => {
@@ -102,13 +102,13 @@ describe('validateCompatibility', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('handles string at exactly 499 characters', () => {
-      const result = validateCompatibility('x'.repeat(499));
+    it('handles string at exactly 99 characters', () => {
+      const result = validateCompatibility('x'.repeat(99));
       expect(result.valid).toBe(true);
     });
 
-    it('handles string at exactly 501 characters', () => {
-      const result = validateCompatibility('x'.repeat(501));
+    it('handles string at exactly 101 characters', () => {
+      const result = validateCompatibility('x'.repeat(101));
       expect(result.valid).toBe(false);
     });
 

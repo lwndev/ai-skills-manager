@@ -232,8 +232,29 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
   }
 
   // Metadata input (agentskills.io spec)
+  // Note: Interactive mode is intentionally more lenient than CLI validation.
+  // Invalid pairs (missing '=' or empty key) are silently skipped for better UX,
+  // whereas the CLI's parseMetadata() throws ValidationError for strict scripting use.
   const metadataInput = await input({
-    message: 'Metadata key=value pairs (comma-separated, press Enter to skip):',
+    message: 'Metadata key=value pairs (comma-separated, e.g. author=team,version=1.0):',
+    validate: (value: string) => {
+      if (value.length === 0) return true; // allow skip
+      const pairs = value
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+      const validPairs = pairs.filter((p) => {
+        const eqIndex = p.indexOf('=');
+        return eqIndex > 0 && p.substring(0, eqIndex).trim().length > 0;
+      });
+      if (validPairs.length === 0) {
+        return 'No valid key=value pairs found. Use format: key=value,key2=value2';
+      }
+      if (validPairs.length < pairs.length) {
+        return `${pairs.length - validPairs.length} invalid pair(s) detected. Each pair must be key=value format.`;
+      }
+      return true;
+    },
   });
   if (metadataInput.trim().length > 0) {
     const pairs = metadataInput

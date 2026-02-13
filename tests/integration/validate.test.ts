@@ -476,7 +476,7 @@ Skill content.
       const skillPath = path.join(tempDir, 'SKILL.md');
 
       try {
-        const longCompatibility = 'x'.repeat(501);
+        const longCompatibility = 'x'.repeat(101);
         const skillContent = `---
 name: compat-skill
 description: A skill with too-long compatibility
@@ -501,7 +501,7 @@ Skill content.
 
           expect(parsed.valid).toBe(false);
           expect(parsed.checks.compatibilityFormat.passed).toBe(false);
-          expect(parsed.checks.compatibilityFormat.error).toContain('500 characters');
+          expect(parsed.checks.compatibilityFormat.error).toContain('100 characters');
           expect(execError.status).toBe(1);
         }
       } finally {

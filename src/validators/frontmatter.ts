@@ -21,11 +21,6 @@ const ALLOWED_KEYS = new Set([
   'hooks',
   'user-invocable',
   // FEAT-014 fields
-  'memory',
-  'skills',
-  'model',
-  'permissionMode',
-  'disallowedTools',
   'argument-hint',
   'keep-coding-instructions',
   'tools',
