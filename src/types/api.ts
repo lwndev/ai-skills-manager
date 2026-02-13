@@ -219,7 +219,7 @@ export interface ScaffoldTemplateOptions {
   /**
    * Argument hint for skill invocation.
    * Displayed in the UI to suggest expected arguments (e.g., '<query> [--deep]').
-   * Maximum 100 characters.
+   * Maximum 200 characters.
    */
   argumentHint?: string;
 
