@@ -1184,8 +1184,8 @@ describe('scaffold API integration', () => {
       expect(content).toContain('argument-hint: search query');
     });
 
-    it('CLI scaffold rejects argument-hint over 100 chars', () => {
-      const longHint = 'a'.repeat(101);
+    it('CLI scaffold rejects argument-hint over 200 chars', () => {
+      const longHint = 'a'.repeat(201);
       expect(() => {
         execSync(
           `node "${cliPath}" scaffold long-hint-skill --output "${tempDir}" --argument-hint "${longHint}" 2>&1`,

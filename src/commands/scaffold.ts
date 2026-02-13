@@ -182,13 +182,13 @@ function validateAgent(agent: string): string {
  * Validates argument hint length.
  */
 function validateArgumentHint(hint: string): string {
-  if (hint.length > 100) {
+  if (hint.length > 200) {
     throw new ValidationError(
-      `Argument hint must be 100 characters or fewer, got ${hint.length} characters.`,
+      `Argument hint must be 200 characters or fewer, got ${hint.length} characters.`,
       [
         {
           code: 'ARGUMENT_HINT_TOO_LONG',
-          message: `Argument hint must be 100 characters or fewer, got ${hint.length} characters.`,
+          message: `Argument hint must be 200 characters or fewer, got ${hint.length} characters.`,
         },
       ]
     );
@@ -206,17 +206,6 @@ function validateLicense(license: string): string {
       { code: 'EMPTY_LICENSE', message: 'License cannot be empty' },
     ]);
   }
-  if (trimmed.length > 100) {
-    throw new ValidationError(
-      `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
-      [
-        {
-          code: 'LICENSE_TOO_LONG',
-          message: `License must be 100 characters or fewer, got ${trimmed.length} characters.`,
-        },
-      ]
-    );
-  }
   return trimmed;
 }
 
@@ -230,13 +219,13 @@ function validateCompatibility(compat: string): string {
       { code: 'EMPTY_COMPATIBILITY', message: 'Compatibility cannot be empty' },
     ]);
   }
-  if (trimmed.length > 100) {
+  if (trimmed.length > 500) {
     throw new ValidationError(
-      `Compatibility must be 100 characters or fewer, got ${trimmed.length} characters.`,
+      `Compatibility must be 500 characters or fewer, got ${trimmed.length} characters.`,
       [
         {
           code: 'COMPATIBILITY_TOO_LONG',
-          message: `Compatibility must be 100 characters or fewer, got ${trimmed.length} characters.`,
+          message: `Compatibility must be 500 characters or fewer, got ${trimmed.length} characters.`,
         },
       ]
     );

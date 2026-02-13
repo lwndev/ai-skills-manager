@@ -138,9 +138,9 @@ Interactive mode requires a TTY (interactive terminal). Template-content flags (
 | `--hooks` | Include commented hook examples in frontmatter |
 | `--minimal` | Generate shorter templates without educational guidance text |
 | `--license <text>` | Set license field in frontmatter (e.g., `MIT`, `Apache-2.0`) |
-| `--compatibility <text>` | Set compatibility field in frontmatter (max 100 chars) |
+| `--compatibility <text>` | Set compatibility field in frontmatter (max 500 chars) |
 | `--metadata <key=value>` | Set metadata key-value pair (repeatable) |
-| `--argument-hint <hint>` | Set argument hint for skill invocation (max 100 chars) |
+| `--argument-hint <hint>` | Set argument hint for skill invocation (max 200 chars) |
 | `-i, --interactive` | Launch guided prompt-driven scaffold workflow |
 
 #### Template Types
@@ -207,7 +207,7 @@ The validate command performs these checks in order:
 4. **Allowed properties** - Ensures only permitted frontmatter keys are used
 5. **Name format** - Validates hyphen-case format, max 64 characters
 6. **Description format** - Validates no angle brackets, max 1024 characters
-7. **Compatibility format** - Validates optional compatibility field (max 100 characters)
+7. **Compatibility format** - Validates optional compatibility field (max 500 characters)
 8. **Context format** - Validates optional context field (must be `"fork"` if present)
 9. **Agent format** - Validates optional agent field (must be non-empty string if present)
 10. **Hooks format** - Validates optional hooks object structure; unknown hook keys produce warnings
@@ -794,7 +794,7 @@ const result = await scaffold({
     license: 'MIT',           //   Optional: license identifier
     compatibility: 'Claude Code 2.x', // Optional: compatibility info
     metadata: { author: 'Jane' },     // Optional: key-value metadata
-    argumentHint: '<query>',  //   Optional: argument hint (max 100 chars)
+    argumentHint: '<query>',  //   Optional: argument hint (max 200 chars)
   },
 });
 

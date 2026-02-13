@@ -683,7 +683,7 @@ describe('scaffold-interactive', () => {
       expect(result.templateOptions.argumentHint).toBeUndefined();
     });
 
-    it('argument hint validates 100-character max', async () => {
+    it('argument hint validates 200-character max', async () => {
       setupPromptMocks({ templateType: 'basic' });
 
       // Override the input mock to capture and test the validate function
@@ -711,13 +711,13 @@ describe('scaffold-interactive', () => {
       if (!capturedValidate) throw new Error('Expected validate function to be captured');
       // Valid: empty (skip)
       expect(capturedValidate('')).toBe(true);
-      // Valid: under 100 chars
+      // Valid: under 200 chars
       expect(capturedValidate('<query>')).toBe(true);
-      // Valid: exactly 100 chars
-      expect(capturedValidate('a'.repeat(100))).toBe(true);
-      // Invalid: over 100 chars
-      expect(capturedValidate('a'.repeat(101))).toBe(
-        'Argument hint must be 100 characters or fewer.'
+      // Valid: exactly 200 chars
+      expect(capturedValidate('a'.repeat(200))).toBe(true);
+      // Invalid: over 200 chars
+      expect(capturedValidate('a'.repeat(201))).toBe(
+        'Argument hint must be 200 characters or fewer.'
       );
     });
 

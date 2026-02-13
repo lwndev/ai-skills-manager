@@ -624,8 +624,8 @@ describe('scaffold CLI command', () => {
       expect(skillMd).toContain('argument-hint: search query');
     });
 
-    it('rejects argument-hint over 100 characters', async () => {
-      const longHint = 'a'.repeat(101);
+    it('rejects argument-hint over 200 characters', async () => {
+      const longHint = 'a'.repeat(201);
       const program = await createTestProgram();
       await expect(
         program.parseAsync([
@@ -640,7 +640,7 @@ describe('scaffold CLI command', () => {
         ])
       ).rejects.toThrow();
 
-      expect(consoleOutput.some((line) => line.includes('100 characters or fewer'))).toBe(true);
+      expect(consoleOutput.some((line) => line.includes('200 characters or fewer'))).toBe(true);
     });
   });
 
@@ -680,23 +680,22 @@ describe('scaffold CLI command', () => {
       expect(consoleOutput.some((line) => line.includes('License cannot be empty'))).toBe(true);
     });
 
-    it('rejects license over 100 characters', async () => {
+    it('accepts license over 100 characters', async () => {
       const longLicense = 'a'.repeat(101);
       const program = await createTestProgram();
-      await expect(
-        program.parseAsync([
-          'node',
-          'asm',
-          'scaffold',
-          'test-skill',
-          '--output',
-          tempDir,
-          '--license',
-          longLicense,
-        ])
-      ).rejects.toThrow();
+      await program.parseAsync([
+        'node',
+        'asm',
+        'scaffold',
+        'test-skill',
+        '--output',
+        tempDir,
+        '--license',
+        longLicense,
+      ]);
 
-      expect(consoleOutput.some((line) => line.includes('100 characters or fewer'))).toBe(true);
+      const skillMd = await fs.readFile(path.join(tempDir, 'test-skill', 'SKILL.md'), 'utf-8');
+      expect(skillMd).toContain(`license: ${longLicense}`);
     });
   });
 
@@ -738,8 +737,8 @@ describe('scaffold CLI command', () => {
       );
     });
 
-    it('rejects compatibility over 100 characters', async () => {
-      const longCompat = 'a'.repeat(101);
+    it('rejects compatibility over 500 characters', async () => {
+      const longCompat = 'a'.repeat(501);
       const program = await createTestProgram();
       await expect(
         program.parseAsync([
@@ -754,7 +753,7 @@ describe('scaffold CLI command', () => {
         ])
       ).rejects.toThrow();
 
-      expect(consoleOutput.some((line) => line.includes('100 characters or fewer'))).toBe(true);
+      expect(consoleOutput.some((line) => line.includes('500 characters or fewer'))).toBe(true);
     });
   });
 
