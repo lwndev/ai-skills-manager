@@ -170,8 +170,8 @@ Prompt for an optional argument hint:
   Example: <query> [--deep]
 ```
 
-- Accept any non-empty string up to 100 characters
-- If input exceeds 100 characters, display inline error and re-prompt
+- Accept any non-empty string up to 200 characters
+- If input exceeds 200 characters, display inline error and re-prompt
 - When skipped, omit `argument-hint` from frontmatter
 - Maps to `--argument-hint <hint>` flag
 
@@ -290,7 +290,7 @@ Using "basic" template
 5. **Empty skill name with `--interactive`**: Still require `<name>` as positional argument (do not prompt for name)
 6. **`--interactive` combined with `--project`/`--personal`**: These output-location flags are respected alongside interactive mode
 7. **Very long description input**: Accept as-is — let the template generator handle truncation if needed
-8. **Argument hint over 100 characters**: Display inline validation error and re-prompt
+8. **Argument hint over 200 characters**: Display inline validation error and re-prompt
 9. ~~**`agent` template selected**: Memory defaults to `project`, model defaults to `sonnet`, hooks prompt is skipped~~ (Removed by CHORE-013)
 
 ## Testing Requirements
@@ -300,7 +300,7 @@ Using "basic" template
 - Flag conflict detection and warning (including `--argument-hint`, `--license`, `--compatibility`, `--metadata`)
 - Prompt flow produces correct `TemplateOptions` for each template type
 - Conditional prompt logic (e.g., hooks prompt skipped for `with-hooks` and `internal` templates)
-- Argument hint input validates 100-character max length
+- Argument hint input validates 200-character max length
 - License, compatibility, and metadata prompts produce correct options
 - Summary display formatting includes argument hint, license, compatibility, and metadata when set
 
@@ -331,7 +331,7 @@ Using "basic" template
 - [x] Interactive prompts guide user through template type, context, agent, hooks, minimal, description, argument hint, allowed tools, license, compatibility, and metadata
 - ~~[x] `agent` template type is available in template selection~~ (Removed by CHORE-013)
 - ~~[x] Memory and model prompts default to populated values for `agent` template~~ (Removed by CHORE-013)
-- [x] Argument hint input validates max length of 100 characters
+- [x] Argument hint input validates max length of 200 characters
 - [x] Conditional prompts are skipped when not applicable to the selected template
 - [x] Configuration summary is displayed before scaffold generation
 - [x] Generated skill matches what would be produced with equivalent explicit flags
