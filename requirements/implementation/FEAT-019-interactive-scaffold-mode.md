@@ -104,7 +104,7 @@ Add an `--interactive` / `-i` flag to `asm scaffold` that launches a guided prom
     - ~~Memory defaults to `project` for `agent` template, skip for others~~ (Removed by CHORE-013)
     - ~~Model defaults to `sonnet` for `agent` template, skip for others~~ (Removed by CHORE-013)
     - Hooks prompt skipped for `with-hooks` and `internal` templates
-    - Argument hint validates 100-character max and re-prompts
+    - Argument hint validates 200-character max and re-prompts
     - Allowed tools parsed from comma-separated string to array
     - License, compatibility, and metadata prompts produce correct options (Added by CHORE-013)
     - Ctrl+C during prompts exits with code 0 and message `Scaffold cancelled.`
@@ -185,7 +185,7 @@ This feature is entirely a CLI-layer concern. It reuses:
 - Each prompt step produces correct options
 - Conditional prompt logic (which prompts appear for each template type)
 - ~~Template defaults for `agent` (memory → `project`, model → `sonnet`)~~ (Removed by CHORE-013)
-- Argument hint 100-character validation
+- Argument hint 200-character validation
 - License, compatibility, and metadata prompt handling (Added by CHORE-013)
 - Summary formatting (conditional fields, alignment)
 - Ctrl+C / EOF handling
@@ -235,7 +235,7 @@ This feature is entirely a CLI-layer concern. It reuses:
 - `--interactive` / `-i` flag is accepted by `asm scaffold`
 - Interactive prompts guide user through configuration steps with correct conditional logic
 - ~~`agent` template type is available and defaults memory to `project`, model to `sonnet`~~ (Removed by CHORE-013)
-- Argument hint validates 100-character max
+- Argument hint validates 200-character max
 - License, compatibility, and metadata prompts available in interactive flow (Added by CHORE-013)
 - Configuration summary displays only set fields before scaffold generation
 - User can decline summary to restart, or confirm to proceed
