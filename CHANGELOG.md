@@ -5,6 +5,37 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-02-13
+
+### Breaking Changes
+
+- **Removed `agent` template type** (CHORE-013): The `--template agent` scaffold variant has been removed. Skills and subagents are distinct systems — agent-specific scaffolding belongs in `.claude/agents/`, not `.claude/skills/`. Use `basic`, `forked`, `with-hooks`, or `internal` templates instead.
+- **Removed `--memory` and `--model` scaffold flags** (CHORE-013): These flags produced agent-only frontmatter fields that are not valid in skill files. Remove `--memory` and `--model` from any scripts or CI commands that use `asm scaffold`.
+- **Removed 5 agent-only frontmatter validators** (CHORE-013): The `memory`, `skills`, `model`, `permissionMode`, and `disallowedTools` fields are no longer accepted in skill frontmatter. Skills using these fields will fail the "Allowed properties" validation check. Move agent-specific fields to `.claude/agents/` files instead.
+
+### Added
+
+- **`--license` scaffold flag** (CHORE-013): Set the `license` field in generated SKILL.md frontmatter (e.g., `--license MIT`)
+- **`--compatibility` scaffold flag** (CHORE-013): Set the `compatibility` field in generated SKILL.md frontmatter (max 500 chars)
+- **`--metadata` scaffold flag** (CHORE-013): Set metadata key-value pairs in generated SKILL.md frontmatter (repeatable, e.g., `--metadata author="Jane Doe"`)
+- **Interactive prompts for spec fields** (CHORE-013): `asm scaffold --interactive` now prompts for license, compatibility, and metadata
+
+### Changed
+
+- **Validation pipeline simplified** (CHORE-013): Reduced from 25 checks to 20 by removing 5 agent-only field validators (`memory`, `skills`, `model`, `permissionMode`, `disallowedTools`)
+- **`compatibility` max length corrected** (CHORE-013): Increased from 100 to 500 characters to match the agentskills.io specification
+- **`argument-hint` scaffold max length corrected** (CHORE-013): Increased from 100 to 200 characters to match the existing validator
+- **`license` scaffold cap removed** (CHORE-013): Removed artificial 100-character limit; the agentskills.io spec defines no maximum
+- **Interactive scaffold updated** (CHORE-013): Removed `agent` template choice, memory scope prompt, and model selection prompt
+
+### Removed
+
+- `src/validators/disallowed-tools.ts` — agent-only validator
+- `src/validators/memory.ts` — agent-only validator
+- `src/validators/model.ts` — agent-only validator
+- `src/validators/permission-mode.ts` — agent-only validator
+- `src/validators/skills.ts` — agent-only validator
+
 ## [1.7.0] - 2026-02-08
 
 ### Added
