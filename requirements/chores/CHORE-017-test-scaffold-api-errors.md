@@ -32,23 +32,23 @@ New/modified test files:
 
 ## Acceptance Criteria
 
-- [ ] EACCES filesystem error tested: `fs.mkdir` or `fs.writeFile` throwing with `code: 'EACCES'` maps to `FileSystemError` with "Permission denied" message
-- [ ] EPERM filesystem error tested: same pattern with `code: 'EPERM'` maps to `FileSystemError` with "Permission denied" message
-- [ ] ENOENT filesystem error tested: error with `code: 'ENOENT'` maps to `FileSystemError` with "Parent directory does not exist" message
-- [ ] Already-an-AsmError re-throw tested: `FileSystemError` and `SecurityError` thrown inside the try block are re-thrown without wrapping
-- [ ] Unknown error wrapping tested: both branches of the ternary on line 192 — a plain `Error` (not an AsmError subclass, no error code) uses `error.message`, and non-Error values (string, null) use `String(error)` — both wrapped in `FileSystemError` with "Failed to create scaffold" message
-- [ ] Template option mapping tested for all supported template types (`basic`, `forked`, `with-hooks`, `internal`) — verifies options pass through to `generateSkillMd`
-- [ ] `resolveOutputPath` scope resolution tested without explicit output: `scope: 'personal'` uses personal skills dir, `scope: 'project'` (or undefined) uses project skills dir
-- [ ] Scaffold API branch coverage reaches 70%+
-- [ ] All tests pass via `npm run quality`
+- [x] EACCES filesystem error tested: `fs.mkdir` or `fs.writeFile` throwing with `code: 'EACCES'` maps to `FileSystemError` with "Permission denied" message
+- [x] EPERM filesystem error tested: same pattern with `code: 'EPERM'` maps to `FileSystemError` with "Permission denied" message
+- [x] ENOENT filesystem error tested: error with `code: 'ENOENT'` maps to `FileSystemError` with "Parent directory does not exist" message
+- [x] Already-an-AsmError re-throw tested: `FileSystemError` and `SecurityError` thrown inside the try block are re-thrown without wrapping
+- [x] Unknown error wrapping tested: both branches of the ternary on line 192 — a plain `Error` (not an AsmError subclass, no error code) uses `error.message`, and non-Error values (string, null) use `String(error)` — both wrapped in `FileSystemError` with "Failed to create scaffold" message
+- [x] Template option mapping tested for all supported template types (`basic`, `forked`, `with-hooks`, `internal`) — verifies options pass through to `generateSkillMd`
+- [x] `resolveOutputPath` scope resolution tested without explicit output: `scope: 'personal'` uses personal skills dir, `scope: 'project'` (or undefined) uses project skills dir
+- [x] Scaffold API branch coverage reaches 70%+
+- [x] All tests pass via `npm run quality`
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-02-13
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#82](https://github.com/lwndev/ai-skills-manager/pull/82)
 
 ## Notes
 
