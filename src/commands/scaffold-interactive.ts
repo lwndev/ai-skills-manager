@@ -221,8 +221,9 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
     message: 'Compatibility (optional, press Enter to skip):',
     validate: (value: string) => {
       if (value.length === 0) return true;
-      if (value.trim().length === 0) return 'Compatibility cannot be empty whitespace.';
-      if (value.length > 500) return 'Compatibility must be 500 characters or fewer.';
+      const trimmed = value.trim();
+      if (trimmed.length === 0) return 'Compatibility cannot be empty whitespace.';
+      if (trimmed.length > 500) return 'Compatibility must be 500 characters or fewer.';
       return true;
     },
   });

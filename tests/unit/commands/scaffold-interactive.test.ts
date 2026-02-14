@@ -721,6 +721,52 @@ describe('scaffold-interactive', () => {
       );
     });
 
+    it('compatibility validates trimmed length for 500-character max', async () => {
+      setupPromptMocks({ templateType: 'basic' });
+
+      // Override the input mock to capture and test the validate function
+      let capturedValidate:
+        | ((value: string) => boolean | string | Promise<string | boolean>)
+        | undefined;
+      const inputCallCount = { count: 0 };
+      mockInput.mockImplementation(
+        async (config: {
+          message: string;
+          validate?: (value: string) => boolean | string | Promise<string | boolean>;
+        }) => {
+          inputCallCount.count++;
+          if (config.message.includes('Compatibility')) {
+            capturedValidate = config.validate;
+          }
+          // Return values for: agent, description, argumentHint, allowedTools, license, compatibility, metadata
+          const answers = ['', '', '', '', '', '', ''];
+          return answers[inputCallCount.count - 1] ?? '';
+        }
+      );
+
+      await runInteractivePrompts();
+
+      if (!capturedValidate) throw new Error('Expected validate function to be captured');
+      // Valid: empty (skip)
+      expect(capturedValidate('')).toBe(true);
+      // Valid: under 500 chars
+      expect(capturedValidate('claude-code>=2.1')).toBe(true);
+      // Valid: exactly 500 chars
+      expect(capturedValidate('a'.repeat(500))).toBe(true);
+      // Invalid: over 500 chars
+      expect(capturedValidate('a'.repeat(501))).toBe(
+        'Compatibility must be 500 characters or fewer.'
+      );
+      // Invalid: only whitespace
+      expect(capturedValidate('   ')).toBe('Compatibility cannot be empty whitespace.');
+      // Valid: whitespace-padded input where trimmed length is under 500
+      expect(capturedValidate('  ' + 'a'.repeat(498) + '  ')).toBe(true);
+      // Invalid: trimmed length over 500 (whitespace should not count)
+      expect(capturedValidate('  ' + 'a'.repeat(501) + '  ')).toBe(
+        'Compatibility must be 500 characters or fewer.'
+      );
+    });
+
     it('allowed tools parsed from comma-separated string to array', async () => {
       setupPromptMocks({ templateType: 'basic', allowedTools: 'Read, Write, Bash' });
 
