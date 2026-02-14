@@ -685,3 +685,69 @@ describe('install API function', () => {
     });
   });
 });
+
+/**
+ * Mocked tests for install API permission error handling (CHORE-019)
+ *
+ * These tests mock the internal installSkill generator to simulate
+ * filesystem permission errors (EACCES, EPERM) and verify the install
+ * API transforms them into FileSystemError with "Permission denied" messages.
+ */
+describe('install API permission errors (mocked)', () => {
+  let mockInstallSkill: jest.Mock;
+
+  beforeEach(() => {
+    jest.resetModules();
+    mockInstallSkill = jest.fn();
+    jest.doMock('../../../src/generators/installer', () => ({
+      installSkill: mockInstallSkill,
+      isInstallResult: jest.fn(),
+      isDryRunPreview: jest.fn(),
+      isOverwriteRequired: jest.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('handles EACCES permission error', async () => {
+    const permError = new Error('Permission denied') as NodeJS.ErrnoException;
+    permError.code = 'EACCES';
+    mockInstallSkill.mockRejectedValue(permError);
+
+    const { install: mockedInstall } = await import('../../../src/api/install');
+    const { FileSystemError: FSError } = await import('../../../src/errors');
+
+    try {
+      await mockedInstall({
+        file: '/test/package.skill',
+        targetPath: '/test/install',
+      });
+      fail('Expected FileSystemError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(FSError);
+      expect((error as Error).message).toContain('Permission denied: "/test/package.skill"');
+    }
+  });
+
+  it('handles EPERM permission error', async () => {
+    const permError = new Error('Operation not permitted') as NodeJS.ErrnoException;
+    permError.code = 'EPERM';
+    mockInstallSkill.mockRejectedValue(permError);
+
+    const { install: mockedInstall } = await import('../../../src/api/install');
+    const { FileSystemError: FSError } = await import('../../../src/errors');
+
+    try {
+      await mockedInstall({
+        file: '/test/package.skill',
+        targetPath: '/test/install',
+      });
+      fail('Expected FileSystemError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(FSError);
+      expect((error as Error).message).toContain('Permission denied: "/test/package.skill"');
+    }
+  });
+});
