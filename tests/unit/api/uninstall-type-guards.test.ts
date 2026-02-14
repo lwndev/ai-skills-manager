@@ -12,6 +12,7 @@ import {
   isUninstallDryRunPreview,
 } from '../../../src/api/uninstall';
 import type {
+  DetailedUninstallResult,
   DetailedUninstallSuccess,
   DetailedUninstallNotFound,
   DetailedUninstallDryRunPreview,
@@ -19,10 +20,8 @@ import type {
 
 // --- Test fixtures ---
 
-type UninstallDetailedItem =
-  | DetailedUninstallSuccess
-  | DetailedUninstallNotFound
-  | DetailedUninstallDryRunPreview;
+/** Derived from DetailedUninstallResult.results to stay in sync with source type */
+type UninstallDetailedItem = DetailedUninstallResult['results'][number];
 
 const successResult: DetailedUninstallSuccess = {
   type: 'success',
