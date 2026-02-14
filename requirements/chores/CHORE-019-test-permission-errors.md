@@ -28,21 +28,21 @@ Permission error tests for the other three APIs were already added by prior chor
 
 ## Acceptance Criteria
 
-- [ ] EACCES permission error test exists for install API
-- [ ] EPERM permission error test exists for install API
-- [ ] Tests verify `FileSystemError` is thrown with "Permission denied" message
+- [x] EACCES permission error test exists for install API
+- [x] EPERM permission error test exists for install API
+- [x] Tests verify `FileSystemError` is thrown with "Permission denied" message
 - [x] Permission error test exists for update API (CHORE-015)
 - [x] Permission error test exists for uninstall API (CHORE-016)
 - [x] Permission error test exists for scaffold API (CHORE-017)
-- [ ] All tests pass via `npm run quality`
+- [x] All tests pass via `npm run quality`
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Complete`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-02-13
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#83](https://github.com/lwndev/ai-skills-manager/pull/83)
 
 ## Notes
 
