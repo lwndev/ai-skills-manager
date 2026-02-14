@@ -727,7 +727,7 @@ describe('install API permission errors (mocked)', () => {
       fail('Expected FileSystemError');
     } catch (error) {
       expect(error).toBeInstanceOf(FSError);
-      expect((error as Error).message).toContain('Permission denied');
+      expect((error as Error).message).toContain('Permission denied: "/test/package.skill"');
     }
   });
 
@@ -747,7 +747,7 @@ describe('install API permission errors (mocked)', () => {
       fail('Expected FileSystemError');
     } catch (error) {
       expect(error).toBeInstanceOf(FSError);
-      expect((error as Error).message).toContain('Permission denied');
+      expect((error as Error).message).toContain('Permission denied: "/test/package.skill"');
     }
   });
 });
