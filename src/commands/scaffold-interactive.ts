@@ -232,44 +232,39 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
   }
 
   // Metadata input (agentskills.io spec)
-  // Note: The validate function rejects invalid pairs with an inline error and re-prompt,
-  // whereas the CLI's parseMetadata() throws a ValidationError that exits immediately.
-  const metadataInput = await input({
-    message: 'Metadata key=value pairs (comma-separated, e.g. author=team,version=1.0):',
-    validate: (value: string) => {
-      if (value.length === 0) return true; // allow skip
-      const pairs = value
-        .split(',')
-        .map((p: string) => p.trim())
-        .filter((p: string) => p.length > 0);
-      const validPairs = pairs.filter((p) => {
-        const eqIndex = p.indexOf('=');
-        return eqIndex > 0 && p.substring(0, eqIndex).trim().length > 0;
-      });
-      if (validPairs.length === 0) {
-        return 'No valid key=value pairs found. Use format: key=value,key2=value2';
-      }
-      if (validPairs.length < pairs.length) {
-        return `${pairs.length - validPairs.length} invalid pair(s) detected. Each pair must be key=value format.`;
-      }
-      return true;
-    },
+  // Uses a multi-entry loop prompt so values can contain commas.
+  const addMetadata = await confirm({
+    message: 'Add metadata key=value pairs?',
+    default: false,
   });
-  if (metadataInput.trim().length > 0) {
-    const pairs = metadataInput
-      .split(',')
-      .map((p: string) => p.trim())
-      .filter((p: string) => p.length > 0);
+  if (addMetadata) {
     const metadata: Record<string, string> = {};
-    for (const pair of pairs) {
-      const eqIndex = pair.indexOf('=');
-      if (eqIndex > 0) {
-        const key = pair.substring(0, eqIndex).trim();
-        const value = pair.substring(eqIndex + 1).trim();
-        if (key.length > 0) {
-          metadata[key] = value;
-        }
-      }
+    let addMore = true;
+    while (addMore) {
+      const entry = await input({
+        message: 'Metadata entry (key=value):',
+        validate: (value: string) => {
+          const trimmed = value.trim();
+          if (trimmed.length === 0) return 'Entry cannot be empty.';
+          const eqIndex = trimmed.indexOf('=');
+          if (eqIndex <= 0) return 'Invalid format. Use key=value (e.g. author=team).';
+          const key = trimmed.substring(0, eqIndex).trim();
+          if (key.length === 0) return 'Key cannot be empty.';
+          const val = trimmed.substring(eqIndex + 1).trim();
+          if (val.length === 0) return 'Value cannot be empty.';
+          return true;
+        },
+      });
+      const trimmed = entry.trim();
+      const eqIndex = trimmed.indexOf('=');
+      const key = trimmed.substring(0, eqIndex).trim();
+      const value = trimmed.substring(eqIndex + 1).trim();
+      metadata[key] = value;
+
+      addMore = await confirm({
+        message: 'Add another metadata entry?',
+        default: false,
+      });
     }
     if (Object.keys(metadata).length > 0) {
       templateOptions.metadata = metadata;
