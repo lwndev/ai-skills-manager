@@ -40,7 +40,7 @@ New test files:
 
 **Completed:** 2026-02-13
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#80](https://github.com/lwndev/ai-skills-manager/pull/80)
 
 ## Notes
 
