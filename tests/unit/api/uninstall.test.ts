@@ -757,3 +757,575 @@ describe('uninstall API function', () => {
     });
   });
 });
+
+/**
+ * Mocked tests for uninstall API error handling branches (CHORE-016)
+ *
+ * These tests mock the generator module to exercise handleGeneratorError(),
+ * handleCatchBlockError(), and mapScope() code paths that are unreachable
+ * via integration tests.
+ */
+describe('uninstall API error mapping (mocked)', () => {
+  let mockUninstallSkill: jest.Mock;
+  let mockIsDryRunPreview: jest.Mock;
+  let mockGetScopePath: jest.Mock;
+
+  beforeEach(() => {
+    jest.resetModules();
+    mockUninstallSkill = jest.fn();
+    mockIsDryRunPreview = jest.fn().mockReturnValue(false);
+    mockGetScopePath = jest.fn().mockReturnValue('/mock/skills/path');
+
+    jest.doMock('../../../src/generators/uninstaller', () => ({
+      uninstallSkill: mockUninstallSkill,
+      isDryRunPreview: mockIsDryRunPreview,
+      getScopePath: mockGetScopePath,
+    }));
+  });
+
+  afterEach(() => {
+    jest.resetModules();
+    jest.restoreAllMocks();
+  });
+
+  async function getUninstall() {
+    const mod = await import('../../../src/api/uninstall');
+    return mod.uninstall;
+  }
+
+  describe('handleGeneratorError', () => {
+    it('maps skill-not-found to not-found result', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'skill-not-found',
+          skillName: 'test-skill',
+          searchedPath: '/some/path',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['test-skill'],
+        force: true,
+      });
+
+      expect(result.notFound).toContain('test-skill');
+      expect(result.removed).toHaveLength(0);
+    });
+
+    it('throws SecurityError for security-error', async () => {
+      const uninstallFn = await getUninstall();
+      const { SecurityError: SE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'security-error',
+          reason: 'symlink-escape',
+          details: 'Symlink points outside skill directory',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(SE);
+    });
+
+    it('SecurityError message includes skill name and details', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'bad-skill',
+        error: {
+          type: 'security-error',
+          reason: 'path-traversal',
+          details: 'Path traversal detected',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['bad-skill'], force: true })).rejects.toThrow(
+        /Security error for skill "bad-skill": Path traversal detected/
+      );
+    });
+
+    it('throws FileSystemError for filesystem-error', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'filesystem-error',
+          operation: 'delete',
+          path: '/some/path/test-skill',
+          message: 'ENOENT: no such file',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
+    });
+
+    it('FileSystemError includes error path for filesystem-error', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'filesystem-error',
+          operation: 'delete',
+          path: '/some/path/test-skill',
+          message: 'ENOENT: no such file',
+        },
+      });
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as InstanceType<typeof FSE>).path).toBe('/some/path/test-skill');
+      }
+    });
+
+    it('maps validation-error without force to not-found', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'validation-error',
+          field: 'skillName',
+          message: 'Invalid skill name',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['test-skill'],
+        force: false,
+      });
+
+      expect(result.notFound).toContain('test-skill');
+      expect(result.removed).toHaveLength(0);
+    });
+
+    it('throws FileSystemError for validation-error with force', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'validation-error',
+          field: 'skillName',
+          message: 'Invalid skill name',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
+    });
+
+    it('throws FileSystemError for partial-removal', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'partial-removal',
+          skillName: 'test-skill',
+          filesRemoved: 3,
+          filesRemaining: 2,
+          lastError: 'EACCES: permission denied',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
+    });
+
+    it('partial-removal error message includes file counts', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'partial-removal',
+          skillName: 'test-skill',
+          filesRemoved: 3,
+          filesRemaining: 2,
+          lastError: 'EACCES: permission denied',
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(
+        /3 files removed, 2 remaining/
+      );
+    });
+
+    it('throws FileSystemError for timeout', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'timeout',
+          operationName: 'removeDir',
+          timeoutMs: 5000,
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
+    });
+
+    it('timeout error message includes timeout duration', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'timeout',
+          operationName: 'removeDir',
+          timeoutMs: 5000,
+        },
+      });
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(/5000ms/);
+    });
+
+    it('maps unknown error type to not-found', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'some-future-error-type',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['test-skill'],
+        force: true,
+      });
+
+      expect(result.notFound).toContain('test-skill');
+      expect(result.removed).toHaveLength(0);
+    });
+  });
+
+  describe('handleCatchBlockError', () => {
+    it('re-throws SecurityError as-is', async () => {
+      const uninstallFn = await getUninstall();
+      const { SecurityError: SE } = await import('../../../src/errors');
+      const securityError = new SE('test security error');
+      mockUninstallSkill.mockRejectedValue(securityError);
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toBe(securityError);
+    });
+
+    it('re-throws FileSystemError as-is', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      const fsError = new FSE('test fs error', '/some/path');
+      mockUninstallSkill.mockRejectedValue(fsError);
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toBe(fsError);
+    });
+
+    it('re-throws CancellationError as-is', async () => {
+      const uninstallFn = await getUninstall();
+      const { CancellationError: CE } = await import('../../../src/errors');
+      const cancelError = new CE('user cancelled');
+      mockUninstallSkill.mockRejectedValue(cancelError);
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toBe(cancelError);
+    });
+
+    it('converts internal CancellationError (by name) to public CancellationError', async () => {
+      const uninstallFn = await getUninstall();
+      const { CancellationError: CE } = await import('../../../src/errors');
+      // Create an error that has name = 'CancellationError' but is NOT an instance of our CancellationError
+      const internalError = new Error('internal cancel');
+      internalError.name = 'CancellationError';
+      mockUninstallSkill.mockRejectedValue(internalError);
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(CE);
+    });
+
+    it('internal CancellationError preserves original message', async () => {
+      const uninstallFn = await getUninstall();
+      const internalError = new Error('operation was aborted');
+      internalError.name = 'CancellationError';
+      mockUninstallSkill.mockRejectedValue(internalError);
+
+      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(
+        'operation was aborted'
+      );
+    });
+
+    it('maps EACCES to FileSystemError with permission denied message', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      const permError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+      permError.code = 'EACCES';
+      mockUninstallSkill.mockRejectedValue(permError);
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      }
+    });
+
+    it('maps EPERM to FileSystemError with permission denied message', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      const permError = new Error('EPERM: operation not permitted') as NodeJS.ErrnoException;
+      permError.code = 'EPERM';
+      mockUninstallSkill.mockRejectedValue(permError);
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      }
+    });
+
+    it('wraps unknown Error as FileSystemError', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockRejectedValue(new Error('something went wrong'));
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Failed to uninstall.*something went wrong/);
+      }
+    });
+
+    it('wraps non-Error string as FileSystemError', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockRejectedValue('string error');
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Failed to uninstall.*string error/);
+      }
+    });
+
+    it('wraps null as FileSystemError', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockRejectedValue(null);
+
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Failed to uninstall.*null/);
+      }
+    });
+  });
+
+  describe('mapScope (indirect)', () => {
+    it('maps "personal" scope to personal generator scope', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: true,
+        skillName: 'test-skill',
+        path: '/home/.claude/skills/test-skill',
+        filesRemoved: 1,
+        bytesFreed: 100,
+      });
+
+      await uninstallFn({
+        names: ['test-skill'],
+        scope: 'personal',
+        force: true,
+      });
+
+      // Verify getScopePath was called with 'personal' scope
+      expect(mockGetScopePath).toHaveBeenCalledWith('personal', undefined);
+      // Verify the generator was called with 'personal' scope
+      expect(mockUninstallSkill).toHaveBeenCalledWith(
+        'test-skill',
+        expect.objectContaining({ scope: 'personal' })
+      );
+    });
+
+    it('maps "project" scope to project generator scope', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: true,
+        skillName: 'test-skill',
+        path: '/project/.claude/skills/test-skill',
+        filesRemoved: 1,
+        bytesFreed: 100,
+      });
+
+      await uninstallFn({
+        names: ['test-skill'],
+        scope: 'project',
+        force: true,
+      });
+
+      expect(mockGetScopePath).toHaveBeenCalledWith('project', undefined);
+      expect(mockUninstallSkill).toHaveBeenCalledWith(
+        'test-skill',
+        expect.objectContaining({ scope: 'project' })
+      );
+    });
+
+    it('maps undefined scope to project generator scope (default)', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: true,
+        skillName: 'test-skill',
+        path: '/project/.claude/skills/test-skill',
+        filesRemoved: 1,
+        bytesFreed: 100,
+      });
+
+      await uninstallFn({
+        names: ['test-skill'],
+        force: true,
+      });
+
+      expect(mockGetScopePath).toHaveBeenCalledWith('project', undefined);
+      expect(mockUninstallSkill).toHaveBeenCalledWith(
+        'test-skill',
+        expect.objectContaining({ scope: 'project' })
+      );
+    });
+  });
+
+  describe('detailed mode error results', () => {
+    it('preserves searchedPath for skill-not-found in detailed mode', async () => {
+      const uninstallFn = await getUninstall();
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'missing-skill',
+        error: {
+          type: 'skill-not-found',
+          skillName: 'missing-skill',
+          searchedPath: '/specific/searched/path',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['missing-skill'],
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+      expect(skillResult.type).toBe('not-found');
+      if (skillResult.type === 'not-found') {
+        expect(skillResult.searchedPath).toBe('/specific/searched/path');
+        expect(skillResult.skillName).toBe('missing-skill');
+      }
+    });
+
+    it('uses scopePath as searchedPath for non-skill-not-found errors in detailed mode', async () => {
+      const uninstallFn = await getUninstall();
+      mockGetScopePath.mockReturnValue('/mock/scope/path');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'validation-error',
+          field: 'skillName',
+          message: 'Invalid skill name',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['test-skill'],
+        force: false,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+      expect(skillResult.type).toBe('not-found');
+      if (skillResult.type === 'not-found') {
+        expect(skillResult.searchedPath).toBe('/mock/scope/path');
+      }
+    });
+
+    it('throws for security-error in detailed mode', async () => {
+      const uninstallFn = await getUninstall();
+      const { SecurityError: SE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'security-error',
+          reason: 'symlink-escape',
+          details: 'Symlink points outside',
+        },
+      });
+
+      await expect(
+        uninstallFn({ names: ['test-skill'], force: true, detailed: true })
+      ).rejects.toThrow(SE);
+    });
+
+    it('throws for partial-removal in detailed mode', async () => {
+      const uninstallFn = await getUninstall();
+      const { FileSystemError: FSE } = await import('../../../src/errors');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'partial-removal',
+          skillName: 'test-skill',
+          filesRemoved: 2,
+          filesRemaining: 1,
+          lastError: 'EACCES',
+        },
+      });
+
+      await expect(
+        uninstallFn({ names: ['test-skill'], force: true, detailed: true })
+      ).rejects.toThrow(FSE);
+    });
+
+    it('maps unknown error type to not-found with scopePath in detailed mode', async () => {
+      const uninstallFn = await getUninstall();
+      mockGetScopePath.mockReturnValue('/detailed/scope/path');
+      mockUninstallSkill.mockResolvedValue({
+        success: false,
+        skillName: 'test-skill',
+        error: {
+          type: 'some-unknown-type',
+        },
+      });
+
+      const result = await uninstallFn({
+        names: ['test-skill'],
+        force: true,
+        detailed: true,
+      });
+
+      expect(result.results).toHaveLength(1);
+      const skillResult = result.results[0];
+      expect(skillResult.type).toBe('not-found');
+      if (skillResult.type === 'not-found') {
+        expect(skillResult.searchedPath).toBe('/detailed/scope/path');
+      }
+    });
+  });
+});
