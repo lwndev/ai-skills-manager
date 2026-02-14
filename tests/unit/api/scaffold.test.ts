@@ -15,6 +15,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { scaffold } from '../../../src/api/scaffold';
 import { SecurityError, FileSystemError } from '../../../src/errors';
+import * as scopeResolver from '../../../src/utils/scope-resolver';
 
 describe('scaffold API function', () => {
   let tempDir: string;
@@ -481,6 +482,349 @@ describe('scaffold API function', () => {
           output: tempDir,
         })
       ).rejects.toThrow(FileSystemError);
+    });
+  });
+
+  describe('catch block error mapping', () => {
+    /**
+     * Helper to import scaffold with mocked fs/promises.
+     * Returns scaffold + error classes from the same module scope
+     * so instanceof checks work correctly.
+     */
+    async function importScaffoldWithMockedFs(fsMocks: Record<string, jest.Mock>) {
+      jest.resetModules();
+      const realFs = jest.requireActual<typeof fs>('fs/promises');
+      jest.doMock('fs/promises', () => ({ ...realFs, ...fsMocks }));
+      const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
+      const errors = await import('../../../src/errors');
+      return { scaffold: mockedScaffold, ...errors };
+    }
+
+    afterEach(() => {
+      jest.resetModules();
+    });
+
+    it('maps EACCES error to FileSystemError with permission denied message', async () => {
+      const eaccesErr = Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue(eaccesErr),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'eacces-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Permission denied');
+      }
+    });
+
+    it('maps EPERM error to FileSystemError with permission denied message', async () => {
+      const epermErr = Object.assign(new Error('EPERM'), { code: 'EPERM' });
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue(epermErr),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'eperm-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Permission denied');
+      }
+    });
+
+    it('maps ENOENT error to FileSystemError with parent directory message', async () => {
+      const enoentErr = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue(enoentErr),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'enoent-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Parent directory does not exist');
+      }
+    });
+
+    it('re-throws FileSystemError without wrapping', async () => {
+      jest.resetModules();
+      const realFs = jest.requireActual<typeof fs>('fs/promises');
+      // Import errors first so the error instance shares the same class as scaffold
+      const { FileSystemError: FsErr } = await import('../../../src/errors');
+      const originalError = new FsErr('original fs error', '/some/path');
+
+      jest.doMock('fs/promises', () => ({
+        ...realFs,
+        stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: jest.fn().mockRejectedValue(originalError),
+        writeFile: jest.fn(),
+      }));
+      const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
+
+      try {
+        await mockedScaffold({ name: 'rethrow-fs-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBe(originalError);
+        expect((error as Error).message).toBe('original fs error');
+      }
+    });
+
+    it('re-throws SecurityError without wrapping', async () => {
+      jest.resetModules();
+      const realFs = jest.requireActual<typeof fs>('fs/promises');
+      const { SecurityError: SecErr } = await import('../../../src/errors');
+      const originalError = new SecErr('original security error');
+
+      jest.doMock('fs/promises', () => ({
+        ...realFs,
+        stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: jest.fn().mockRejectedValue(originalError),
+        writeFile: jest.fn(),
+      }));
+      const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
+
+      try {
+        await mockedScaffold({ name: 'rethrow-sec-test', output: tempDir });
+        fail('Expected SecurityError to be thrown');
+      } catch (error) {
+        expect(error).toBe(originalError);
+        expect((error as Error).message).toBe('original security error');
+      }
+    });
+
+    it('wraps plain Error with its message in FileSystemError', async () => {
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue(new Error('something went wrong')),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'wrap-error-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Failed to create scaffold');
+        expect((error as Error).message).toContain('something went wrong');
+      }
+    });
+
+    it('wraps string error with String(error) in FileSystemError', async () => {
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue('string error value'),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'wrap-string-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Failed to create scaffold');
+        expect((error as Error).message).toContain('string error value');
+      }
+    });
+
+    it('wraps null error with String(error) in FileSystemError', async () => {
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: jest.fn().mockRejectedValue(null),
+          writeFile: jest.fn(),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'wrap-null-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Failed to create scaffold');
+        expect((error as Error).message).toContain('null');
+      }
+    });
+
+    it('maps EACCES from writeFile to FileSystemError with permission denied', async () => {
+      const eaccesErr = Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      const mockMkdir = jest.fn().mockResolvedValue(undefined);
+      const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
+        {
+          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: mockMkdir,
+          writeFile: jest.fn().mockRejectedValue(eaccesErr),
+        }
+      );
+
+      try {
+        await mockedScaffold({ name: 'writeacces-test', output: tempDir });
+        fail('Expected FileSystemError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FsErr);
+        expect((error as Error).message).toContain('Permission denied');
+        expect(mockMkdir).toHaveBeenCalled();
+      }
+    });
+  });
+
+  describe('template option mapping', () => {
+    it('passes basic template options through to generateSkillMd', async () => {
+      const result = await scaffold({
+        name: 'basic-template-test',
+        output: tempDir,
+        template: { templateType: 'basic' },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('name: basic-template-test');
+      // Basic template does not add context: fork or user-invocable: false
+      expect(content).not.toContain('context: fork');
+      expect(content).not.toContain('user-invocable: false');
+    });
+
+    it('passes forked template options through to generateSkillMd', async () => {
+      const result = await scaffold({
+        name: 'forked-template-test',
+        output: tempDir,
+        template: { templateType: 'forked' },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      // Forked template has default read-only tools
+      expect(content).toContain('allowed-tools:');
+    });
+
+    it('passes with-hooks template options through to generateSkillMd', async () => {
+      const result = await scaffold({
+        name: 'hooks-template-test',
+        output: tempDir,
+        template: { templateType: 'with-hooks' },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('hooks:');
+      expect(content).toContain('PreToolUse:');
+      expect(content).toContain('PostToolUse:');
+    });
+
+    it('passes internal template options through to generateSkillMd', async () => {
+      const result = await scaffold({
+        name: 'internal-template-test',
+        output: tempDir,
+        template: { templateType: 'internal' },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('user-invocable: false');
+    });
+
+    it('passes all template sub-options through', async () => {
+      const result = await scaffold({
+        name: 'all-opts-test',
+        output: tempDir,
+        template: {
+          templateType: 'basic',
+          context: 'fork',
+          agent: 'Explore',
+          userInvocable: false,
+          includeHooks: true,
+          minimal: true,
+          argumentHint: '<query>',
+          license: 'MIT',
+          compatibility: 'claude-code>=2.1',
+          metadata: { author: 'test' },
+        },
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('context: fork');
+      expect(content).toContain('agent: Explore');
+      expect(content).toContain('user-invocable: false');
+      expect(content).toContain('hooks:');
+      expect(content).toContain('argument-hint: <query>');
+      expect(content).toContain('license: MIT');
+      expect(content).toContain('compatibility: claude-code>=2.1');
+      expect(content).toContain('author: test');
+    });
+
+    it('omits template options when template is not provided', async () => {
+      const result = await scaffold({
+        name: 'no-template-test',
+        output: tempDir,
+      });
+
+      const content = await fs.readFile(path.join(result.path, 'SKILL.md'), 'utf-8');
+      expect(content).toContain('name: no-template-test');
+      // Extract frontmatter (between --- markers) and verify no template-specific fields
+      const frontmatter = content.split('---')[1];
+      expect(frontmatter).not.toContain('context: fork');
+      expect(frontmatter).not.toContain('hooks:');
+      expect(frontmatter).not.toContain('user-invocable: false');
+    });
+  });
+
+  describe('resolveOutputPath scope resolution (without explicit output)', () => {
+    let getProjectSpy: jest.SpyInstance;
+    let getPersonalSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      getProjectSpy = jest.spyOn(scopeResolver, 'getProjectSkillsDir').mockReturnValue(tempDir);
+      getPersonalSpy = jest.spyOn(scopeResolver, 'getPersonalSkillsDir').mockReturnValue(tempDir);
+    });
+
+    afterEach(() => {
+      getProjectSpy.mockRestore();
+      getPersonalSpy.mockRestore();
+    });
+
+    it('uses project skills dir when scope is project', async () => {
+      const result = await scaffold({
+        name: 'scope-proj-test',
+        scope: 'project',
+      });
+
+      expect(getProjectSpy).toHaveBeenCalled();
+      expect(result.path).toBe(path.join(tempDir, 'scope-proj-test'));
+    });
+
+    it('uses project skills dir when scope is undefined (default)', async () => {
+      const result = await scaffold({
+        name: 'scope-default-test',
+      });
+
+      expect(getProjectSpy).toHaveBeenCalled();
+      expect(result.path).toBe(path.join(tempDir, 'scope-default-test'));
+    });
+
+    it('uses personal skills dir when scope is personal', async () => {
+      const result = await scaffold({
+        name: 'scope-pers-test',
+        scope: 'personal',
+      });
+
+      expect(getPersonalSpy).toHaveBeenCalled();
+      expect(result.path).toBe(path.join(tempDir, 'scope-pers-test'));
     });
   });
 
