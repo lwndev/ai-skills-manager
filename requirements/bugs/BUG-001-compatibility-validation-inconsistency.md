@@ -46,17 +46,17 @@ The interactive prompt checks `value.length` (pre-trim) and rejects valid input 
 
 ## Acceptance Criteria
 
-- [ ] Interactive compatibility validation trims input before checking the 500-character length limit (RC-1)
-- [ ] Behavior matches `validateCompatibility()` in `scaffold.ts` (RC-1)
-- [ ] Test added for whitespace-padded input near the 500-char limit (RC-1)
+- [x] Interactive compatibility validation trims input before checking the 500-character length limit (RC-1)
+- [x] Behavior matches `validateCompatibility()` in `scaffold.ts` (RC-1)
+- [x] Test added for whitespace-padded input near the 500-char limit (RC-1)
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-02-14
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#86](https://github.com/lwndev/ai-skills-manager/pull/86)
 
 ## Notes
 
