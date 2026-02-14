@@ -1203,6 +1203,112 @@ describe('update API error mapping (mocked)', () => {
     });
   });
 
+  describe('detailed result transformation', () => {
+    it('returns DetailedUpdateRolledBack for update-rolled-back result', async () => {
+      mockUpdateSkill.mockResolvedValue({
+        type: 'update-rolled-back',
+        skillName: 'test-skill',
+        path: '/test/install/test-skill',
+        failureReason: 'Validation failed after extraction',
+        backupPath: '/test/backups/test-skill.backup',
+      });
+
+      const { update: mockedUpdate } = await import('../../../src/api/update');
+
+      const result = await mockedUpdate({
+        name: 'test-skill',
+        file: '/test/package.skill',
+        targetPath: '/test/install',
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-rolled-back');
+      if (result.type === 'update-rolled-back') {
+        expect(result.skillName).toBe('test-skill');
+        expect(result.path).toBe('/test/install/test-skill');
+        expect(result.failureReason).toBe('Validation failed after extraction');
+        expect(result.backupPath).toBe('/test/backups/test-skill.backup');
+      }
+    });
+
+    it('returns DetailedUpdateRollbackFailed for update-rollback-failed result', async () => {
+      mockUpdateSkill.mockResolvedValue({
+        type: 'update-rollback-failed',
+        skillName: 'test-skill',
+        path: '/test/install/test-skill',
+        updateFailureReason: 'Extraction failed',
+        rollbackFailureReason: 'Backup corrupted',
+        backupPath: '/test/backups/test-skill.backup',
+        recoveryInstructions: 'Manually restore from backup',
+      });
+
+      const { update: mockedUpdate } = await import('../../../src/api/update');
+
+      const result = await mockedUpdate({
+        name: 'test-skill',
+        file: '/test/package.skill',
+        targetPath: '/test/install',
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-rollback-failed');
+      if (result.type === 'update-rollback-failed') {
+        expect(result.skillName).toBe('test-skill');
+        expect(result.path).toBe('/test/install/test-skill');
+        expect(result.updateFailureReason).toBe('Extraction failed');
+        expect(result.rollbackFailureReason).toBe('Backup corrupted');
+        expect(result.recoveryInstructions).toBe('Manually restore from backup');
+      }
+    });
+
+    it('returns DetailedUpdateCancelled for update-cancelled result', async () => {
+      mockUpdateSkill.mockResolvedValue({
+        type: 'update-cancelled',
+        skillName: 'test-skill',
+        reason: 'user-cancelled',
+        cleanupPerformed: true,
+      });
+
+      const { update: mockedUpdate } = await import('../../../src/api/update');
+
+      const result = await mockedUpdate({
+        name: 'test-skill',
+        file: '/test/package.skill',
+        targetPath: '/test/install',
+        detailed: true,
+      });
+
+      expect(result.type).toBe('update-cancelled');
+      if (result.type === 'update-cancelled') {
+        expect(result.skillName).toBe('test-skill');
+        expect(result.reason).toBe('user-cancelled');
+        expect(result.cleanupPerformed).toBe(true);
+      }
+    });
+
+    it('throws PackageError for unexpected result type in detailed mode', async () => {
+      mockUpdateSkill.mockResolvedValue({
+        type: 'unknown-result-type',
+      });
+
+      const { update: mockedUpdate } = await import('../../../src/api/update');
+      const { PackageError: PkgError } = await import('../../../src/errors');
+
+      try {
+        await mockedUpdate({
+          name: 'test-skill',
+          file: '/test/package.skill',
+          targetPath: '/test/install',
+          detailed: true,
+        });
+        fail('Expected PackageError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(PkgError);
+        expect((error as PackageError).message).toContain('Unexpected update result');
+      }
+    });
+  });
+
   describe('internal error handling', () => {
     it('re-throws ValidationError as-is', async () => {
       const { ValidationError: ValError } = await import('../../../src/errors');
