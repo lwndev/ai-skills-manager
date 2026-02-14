@@ -54,11 +54,11 @@ The input is split on the comma, producing `{ description: "A tool" }` with `for
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-02-14
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#87](https://github.com/lwndev/ai-skills-manager/pull/87)
 
 ## Notes
 
