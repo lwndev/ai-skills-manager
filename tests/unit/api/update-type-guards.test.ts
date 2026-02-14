@@ -8,6 +8,10 @@
 
 import {
   isUpdateSuccess,
+  isUpdateDryRunPreview,
+  isUpdateRolledBack,
+  isUpdateRollbackFailed,
+  isUpdateCancelled,
   isDetailedUpdateSuccess,
   isDetailedUpdateDryRunPreview,
   isDetailedUpdateRolledBack,
@@ -164,6 +168,82 @@ describe('isUpdateSuccess (internal)', () => {
     const matches = allInternalResults.filter(isUpdateSuccess);
     expect(matches).toHaveLength(1);
     expect(matches[0].type).toBe('update-success');
+  });
+});
+
+describe('isUpdateDryRunPreview (internal)', () => {
+  it('returns true for update-dry-run-preview result', () => {
+    expect(isUpdateDryRunPreview(internalDryRun)).toBe(true);
+  });
+
+  it('returns false for all other result types', () => {
+    expect(isUpdateDryRunPreview(internalSuccess)).toBe(false);
+    expect(isUpdateDryRunPreview(internalRolledBack)).toBe(false);
+    expect(isUpdateDryRunPreview(internalRollbackFailed)).toBe(false);
+    expect(isUpdateDryRunPreview(internalCancelled)).toBe(false);
+  });
+
+  it('correctly identifies dry-run-preview among all result types', () => {
+    const matches = allInternalResults.filter(isUpdateDryRunPreview);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].type).toBe('update-dry-run-preview');
+  });
+});
+
+describe('isUpdateRolledBack (internal)', () => {
+  it('returns true for update-rolled-back result', () => {
+    expect(isUpdateRolledBack(internalRolledBack)).toBe(true);
+  });
+
+  it('returns false for all other result types', () => {
+    expect(isUpdateRolledBack(internalSuccess)).toBe(false);
+    expect(isUpdateRolledBack(internalDryRun)).toBe(false);
+    expect(isUpdateRolledBack(internalRollbackFailed)).toBe(false);
+    expect(isUpdateRolledBack(internalCancelled)).toBe(false);
+  });
+
+  it('correctly identifies rolled-back among all result types', () => {
+    const matches = allInternalResults.filter(isUpdateRolledBack);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].type).toBe('update-rolled-back');
+  });
+});
+
+describe('isUpdateRollbackFailed (internal)', () => {
+  it('returns true for update-rollback-failed result', () => {
+    expect(isUpdateRollbackFailed(internalRollbackFailed)).toBe(true);
+  });
+
+  it('returns false for all other result types', () => {
+    expect(isUpdateRollbackFailed(internalSuccess)).toBe(false);
+    expect(isUpdateRollbackFailed(internalDryRun)).toBe(false);
+    expect(isUpdateRollbackFailed(internalRolledBack)).toBe(false);
+    expect(isUpdateRollbackFailed(internalCancelled)).toBe(false);
+  });
+
+  it('correctly identifies rollback-failed among all result types', () => {
+    const matches = allInternalResults.filter(isUpdateRollbackFailed);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].type).toBe('update-rollback-failed');
+  });
+});
+
+describe('isUpdateCancelled (internal)', () => {
+  it('returns true for update-cancelled result', () => {
+    expect(isUpdateCancelled(internalCancelled)).toBe(true);
+  });
+
+  it('returns false for all other result types', () => {
+    expect(isUpdateCancelled(internalSuccess)).toBe(false);
+    expect(isUpdateCancelled(internalDryRun)).toBe(false);
+    expect(isUpdateCancelled(internalRolledBack)).toBe(false);
+    expect(isUpdateCancelled(internalRollbackFailed)).toBe(false);
+  });
+
+  it('correctly identifies cancelled among all result types', () => {
+    const matches = allInternalResults.filter(isUpdateCancelled);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].type).toBe('update-cancelled');
   });
 });
 
