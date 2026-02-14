@@ -422,6 +422,11 @@ describe('scaffold-interactive', () => {
     /**
      * Helper to set up mocks for a full prompt flow.
      * Provides default answers that can be overridden.
+     *
+     * metadata accepts an array of key=value strings. Each entry becomes one
+     * input prompt answer, with confirm prompts for "Add metadata?" and
+     * "Add another?" interspersed. An empty array (default) answers "no"
+     * to "Add metadata?".
      */
     function setupPromptMocks(
       overrides: {
@@ -435,7 +440,7 @@ describe('scaffold-interactive', () => {
         allowedTools?: string;
         license?: string;
         compatibility?: string;
-        metadata?: string;
+        metadata?: string[];
       } = {}
     ) {
       const {
@@ -449,7 +454,7 @@ describe('scaffold-interactive', () => {
         allowedTools = '',
         license = '',
         compatibility: compat = '',
-        metadata = '',
+        metadata = [],
       } = overrides;
 
       let selectCallIndex = 0;
@@ -467,7 +472,8 @@ describe('scaffold-interactive', () => {
         return answer;
       });
 
-      // input is called for: agent, description, argumentHint, allowedTools, license, compatibility, metadata
+      // input is called for: agent, description, argumentHint, allowedTools, license, compatibility
+      // then optionally for each metadata entry
       const inputAnswers = [
         agent,
         description,
@@ -475,7 +481,7 @@ describe('scaffold-interactive', () => {
         allowedTools,
         license,
         compat,
-        metadata,
+        ...metadata,
       ];
       mockInput.mockImplementation(
         async (config: {
@@ -489,12 +495,21 @@ describe('scaffold-interactive', () => {
         }
       );
 
-      // confirm is called for: hooks (if basic/forked), minimal
+      // confirm is called for: hooks (if basic/forked), minimal, addMetadata?,
+      // then for each metadata entry: addAnother? (yes for all but last)
       const confirmAnswers: boolean[] = [];
       if (templateType === 'basic' || templateType === 'forked') {
         confirmAnswers.push(hooks);
       }
       confirmAnswers.push(minimal);
+      // "Add metadata?" confirm
+      confirmAnswers.push(metadata.length > 0);
+      if (metadata.length > 0) {
+        // "Add another?" after each entry — yes for all but last
+        for (let i = 0; i < metadata.length; i++) {
+          confirmAnswers.push(i < metadata.length - 1);
+        }
+      }
       mockConfirm.mockImplementation(async () => {
         return confirmAnswers[confirmCallIndex++];
       });
@@ -772,7 +787,7 @@ describe('scaffold-interactive', () => {
         allowedTools: 'Read, Glob, Grep',
         license: 'MIT',
         compatibility: 'claude-code>=2.1',
-        metadata: 'author=team, version=1.0',
+        metadata: ['author=team', 'version=1.0'],
       });
 
       const result = await runInteractivePrompts();
@@ -788,6 +803,60 @@ describe('scaffold-interactive', () => {
       });
       expect(result.description).toBe('Reviews code');
       expect(result.allowedTools).toEqual(['Read', 'Glob', 'Grep']);
+    });
+
+    it('metadata with comma in value is preserved correctly', async () => {
+      setupPromptMocks({
+        templateType: 'basic',
+        metadata: ['description=A tool, for testing'],
+      });
+
+      const result = await runInteractivePrompts();
+      expect(result.templateOptions.metadata).toEqual({
+        description: 'A tool, for testing',
+      });
+    });
+
+    it('metadata with multiple commas in value is preserved correctly', async () => {
+      setupPromptMocks({
+        templateType: 'basic',
+        metadata: ['tags=one, two, three'],
+      });
+
+      const result = await runInteractivePrompts();
+      expect(result.templateOptions.metadata).toEqual({
+        tags: 'one, two, three',
+      });
+    });
+
+    it('metadata skipped when user declines add metadata prompt', async () => {
+      setupPromptMocks({ templateType: 'basic', metadata: [] });
+
+      const result = await runInteractivePrompts();
+      expect(result.templateOptions.metadata).toBeUndefined();
+    });
+
+    it('single metadata entry without commas works correctly', async () => {
+      setupPromptMocks({
+        templateType: 'basic',
+        metadata: ['author=team'],
+      });
+
+      const result = await runInteractivePrompts();
+      expect(result.templateOptions.metadata).toEqual({ author: 'team' });
+    });
+
+    it('metadata entry validates key=value format', async () => {
+      setupPromptMocks({ templateType: 'basic', metadata: ['author=team'] });
+      await runInteractivePrompts();
+
+      const validate = getInputValidator('Metadata entry');
+      expect(validate('')).toBe('Entry cannot be empty.');
+      expect(validate('   ')).toBe('Entry cannot be empty.');
+      expect(validate('noequals')).toBe('Invalid format. Use key=value (e.g. author=team).');
+      expect(validate('=value')).toBe('Invalid format. Use key=value (e.g. author=team).');
+      expect(validate('key=value')).toBe(true);
+      expect(validate('key=value, with commas')).toBe(true);
     });
 
     it('Ctrl+C during prompts throws ExitPromptError', async () => {
@@ -868,12 +937,12 @@ describe('scaffold-interactive', () => {
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      const inputAnswers = ['', 'A test skill', '', '', '', '', ''];
+      const inputAnswers = ['', 'A test skill', '', '', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      // hooks: no, minimal: no, Proceed: yes
-      const confirmAnswers = [false, false, true];
+      // hooks: no, minimal: no, addMetadata: no, Proceed: yes
+      const confirmAnswers = [false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -901,12 +970,12 @@ describe('scaffold-interactive', () => {
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      const inputAnswers = ['code-reviewer', 'Reviews code', '', 'Read, Grep', '', '', ''];
+      const inputAnswers = ['code-reviewer', 'Reviews code', '', 'Read, Grep', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      // hooks: no, minimal: no, Proceed: yes (forked gets hooks prompt)
-      const confirmAnswers = [false, false, true];
+      // hooks: no, minimal: no, addMetadata: no, Proceed: yes (forked gets hooks prompt)
+      const confirmAnswers = [false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -933,14 +1002,14 @@ describe('scaffold-interactive', () => {
       mockSelect.mockImplementation(async () => selectAnswers[selectIdx++]);
 
       let inputIdx = 0;
-      // First pass: 7 inputs; second pass: 7 inputs
-      const inputAnswers = ['', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+      // First pass: 6 inputs; second pass: 6 inputs
+      const inputAnswers = ['', '', '', '', '', '', '', '', '', '', '', ''];
       mockInput.mockImplementation(async () => inputAnswers[inputIdx++]);
 
       let confirmIdx = 0;
-      // First pass: hooks: no, minimal: no, Proceed: NO (decline)
-      // Second pass: hooks: no, minimal: no, Proceed: YES
-      const confirmAnswers = [false, false, false, false, false, true];
+      // First pass: hooks: no, minimal: no, addMetadata: no, Proceed: NO (decline)
+      // Second pass: hooks: no, minimal: no, addMetadata: no, Proceed: YES
+      const confirmAnswers = [false, false, false, false, false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -963,8 +1032,8 @@ describe('scaffold-interactive', () => {
       mockInput.mockResolvedValue('');
 
       let confirmIdx = 0;
-      // hooks: no, minimal: no, Proceed: yes
-      const confirmAnswers = [false, false, true];
+      // hooks: no, minimal: no, addMetadata: no, Proceed: yes
+      const confirmAnswers = [false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
@@ -985,8 +1054,8 @@ describe('scaffold-interactive', () => {
       mockInput.mockResolvedValue('');
 
       let confirmIdx = 0;
-      // hooks: no, minimal: no, Proceed: yes
-      const confirmAnswers = [false, false, true];
+      // hooks: no, minimal: no, addMetadata: no, Proceed: yes
+      const confirmAnswers = [false, false, false, true];
       mockConfirm.mockImplementation(async () => confirmAnswers[confirmIdx++]);
 
       mockScaffold.mockResolvedValueOnce({
