@@ -500,6 +500,25 @@ describe('scaffold-interactive', () => {
       });
     }
 
+    /**
+     * Extract the validate function from a completed mockInput call by matching on the prompt message.
+     * Call after runInteractivePrompts() — avoids re-implementing the mock with manual counters.
+     */
+    function getInputValidator(
+      messageSubstring: string
+    ): (value: string) => boolean | string | Promise<string | boolean> {
+      const call = mockInput.mock.calls.find((args) =>
+        (args[0] as { message: string }).message.includes(messageSubstring)
+      );
+      if (!call) throw new Error(`No input call found matching "${messageSubstring}"`);
+      const validate = (
+        call[0] as { validate?: (value: string) => boolean | string | Promise<string | boolean> }
+      ).validate;
+      if (!validate)
+        throw new Error(`Input call matching "${messageSubstring}" has no validate function`);
+      return validate;
+    }
+
     it('template type prompt produces correct templateType in options', async () => {
       setupPromptMocks({ templateType: 'forked' });
 
@@ -685,39 +704,39 @@ describe('scaffold-interactive', () => {
 
     it('argument hint validates 200-character max', async () => {
       setupPromptMocks({ templateType: 'basic' });
-
-      // Override the input mock to capture and test the validate function
-      let capturedValidate:
-        | ((value: string) => boolean | string | Promise<string | boolean>)
-        | undefined;
-      const inputCallCount = { count: 0 };
-      mockInput.mockImplementation(
-        async (config: {
-          message: string;
-          validate?: (value: string) => boolean | string | Promise<string | boolean>;
-        }) => {
-          inputCallCount.count++;
-          if (config.message.includes('Argument hint')) {
-            capturedValidate = config.validate;
-          }
-          // Return values for: agent, description, argumentHint, allowedTools, license, compatibility, metadata
-          const answers = ['', '', '', '', '', '', ''];
-          return answers[inputCallCount.count - 1] ?? '';
-        }
-      );
-
       await runInteractivePrompts();
 
-      if (!capturedValidate) throw new Error('Expected validate function to be captured');
+      const validate = getInputValidator('Argument hint');
       // Valid: empty (skip)
-      expect(capturedValidate('')).toBe(true);
+      expect(validate('')).toBe(true);
       // Valid: under 200 chars
-      expect(capturedValidate('<query>')).toBe(true);
+      expect(validate('<query>')).toBe(true);
       // Valid: exactly 200 chars
-      expect(capturedValidate('a'.repeat(200))).toBe(true);
+      expect(validate('a'.repeat(200))).toBe(true);
       // Invalid: over 200 chars
-      expect(capturedValidate('a'.repeat(201))).toBe(
-        'Argument hint must be 200 characters or fewer.'
+      expect(validate('a'.repeat(201))).toBe('Argument hint must be 200 characters or fewer.');
+    });
+
+    it('compatibility validates trimmed length for 500-character max', async () => {
+      setupPromptMocks({ templateType: 'basic' });
+      await runInteractivePrompts();
+
+      const validate = getInputValidator('Compatibility');
+      // Valid: empty (skip)
+      expect(validate('')).toBe(true);
+      // Valid: under 500 chars
+      expect(validate('claude-code>=2.1')).toBe(true);
+      // Valid: exactly 500 chars
+      expect(validate('a'.repeat(500))).toBe(true);
+      // Invalid: over 500 chars
+      expect(validate('a'.repeat(501))).toBe('Compatibility must be 500 characters or fewer.');
+      // Invalid: only whitespace
+      expect(validate('   ')).toBe('Compatibility cannot be empty whitespace.');
+      // Valid: whitespace-padded input where trimmed length is under 500
+      expect(validate('  ' + 'a'.repeat(498) + '  ')).toBe(true);
+      // Invalid: trimmed length over 500 (whitespace should not count)
+      expect(validate('  ' + 'a'.repeat(501) + '  ')).toBe(
+        'Compatibility must be 500 characters or fewer.'
       );
     });
 
