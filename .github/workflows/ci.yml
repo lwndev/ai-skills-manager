@@ -38,8 +38,11 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Run tests with coverage
-        run: npm run test:coverage
+      - name: Run unit & integration tests with coverage
+        run: npx jest --coverage --testPathIgnorePatterns='tests/e2e/'
+
+      - name: Run e2e tests
+        run: npx jest tests/e2e/ --verbose
 
       - name: Check coverage threshold
         run: node scripts/check-coverage.js
