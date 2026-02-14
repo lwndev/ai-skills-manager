@@ -815,24 +815,9 @@ describe('uninstall API error mapping (mocked)', () => {
       expect(result.removed).toHaveLength(0);
     });
 
-    it('throws SecurityError for security-error', async () => {
+    it('throws SecurityError for security-error with skill name and details', async () => {
       const uninstallFn = await getUninstall();
       const { SecurityError: SE } = await import('../../../src/errors');
-      mockUninstallSkill.mockResolvedValue({
-        success: false,
-        skillName: 'test-skill',
-        error: {
-          type: 'security-error',
-          reason: 'symlink-escape',
-          details: 'Symlink points outside skill directory',
-        },
-      });
-
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(SE);
-    });
-
-    it('SecurityError message includes skill name and details', async () => {
-      const uninstallFn = await getUninstall();
       mockUninstallSkill.mockResolvedValue({
         success: false,
         skillName: 'bad-skill',
@@ -843,12 +828,16 @@ describe('uninstall API error mapping (mocked)', () => {
         },
       });
 
-      await expect(uninstallFn({ names: ['bad-skill'], force: true })).rejects.toThrow(
+      const error = await uninstallFn({ names: ['bad-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(SE);
+      expect((error as Error).message).toMatch(
         /Security error for skill "bad-skill": Path traversal detected/
       );
     });
 
-    it('throws FileSystemError for filesystem-error', async () => {
+    it('throws FileSystemError for filesystem-error with path', async () => {
       const uninstallFn = await getUninstall();
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockResolvedValue({
@@ -862,30 +851,11 @@ describe('uninstall API error mapping (mocked)', () => {
         },
       });
 
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
-    });
-
-    it('FileSystemError includes error path for filesystem-error', async () => {
-      const uninstallFn = await getUninstall();
-      const { FileSystemError: FSE } = await import('../../../src/errors');
-      mockUninstallSkill.mockResolvedValue({
-        success: false,
-        skillName: 'test-skill',
-        error: {
-          type: 'filesystem-error',
-          operation: 'delete',
-          path: '/some/path/test-skill',
-          message: 'ENOENT: no such file',
-        },
-      });
-
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as InstanceType<typeof FSE>).path).toBe('/some/path/test-skill');
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as InstanceType<typeof FSE>).path).toBe('/some/path/test-skill');
     });
 
     it('maps validation-error without force to not-found', async () => {
@@ -925,7 +895,7 @@ describe('uninstall API error mapping (mocked)', () => {
       await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
     });
 
-    it('throws FileSystemError for partial-removal', async () => {
+    it('throws FileSystemError for partial-removal with file counts', async () => {
       const uninstallFn = await getUninstall();
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockResolvedValue({
@@ -940,29 +910,14 @@ describe('uninstall API error mapping (mocked)', () => {
         },
       });
 
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
-    });
-
-    it('partial-removal error message includes file counts', async () => {
-      const uninstallFn = await getUninstall();
-      mockUninstallSkill.mockResolvedValue({
-        success: false,
-        skillName: 'test-skill',
-        error: {
-          type: 'partial-removal',
-          skillName: 'test-skill',
-          filesRemoved: 3,
-          filesRemaining: 2,
-          lastError: 'EACCES: permission denied',
-        },
-      });
-
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(
-        /3 files removed, 2 remaining/
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
       );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/3 files removed, 2 remaining/);
     });
 
-    it('throws FileSystemError for timeout', async () => {
+    it('throws FileSystemError for timeout with duration', async () => {
       const uninstallFn = await getUninstall();
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockResolvedValue({
@@ -975,22 +930,11 @@ describe('uninstall API error mapping (mocked)', () => {
         },
       });
 
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(FSE);
-    });
-
-    it('timeout error message includes timeout duration', async () => {
-      const uninstallFn = await getUninstall();
-      mockUninstallSkill.mockResolvedValue({
-        success: false,
-        skillName: 'test-skill',
-        error: {
-          type: 'timeout',
-          operationName: 'removeDir',
-          timeoutMs: 5000,
-        },
-      });
-
-      await expect(uninstallFn({ names: ['test-skill'], force: true })).rejects.toThrow(/5000ms/);
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/5000ms/);
     });
 
     it('maps unknown error type to not-found', async () => {
@@ -1070,13 +1014,11 @@ describe('uninstall API error mapping (mocked)', () => {
       permError.code = 'EACCES';
       mockUninstallSkill.mockRejectedValue(permError);
 
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
     });
 
     it('maps EPERM to FileSystemError with permission denied message', async () => {
@@ -1086,13 +1028,11 @@ describe('uninstall API error mapping (mocked)', () => {
       permError.code = 'EPERM';
       mockUninstallSkill.mockRejectedValue(permError);
 
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
     });
 
     it('wraps unknown Error as FileSystemError', async () => {
@@ -1100,13 +1040,11 @@ describe('uninstall API error mapping (mocked)', () => {
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockRejectedValue(new Error('something went wrong'));
 
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as Error).message).toMatch(/Failed to uninstall.*something went wrong/);
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/Failed to uninstall.*something went wrong/);
     });
 
     it('wraps non-Error string as FileSystemError', async () => {
@@ -1114,13 +1052,11 @@ describe('uninstall API error mapping (mocked)', () => {
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockRejectedValue('string error');
 
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as Error).message).toMatch(/Failed to uninstall.*string error/);
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/Failed to uninstall.*string error/);
     });
 
     it('wraps null as FileSystemError', async () => {
@@ -1128,13 +1064,11 @@ describe('uninstall API error mapping (mocked)', () => {
       const { FileSystemError: FSE } = await import('../../../src/errors');
       mockUninstallSkill.mockRejectedValue(null);
 
-      try {
-        await uninstallFn({ names: ['test-skill'], force: true });
-        fail('Expected FileSystemError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(FSE);
-        expect((error as Error).message).toMatch(/Failed to uninstall.*null/);
-      }
+      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
+        (e: unknown) => e
+      );
+      expect(error).toBeInstanceOf(FSE);
+      expect((error as Error).message).toMatch(/Failed to uninstall.*null/);
     });
   });
 
