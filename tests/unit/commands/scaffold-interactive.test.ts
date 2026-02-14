@@ -855,6 +855,8 @@ describe('scaffold-interactive', () => {
       expect(validate('   ')).toBe('Entry cannot be empty.');
       expect(validate('noequals')).toBe('Invalid format. Use key=value (e.g. author=team).');
       expect(validate('=value')).toBe('Invalid format. Use key=value (e.g. author=team).');
+      expect(validate('key=')).toBe('Value cannot be empty.');
+      expect(validate('key=   ')).toBe('Value cannot be empty.');
       expect(validate('key=value')).toBe(true);
       expect(validate('key=value, with commas')).toBe(true);
     });

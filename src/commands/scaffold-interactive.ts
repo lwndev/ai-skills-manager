@@ -234,7 +234,7 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
   // Metadata input (agentskills.io spec)
   // Uses a multi-entry loop prompt so values can contain commas.
   const addMetadata = await confirm({
-    message: 'Add metadata key=value pairs? (y/N)',
+    message: 'Add metadata key=value pairs?',
     default: false,
   });
   if (addMetadata) {
@@ -250,6 +250,8 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
           if (eqIndex <= 0) return 'Invalid format. Use key=value (e.g. author=team).';
           const key = trimmed.substring(0, eqIndex).trim();
           if (key.length === 0) return 'Key cannot be empty.';
+          const val = trimmed.substring(eqIndex + 1).trim();
+          if (val.length === 0) return 'Value cannot be empty.';
           return true;
         },
       });
@@ -260,7 +262,7 @@ export async function runInteractivePrompts(): Promise<InteractivePromptResult> 
       metadata[key] = value;
 
       addMore = await confirm({
-        message: 'Add another metadata entry? (y/N)',
+        message: 'Add another metadata entry?',
         default: false,
       });
     }
