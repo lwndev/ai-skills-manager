@@ -14,7 +14,7 @@
 
 ## Description
 
-Add unit tests for the update API layer (`src/api/update.ts`) to raise function coverage from ~23% to 80%+. Tests should cover `mapUpdateError` error code mappings, result transformation functions (success and failure paths), and rollback logic (triggered and skipped scenarios).
+Add unit tests for the update API layer (`src/api/update.ts`) to close coverage gaps. Tests should cover `mapUpdateError` error code mappings, result transformation functions (success and failure paths), and rollback logic (triggered and skipped scenarios).
 
 ## Affected Files
 
@@ -44,6 +44,8 @@ New test files:
 
 ## Notes
 
-- Current update API function coverage is ~23.52%
+- Starting coverage was already 82.35% functions / 90% statements / 93% lines (the ~23.52% figure from issue #74 was outdated — existing `update.test.ts` already had extensive mocked tests)
+- This chore added 4 tests for the `transformToDetailedResult` detailed-mode branches (rolled-back, rollback-failed, cancelled, default) that were the only uncovered lines (452-486)
+- Final coverage: 82.35% functions / 97% statements / 100% lines
 - The update module is the most complex API module with 5 result types, error mapping, and rollback orchestration
 - Type guard tests were already added in CHORE-014; this chore focuses on the functional logic
