@@ -39,7 +39,7 @@ jobs:
         run: npm run build
 
       - name: Run unit & integration tests with coverage
-        run: npx jest --coverage --testPathIgnorePatterns='tests/e2e/'
+        run: npm run test:coverage
 
       - name: Run e2e tests
         run: npx jest tests/e2e/ --verbose
