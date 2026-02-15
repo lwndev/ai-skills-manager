@@ -35,7 +35,7 @@ describe('list e2e', () => {
     const { packagePath, result: pkgResult } = packageSkill(skillDir, pkgDir);
     expect(pkgResult.exitCode).toBe(0);
 
-    const projectDir = path.join(tempDir, 'project');
+    const projectDir = path.join(tempDir, `project-${name}`);
     const installDir = path.join(projectDir, '.claude', 'skills');
     const installResult = runCli(`install "${packagePath}" -s "${installDir}" --force`);
     expect(installResult.exitCode).toBe(0);
@@ -142,7 +142,7 @@ describe('list e2e', () => {
       const result = runCli('list -s project', { cwd: projectDir });
       expect(result.exitCode).toBe(0);
       // Metadata value 2.0 may be displayed as "2" or "2.0"
-      expect(result.stdout).toMatch(/v?2(\.0)?/);
+      expect(result.stdout).toMatch(/\(v2(\.0)?\)/);
     });
   });
 });

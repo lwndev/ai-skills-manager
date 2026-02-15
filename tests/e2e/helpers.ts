@@ -11,7 +11,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 /** Absolute path to the compiled CLI entry point. */
-export const CLI_PATH = path.join(process.cwd(), 'dist', 'cli.js');
+export const CLI_PATH = path.join(__dirname, '..', '..', 'dist', 'cli.js');
 
 /** Result returned by `runCli`. */
 export interface CliResult {
@@ -127,7 +127,13 @@ export async function createSkillManually(
 }
 
 function formatYamlValue(value: unknown): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    // eslint-disable-next-line no-useless-escape
+    if (/[:#\[\]{}|>&*!,'"%@`]/.test(value) || value === '' || value !== value.trim()) {
+      return `"${value.replace(/"/g, '\\"')}"`;
+    }
+    return value;
+  }
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') return String(value);
   return JSON.stringify(value);

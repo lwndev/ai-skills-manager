@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { CLI_PATH, runCli, scaffoldSkill, createTempDir, cleanupDir } from './helpers';
 
 describe('package e2e', () => {
@@ -25,31 +26,31 @@ describe('package e2e', () => {
   describe('CLI packaging', () => {
     it('packages a valid skill via CLI', async () => {
       const { skillDir } = scaffoldSkill('test-pkg', tempDir);
-      const outputDir = `${tempDir}/output`;
+      const outputDir = path.join(tempDir, 'output');
       await fs.mkdir(outputDir, { recursive: true });
 
       const result = runCli(`package "${skillDir}" -o "${outputDir}" --force`);
       expect(result.exitCode).toBe(0);
 
-      const stat = await fs.stat(`${outputDir}/test-pkg.skill`);
+      const stat = await fs.stat(path.join(outputDir, 'test-pkg.skill'));
       expect(stat.isFile()).toBe(true);
     });
 
     it('packages to a custom output directory', async () => {
       const { skillDir } = scaffoldSkill('test-custom-out', tempDir);
-      const outputDir = `${tempDir}/custom`;
+      const outputDir = path.join(tempDir, 'custom');
       await fs.mkdir(outputDir, { recursive: true });
 
       const result = runCli(`package "${skillDir}" -o "${outputDir}" --force`);
       expect(result.exitCode).toBe(0);
 
-      const stat = await fs.stat(`${outputDir}/test-custom-out.skill`);
+      const stat = await fs.stat(path.join(outputDir, 'test-custom-out.skill'));
       expect(stat.isFile()).toBe(true);
     });
 
     it('produces minimal output in quiet mode', async () => {
       const { skillDir } = scaffoldSkill('test-quiet-pkg', tempDir);
-      const outputDir = `${tempDir}/quiet`;
+      const outputDir = path.join(tempDir, 'quiet');
       await fs.mkdir(outputDir, { recursive: true });
 
       const result = runCli(`package "${skillDir}" -o "${outputDir}" --force -q`);
@@ -64,9 +65,9 @@ describe('package e2e', () => {
 
   describe('error cases', () => {
     it('exits 1 for invalid skill (validation failure)', async () => {
-      const skillDir = `${tempDir}/bad-skill`;
+      const skillDir = path.join(tempDir, 'bad-skill');
       await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(`${skillDir}/SKILL.md`, 'no frontmatter', 'utf-8');
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'no frontmatter', 'utf-8');
 
       const result = runCli(`package "${skillDir}" -o "${tempDir}" --force`);
       expect(result.exitCode).toBe(1);
@@ -83,7 +84,7 @@ describe('package e2e', () => {
   describe('exit codes', () => {
     it('returns 0 on success', async () => {
       const { skillDir } = scaffoldSkill('test-exit-ok', tempDir);
-      const outputDir = `${tempDir}/exit-ok`;
+      const outputDir = path.join(tempDir, 'exit-ok');
       await fs.mkdir(outputDir, { recursive: true });
 
       const result = runCli(`package "${skillDir}" -o "${outputDir}" --force`);
@@ -91,9 +92,9 @@ describe('package e2e', () => {
     });
 
     it('returns 1 on validation failure', async () => {
-      const skillDir = `${tempDir}/invalid`;
+      const skillDir = path.join(tempDir, 'invalid');
       await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(`${skillDir}/SKILL.md`, '---\nbad: yaml\n---\n', 'utf-8');
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), '---\nbad: yaml\n---\n', 'utf-8');
 
       const result = runCli(`package "${skillDir}" -o "${tempDir}" --force`);
       expect(result.exitCode).toBe(1);

@@ -86,7 +86,7 @@ describe('install e2e', () => {
       await fs.writeFile(fakePkg, 'not a zip file', 'utf-8');
 
       const result = runCli(`install "${fakePkg}" -s "${tempDir}/inst" --force`);
-      expect(result.exitCode).toBeGreaterThanOrEqual(1);
+      expect(result.exitCode).toBe(2);
     });
   });
 

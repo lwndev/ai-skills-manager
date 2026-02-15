@@ -76,7 +76,7 @@ describe('validate e2e', () => {
       const skillDir = await createSkillManually(tempDir, 'test-compat-empty', {
         name: 'test-compat-empty',
         description: 'Test',
-        compatibility: '""',
+        compatibility: '',
       });
       const result = runCli(`validate "${skillDir}"`);
       expect(result.exitCode).toBe(1);
