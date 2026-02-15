@@ -5,7 +5,7 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.8.0] - 2026-02-13
+## [1.8.0] - 2026-02-15
 
 ### Breaking Changes
 
@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--compatibility` scaffold flag** (CHORE-013): Set the `compatibility` field in generated SKILL.md frontmatter (max 500 chars)
 - **`--metadata` scaffold flag** (CHORE-013): Set metadata key-value pairs in generated SKILL.md frontmatter (repeatable, e.g., `--metadata author="Jane Doe"`)
 - **Interactive prompts for spec fields** (CHORE-013): `asm scaffold --interactive` now prompts for license, compatibility, and metadata
+- **E2E test suite** (FEAT-020): 100 automated end-to-end tests across 8 test files covering all 7 CLI commands (`scaffold`, `validate`, `package`, `install`, `uninstall`, `update`, `list`) plus cross-command lifecycle workflows
+- **Manual test plan** (FEAT-020): Structured pre-release test plan with 225+ manual test cases organized by command (`docs/asm/manual-test-plan.md`)
+- **Type guard unit tests** (CHORE-014): Tests for all 15 exported type guard functions (`isUpdateSuccess`, `isInstallResult`, `isUninstallSuccess`, and their detailed variants)
+- **API test coverage improvements** (CHORE-015, CHORE-016, CHORE-017, CHORE-018, CHORE-019): Added unit tests for error mapping, result transformation, detailed mode, and permission error paths across install, update, uninstall, and scaffold APIs
 
 ### Changed
 
@@ -27,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`argument-hint` scaffold max length corrected** (CHORE-013): Increased from 100 to 200 characters to match the existing validator
 - **`license` scaffold cap removed** (CHORE-013): Removed artificial 100-character limit; the agentskills.io spec defines no maximum
 - **Interactive scaffold updated** (CHORE-013): Removed `agent` template choice, memory scope prompt, and model selection prompt
+- **Interactive metadata prompt redesigned** (CHORE-021): Replaced comma-separated single-line input with a multi-entry loop prompt for better discoverability and per-entry validation
+
+### Fixed
+
+- **Compatibility validation inconsistency** (BUG-001): Interactive prompt now trims whitespace before checking length, matching the CLI's `validateCompatibility()` behavior
+- **Metadata comma parsing** (BUG-002): Interactive metadata values containing commas are no longer incorrectly split into separate key-value pairs
 
 ### Removed
 
@@ -35,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/validators/model.ts` — agent-only validator
 - `src/validators/permission-mode.ts` — agent-only validator
 - `src/validators/skills.ts` — agent-only validator
+- Dead code path in interactive metadata validation (CHORE-020): Removed unreachable silent-skip logic that was guarded by an upstream validator
 
 ## [1.7.0] - 2026-02-08
 
