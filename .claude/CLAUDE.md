@@ -23,8 +23,11 @@ npm test
 # Run tests for a specific file
 npm test -- tests/path/to/file.test.ts
 
-# Run tests with coverage
+# Run tests with coverage (excludes e2e tests)
 npm run test:coverage
+
+# Run e2e tests (requires `npm run build` first)
+npm test -- tests/e2e/
 
 # Run linter
 npm run lint
@@ -47,6 +50,11 @@ Code is considered complete and functional only when `npm run quality` passes.
 - `src/` - TypeScript source code
   - `index.ts` - Main entry point
   - `skills/vendor/` - Vendor-specific skill implementations
+- `tests/` - Test suites
+  - `unit/` - Unit tests (mirrors `src/` structure)
+  - `integration/` - Integration tests (direct API calls)
+  - `e2e/` - End-to-end tests (invoke `node dist/cli.js` directly; require `npm run build`)
+  - `security/` - Security-focused tests
 - `requirements/` - Project requirements documentation
   - `features/` - Feature specifications
   - `implementation/` - Implementation details
