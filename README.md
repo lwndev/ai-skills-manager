@@ -1060,7 +1060,8 @@ tests/
     templates/
     utils/
     validators/
-  integration/        # End-to-end tests
+  integration/        # Integration tests (direct API calls)
+  e2e/                # End-to-end tests (invoke CLI binary directly)
   security/           # Security-focused tests
   fixtures/           # Test fixtures and sample skills
 ```
