@@ -13,7 +13,7 @@ jobs:
 
     permissions:
       issues: write
-      contents: read
+      contents: read  # Version tracking file is updated manually after review
 
     steps:
       - name: Checkout code
@@ -128,7 +128,7 @@ jobs:
 
           # Keywords that indicate relevance to AI Skills Manager
           RELEVANT_KEYWORDS = [
-              r'\bskill',
+              r'\bskills?\b',
               r'\.claude/skills',
               r'\bfrontmatter\b',
               r'\bSKILL\.md\b',
@@ -235,44 +235,31 @@ jobs:
 
           relevant_section = relevant if relevant else "_No keyword matches found. Manual review of all changes is recommended._"
 
-          body = f"""## Summary
-
-          New Claude Code changelog entries detected since the last tracked version (**{tracked}**). The latest version is **{latest}**.
-
-          This issue was automatically created by the changelog monitor workflow. Review the changes below to determine if any require updates to AI Skills Manager.
-
-          ## Potentially Relevant Changes
-
-          Changes matching skills-related keywords (skill, frontmatter, hooks, sandbox, plugin, allowed-tools, slash command, SKILL.md):
-
-          {relevant_section}
-
-          ## All New Changelog Entries
-
-          <details>
-          <summary>Full changelog entries from {tracked} to {latest}</summary>
-
-          {all_entries}
-
-          </details>
-
-          ## Action Items
-
-          - [ ] Review all new entries for impact on ASM
-          - [ ] Identify changes requiring code updates (validators, templates, commands)
-          - [ ] Identify changes requiring documentation updates
-          - [ ] Update `docs/anthropic/claude-code/last-tracked-version.txt` to **{latest}** after review
-          - [ ] Update `docs/anthropic/claude-code/CHANGELOG-*.md` if archiving full changelog
-
-          ## References
-
-          - [Claude Code Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
-          - [AI Skills Manager Changelog](./CHANGELOG.md)
-          """
-
-          # Dedent the body (remove leading spaces from triple-quoted string)
-          import textwrap
-          body = textwrap.dedent(body).strip()
+          body = (
+              f"## Summary\n\n"
+              f"New Claude Code changelog entries detected since the last tracked version "
+              f"(**{tracked}**). The latest version is **{latest}**.\n\n"
+              f"This issue was automatically created by the changelog monitor workflow. "
+              f"Review the changes below to determine if any require updates to AI Skills Manager.\n\n"
+              f"## Potentially Relevant Changes\n\n"
+              f"Changes matching skills-related keywords (skill, frontmatter, hooks, sandbox, "
+              f"plugin, allowed-tools, slash command, SKILL.md):\n\n"
+              f"{relevant_section}\n\n"
+              f"## All New Changelog Entries\n\n"
+              f"<details>\n"
+              f"<summary>Full changelog entries from {tracked} to {latest}</summary>\n\n"
+              f"{all_entries}\n\n"
+              f"</details>\n\n"
+              f"## Action Items\n\n"
+              f"- [ ] Review all new entries for impact on ASM\n"
+              f"- [ ] Identify changes requiring code updates (validators, templates, commands)\n"
+              f"- [ ] Identify changes requiring documentation updates\n"
+              f"- [ ] Update `docs/anthropic/claude-code/last-tracked-version.txt` to **{latest}** after review\n"
+              f"- [ ] Update `docs/anthropic/claude-code/CHANGELOG-*.md` if archiving full changelog\n\n"
+              f"## References\n\n"
+              f"- [Claude Code Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)\n"
+              f"- [AI Skills Manager Changelog](./CHANGELOG.md)\n"
+          )
 
           with open("/tmp/issue-body.md", "w") as f:
               f.write(body)
