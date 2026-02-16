@@ -1,0 +1,296 @@
+name: Claude Code Changelog Monitor
+
+on:
+  schedule:
+    # Run daily at 09:00 UTC (Monday–Friday)
+    - cron: '0 9 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  check-changelog:
+    name: Check for Claude Code Changes
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch Claude Code changelog
+        id: fetch
+        run: |
+          curl -sf \
+            -H "Accept: application/vnd.github.raw+json" \
+            "https://api.github.com/repos/anthropics/claude-code/contents/CHANGELOG.md" \
+            -o /tmp/claude-code-changelog.md
+
+          if [ ! -s /tmp/claude-code-changelog.md ]; then
+            echo "::error::Failed to fetch Claude Code changelog"
+            exit 1
+          fi
+
+          echo "fetched=true" >> "$GITHUB_OUTPUT"
+
+      - name: Read tracked version
+        id: tracked
+        run: |
+          TRACKED_FILE="docs/anthropic/claude-code/last-tracked-version.txt"
+          if [ -f "$TRACKED_FILE" ]; then
+            VERSION=$(cat "$TRACKED_FILE" | tr -d '[:space:]')
+          else
+            VERSION="0.0.0"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tracked version: $VERSION"
+
+      - name: Extract latest version from changelog
+        id: latest
+        run: |
+          # Extract the first version header (e.g., "## 2.1.42")
+          LATEST=$(grep -m1 '^## ' /tmp/claude-code-changelog.md | sed 's/^## //')
+          echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest Claude Code version: $LATEST"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          TRACKED="${{ steps.tracked.outputs.version }}"
+          LATEST="${{ steps.latest.outputs.version }}"
+
+          if [ "$TRACKED" = "$LATEST" ]; then
+            echo "No new versions found. Tracked=$TRACKED, Latest=$LATEST"
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New versions detected! Tracked=$TRACKED, Latest=$LATEST"
+            echo "has_new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract new entries
+        if: steps.compare.outputs.has_new == 'true'
+        id: entries
+        run: |
+          TRACKED="${{ steps.tracked.outputs.version }}"
+          LATEST="${{ steps.latest.outputs.version }}"
+
+          # Extract all entries between the latest version and the tracked version
+          # Uses awk to capture lines between "## $LATEST" and "## $TRACKED"
+          python3 << 'PYEOF'
+          import re
+          import os
+
+          tracked = os.environ.get("TRACKED_VERSION", "0.0.0")
+
+          with open("/tmp/claude-code-changelog.md") as f:
+              content = f.read()
+
+          # Split by version headers
+          sections = re.split(r'^(## .+)$', content, flags=re.MULTILINE)
+
+          new_entries = []
+          capture = False
+
+          for i, section in enumerate(sections):
+              header_match = re.match(r'^## (.+)$', section)
+              if header_match:
+                  version = header_match.group(1).strip()
+                  if version == tracked:
+                      capture = False
+                      break
+                  else:
+                      capture = True
+                      new_entries.append(section)
+              elif capture and section.strip():
+                  new_entries.append(section)
+
+          result = "\n".join(new_entries).strip()
+
+          # Write to file for the next step
+          with open("/tmp/new-entries.md", "w") as f:
+              f.write(result)
+
+          # Count new versions
+          version_count = sum(1 for e in new_entries if e.startswith("## "))
+          print(f"Found {version_count} new version(s)")
+
+          PYEOF
+        env:
+          TRACKED_VERSION: ${{ steps.tracked.outputs.version }}
+
+      - name: Filter skills-relevant changes
+        if: steps.compare.outputs.has_new == 'true'
+        id: filter
+        run: |
+          python3 << 'PYEOF'
+          import re
+
+          # Keywords that indicate relevance to AI Skills Manager
+          RELEVANT_KEYWORDS = [
+              r'\bskill',
+              r'\.claude/skills',
+              r'\bfrontmatter\b',
+              r'\bSKILL\.md\b',
+              r'\bhook[s]?\b',
+              r'\ballowed.tools\b',
+              r'\bsandbox\b',
+              r'\bslash.command',
+              r'\bagent\b.*\bfrontmatter\b',
+              r'\bfrontmatter\b.*\bagent\b',
+              r'\bplugin\b',
+              r'\bcontext.*fork\b',
+              r'\buser.invocable\b',
+              r'\bTASK\(.*\)',
+              r'\bYAML.*list.*format\b',
+          ]
+
+          with open("/tmp/new-entries.md") as f:
+              content = f.read()
+
+          if not content.strip():
+              with open("/tmp/relevant-changes.md", "w") as f:
+                  f.write("")
+              print("No new entries to analyze")
+              exit(0)
+
+          # Parse entries by version
+          sections = re.split(r'^(## .+)$', content, flags=re.MULTILINE)
+
+          relevant_by_version = {}
+          current_version = None
+
+          for section in sections:
+              header_match = re.match(r'^## (.+)$', section)
+              if header_match:
+                  current_version = header_match.group(1).strip()
+              elif current_version:
+                  lines = section.strip().split('\n')
+                  for line in lines:
+                      line = line.strip()
+                      if not line or not line.startswith('- '):
+                          continue
+                      for pattern in RELEVANT_KEYWORDS:
+                          if re.search(pattern, line, re.IGNORECASE):
+                              if current_version not in relevant_by_version:
+                                  relevant_by_version[current_version] = []
+                              relevant_by_version[current_version].append(line)
+                              break
+
+          # Build output
+          output_lines = []
+          for version in relevant_by_version:
+              output_lines.append(f"### {version}")
+              output_lines.append("")
+              for line in relevant_by_version[version]:
+                  output_lines.append(line)
+              output_lines.append("")
+
+          result = "\n".join(output_lines).strip()
+
+          with open("/tmp/relevant-changes.md", "w") as f:
+              f.write(result)
+
+          total = sum(len(v) for v in relevant_by_version.values())
+          print(f"Found {total} relevant change(s) across {len(relevant_by_version)} version(s)")
+
+          PYEOF
+
+      - name: Check for existing issue
+        if: steps.compare.outputs.has_new == 'true'
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST="${{ steps.latest.outputs.version }}"
+
+          # Search for open issues with the changelog review title pattern
+          EXISTING=$(gh issue list \
+            --state open \
+            --search "Claude Code changelog review" \
+            --json number,title \
+            --jq 'length')
+
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "has_existing=true" >> "$GITHUB_OUTPUT"
+            echo "An open changelog review issue already exists, skipping creation"
+          else
+            echo "has_existing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build issue body
+        if: steps.compare.outputs.has_new == 'true' && steps.existing.outputs.has_existing == 'false'
+        run: |
+          python3 << 'PYEOF'
+          import os
+
+          tracked = os.environ["TRACKED_VERSION"]
+          latest = os.environ["LATEST_VERSION"]
+
+          with open("/tmp/new-entries.md") as f:
+              all_entries = f.read().strip()
+
+          with open("/tmp/relevant-changes.md") as f:
+              relevant = f.read().strip()
+
+          relevant_section = relevant if relevant else "_No keyword matches found. Manual review of all changes is recommended._"
+
+          body = f"""## Summary
+
+          New Claude Code changelog entries detected since the last tracked version (**{tracked}**). The latest version is **{latest}**.
+
+          This issue was automatically created by the changelog monitor workflow. Review the changes below to determine if any require updates to AI Skills Manager.
+
+          ## Potentially Relevant Changes
+
+          Changes matching skills-related keywords (skill, frontmatter, hooks, sandbox, plugin, allowed-tools, slash command, SKILL.md):
+
+          {relevant_section}
+
+          ## All New Changelog Entries
+
+          <details>
+          <summary>Full changelog entries from {tracked} to {latest}</summary>
+
+          {all_entries}
+
+          </details>
+
+          ## Action Items
+
+          - [ ] Review all new entries for impact on ASM
+          - [ ] Identify changes requiring code updates (validators, templates, commands)
+          - [ ] Identify changes requiring documentation updates
+          - [ ] Update `docs/anthropic/claude-code/last-tracked-version.txt` to **{latest}** after review
+          - [ ] Update `docs/anthropic/claude-code/CHANGELOG-*.md` if archiving full changelog
+
+          ## References
+
+          - [Claude Code Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
+          - [AI Skills Manager Changelog](./CHANGELOG.md)
+          """
+
+          # Dedent the body (remove leading spaces from triple-quoted string)
+          import textwrap
+          body = textwrap.dedent(body).strip()
+
+          with open("/tmp/issue-body.md", "w") as f:
+              f.write(body)
+
+          PYEOF
+        env:
+          TRACKED_VERSION: ${{ steps.tracked.outputs.version }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+
+      - name: Create GitHub issue
+        if: steps.compare.outputs.has_new == 'true' && steps.existing.outputs.has_existing == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TRACKED="${{ steps.tracked.outputs.version }}"
+          LATEST="${{ steps.latest.outputs.version }}"
+
+          gh issue create \
+            --title "Claude Code changelog review: ${TRACKED} → ${LATEST}" \
+            --body-file /tmp/issue-body.md \
+            --label "enhancement"
