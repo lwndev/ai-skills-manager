@@ -525,7 +525,7 @@ async function compareFiles(
     const targetFilePath = path.join(targetPath, relativePath);
     let existsInTarget = false;
     let targetSize: number | undefined;
-    let wouldModify = false;
+    let wouldModify: boolean;
     let packageHash: string | undefined;
     let targetHash: string | undefined;
 
