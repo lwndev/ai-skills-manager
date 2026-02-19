@@ -35,7 +35,7 @@ Address 32 npm audit vulnerabilities (1 moderate, 31 high) in transitive depende
 
 **Completed:** 2026-02-19
 
-**Pull Request:** TBD
+**Pull Request:** [#93](https://github.com/lwndev/ai-skills-manager/pull/93)
 
 ## Notes
 
