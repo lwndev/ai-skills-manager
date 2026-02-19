@@ -136,7 +136,7 @@ export async function validateInstallPath(targetPath: string): Promise<PathValid
   let exists = false;
   let isDirectory = false;
   let writable = false;
-  let parentExists = false;
+  let parentExists: boolean;
 
   try {
     // Check if path exists

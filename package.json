@@ -50,7 +50,7 @@
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "audit": "npm audit --audit-level=moderate",
+    "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix",
     "quality": "npm run lint && npm run test:coverage && npm run audit",
     "prepare": "husky",
@@ -86,5 +86,9 @@
     "prettier": "^3.7.4",
     "ts-jest": "^29.4.6",
     "typescript": "^5.5.3"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1",
+    "test-exclude": "^7.0.1"
   }
 }
