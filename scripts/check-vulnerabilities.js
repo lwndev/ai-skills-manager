@@ -7,7 +7,7 @@
 
 const { execSync } = require('child_process');
 
-const MIN_SEVERITY = process.env.MIN_AUDIT_LEVEL || 'moderate';
+const MIN_SEVERITY = process.env.MIN_AUDIT_LEVEL || 'high';
 
 console.log('\nRunning security audit...');
 console.log('─'.repeat(50));
@@ -48,8 +48,11 @@ try {
 
   console.log('\n' + '─'.repeat(50));
 
-  // Count actionable vulnerabilities (moderate and above)
-  const actionable = vulns.moderate + vulns.high + vulns.critical;
+  // Count actionable vulnerabilities at or above the configured severity
+  const actionable =
+    MIN_SEVERITY === 'high'
+      ? vulns.high + vulns.critical
+      : vulns.moderate + vulns.high + vulns.critical;
 
   if (actionable > 0) {
     console.log(`\x1b[31m✗ Found ${actionable} ${MIN_SEVERITY}+ vulnerabilities\x1b[0m`);
@@ -84,7 +87,10 @@ try {
 
         console.log('\n' + '─'.repeat(50));
 
-        const actionable = vulns.moderate + vulns.high + vulns.critical;
+        const actionable =
+          MIN_SEVERITY === 'high'
+            ? vulns.high + vulns.critical
+            : vulns.moderate + vulns.high + vulns.critical;
         console.log(`\x1b[31m✗ Found ${actionable} ${MIN_SEVERITY}+ vulnerabilities\x1b[0m`);
         console.log('\nRun \x1b[36mnpm audit\x1b[0m for details');
         console.log('Run \x1b[36mnpm audit fix\x1b[0m to attempt automatic fixes\n');
