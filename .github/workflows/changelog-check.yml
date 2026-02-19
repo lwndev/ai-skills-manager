@@ -1,0 +1,165 @@
+name: Changelog Check
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Every Monday at 9 AM UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run without creating issues or updating tracker'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  check-changelog:
+    name: Check Claude Code Changelog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch changelog
+        run: |
+          echo "Fetching Claude Code changelog..."
+          if ! curl -sf -o "$RUNNER_TEMP/changelog.md" \
+            "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md"; then
+            echo "::error::Failed to fetch changelog from GitHub"
+            exit 1
+          fi
+          echo "Changelog fetched successfully ($(wc -c < "$RUNNER_TEMP/changelog.md") bytes)"
+
+      - name: Parse changelog into versions
+        run: |
+          echo "Parsing changelog into per-version entries..."
+
+          # Parse changelog: split by version headers, output JSON array
+          awk '
+          BEGIN {
+            printf "["
+            first = 1
+            version = ""
+            date = ""
+            content = ""
+          }
+          /^## \[?[0-9]+\.[0-9]+\.[0-9]+/ {
+            # Output previous version if we have one
+            if (version != "") {
+              if (!first) printf ","
+              # Escape JSON special characters in content
+              gsub(/\\/, "\\\\", content)
+              gsub(/"/, "\\\"", content)
+              gsub(/\n/, "\\n", content)
+              gsub(/\t/, "\\t", content)
+              gsub(/\r/, "", content)
+              printf "\n{\"version\":\"%s\",\"date\":\"%s\",\"content\":\"%s\"}", version, date, content
+              first = 0
+            }
+            # Extract version number (handles both [1.2.3] and 1.2.3 formats)
+            line = $0
+            gsub(/^## \[?/, "", line)
+            gsub(/\].*/, "", line)
+            gsub(/ .*/, "", line)
+            version = line
+            # Extract date if present (YYYY-MM-DD pattern)
+            date = ""
+            if (match($0, /[0-9]{4}-[0-9]{2}-[0-9]{2}/)) {
+              date = substr($0, RSTART, RLENGTH)
+            }
+            content = ""
+            next
+          }
+          {
+            if (version != "") {
+              if (content != "") content = content "\n"
+              content = content $0
+            }
+          }
+          END {
+            # Output the last version
+            if (version != "") {
+              if (!first) printf ","
+              gsub(/\\/, "\\\\", content)
+              gsub(/"/, "\\\"", content)
+              gsub(/\n/, "\\n", content)
+              gsub(/\t/, "\\t", content)
+              gsub(/\r/, "", content)
+              printf "\n{\"version\":\"%s\",\"date\":\"%s\",\"content\":\"%s\"}", version, date, content
+            }
+            printf "\n]"
+          }
+          ' "$RUNNER_TEMP/changelog.md" > "$RUNNER_TEMP/versions.json"
+
+          # Validate JSON and sort by version (descending)
+          if ! jq -e '.' "$RUNNER_TEMP/versions.json" > /dev/null 2>&1; then
+            echo "::error::Failed to parse changelog into valid JSON"
+            exit 1
+          fi
+
+          # Sort versions descending using sort_by with split
+          jq '
+            sort_by(
+              .version | split(".") | map(tonumber)
+            ) | reverse
+          ' "$RUNNER_TEMP/versions.json" > "$RUNNER_TEMP/versions-sorted.json"
+          mv "$RUNNER_TEMP/versions-sorted.json" "$RUNNER_TEMP/versions.json"
+
+          VERSION_COUNT=$(jq 'length' "$RUNNER_TEMP/versions.json")
+          echo "Found $VERSION_COUNT versions in changelog"
+          echo "Latest version: $(jq -r '.[0].version' "$RUNNER_TEMP/versions.json")"
+
+      - name: Read tracker and determine new versions
+        run: |
+          TRACKER_FILE=".github/changelog-tracker.json"
+
+          # Read last reviewed version from tracker
+          if [ -f "$TRACKER_FILE" ]; then
+            LAST_REVIEWED=$(jq -r '.last_reviewed_version // ""' "$TRACKER_FILE")
+          else
+            LAST_REVIEWED=""
+          fi
+
+          echo "Last reviewed version: ${LAST_REVIEWED:-"(none — first run)"}"
+
+          if [ -z "$LAST_REVIEWED" ]; then
+            # First run: only process the latest version
+            echo "First run detected — will only process the latest version"
+            jq '.[0:1]' "$RUNNER_TEMP/versions.json" > "$RUNNER_TEMP/new-versions.json"
+          else
+            # Find versions newer than last_reviewed
+            jq --arg last "$LAST_REVIEWED" '
+              # Compare version strings numerically
+              def version_gt($a; $b):
+                ($a | split(".") | map(tonumber)) as $va |
+                ($b | split(".") | map(tonumber)) as $vb |
+                if $va[0] != $vb[0] then $va[0] > $vb[0]
+                elif $va[1] != $vb[1] then $va[1] > $vb[1]
+                else $va[2] > $vb[2]
+                end;
+              [ .[] | select(version_gt(.version; $last)) ]
+            ' "$RUNNER_TEMP/versions.json" > "$RUNNER_TEMP/new-versions.json"
+          fi
+
+          NEW_COUNT=$(jq 'length' "$RUNNER_TEMP/new-versions.json")
+          echo "New versions to process: $NEW_COUNT"
+
+          if [ "$NEW_COUNT" -eq 0 ]; then
+            echo "No new versions since v${LAST_REVIEWED}. Nothing to do."
+            echo "SKIP_REMAINING=true" >> "$GITHUB_ENV"
+          else
+            echo "Versions to process:"
+            jq -r '.[].version' "$RUNNER_TEMP/new-versions.json" | while read -r v; do
+              echo "  - v$v"
+            done
+            echo "SKIP_REMAINING=false" >> "$GITHUB_ENV"
+          fi
+
+      # Placeholder for Phase 2: LLM-powered impact analysis
+      # Placeholder for Phase 3: Issue creation and tracker update
