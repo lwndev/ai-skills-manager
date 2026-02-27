@@ -2,7 +2,7 @@ name: Changelog Check
 
 on:
   schedule:
-    - cron: '0 9 * * 1' # Every Monday at 9 AM UTC
+    - cron: '0 9 * * *' # Every day at 9 AM UTC
   workflow_dispatch:
     inputs:
       dry-run:
@@ -161,5 +161,363 @@ jobs:
             echo "SKIP_REMAINING=false" >> "$GITHUB_ENV"
           fi
 
-      # Placeholder for Phase 2: LLM-powered impact analysis
-      # Placeholder for Phase 3: Issue creation and tracker update
+      - name: Analyze changelog impact with LLM
+        if: env.SKIP_REMAINING != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+        run: |
+          # --- ASM Context ---
+          ASM_CONTEXT=$(cat <<'CONTEXT'
+          AI Skills Manager (ASM) is a TypeScript CLI tool for managing Claude Code Agent Skills.
+          It provides commands to: scaffold, validate, package, install, update, uninstall, and list skills.
+
+          ASM's touchpoints with Claude Code include:
+          - The `.claude/skills/` directory structure (where skills are installed)
+          - SKILL.md frontmatter schema (YAML metadata: name, version, description, triggers, compatibility)
+          - Skill discovery (how Claude Code finds and loads installed skills)
+          - CLI compatibility flags (e.g., `claude-code>=2.1` in frontmatter)
+          - The `.claude/` configuration directory structure and settings files
+
+          Impact categories to assess:
+          - skills-system: Changes to skill format, discovery, installation, or execution
+          - frontmatter: Changes to YAML frontmatter fields, schema, or validation
+          - cli-behavior: Changes to Claude Code CLI that affect how ASM interacts with it
+          - config-paths: Changes to `.claude/` directory structure, settings files, or skill storage locations
+          - breaking-change: Any backward-incompatible change that could break existing ASM functionality
+          - deprecation: Any deprecated feature that ASM currently depends on
+          CONTEXT
+          )
+
+          # --- Tool Schema ---
+          TOOL_SCHEMA=$(cat <<'TOOLDEF'
+          {
+            "name": "analyze_changelog_impact",
+            "description": "Report the impact analysis of a Claude Code changelog entry on AI Skills Manager.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "relevant": {
+                  "type": "boolean",
+                  "description": "Whether this changelog entry impacts ASM"
+                },
+                "impact_categories": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["skills-system", "frontmatter", "cli-behavior", "config-paths", "breaking-change", "deprecation"]
+                  },
+                  "description": "Which impact categories are affected (empty array if not relevant)"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["high", "medium", "low"],
+                  "description": "How urgently ASM needs to respond"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "1-2 sentence explanation of the impact (or why it is not relevant)"
+                },
+                "suggested_actions": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Specific ASM areas or code to review/update (empty array if not relevant)"
+                }
+              },
+              "required": ["relevant", "impact_categories", "severity", "summary", "suggested_actions"]
+            }
+          }
+          TOOLDEF
+          )
+
+          # --- Analysis Loop ---
+          VERSION_COUNT=$(jq 'length' "$RUNNER_TEMP/new-versions.json")
+          API_ERRORS=0
+          RELEVANT_RESULTS="[]"
+
+          echo "Analyzing $VERSION_COUNT version(s) for ASM impact..."
+
+          for i in $(seq 0 $((VERSION_COUNT - 1))); do
+            VERSION=$(jq -r ".[$i].version" "$RUNNER_TEMP/new-versions.json")
+            DATE=$(jq -r ".[$i].date" "$RUNNER_TEMP/new-versions.json")
+            CONTENT=$(jq -r ".[$i].content" "$RUNNER_TEMP/new-versions.json")
+
+            echo ""
+            echo "--- Analyzing v${VERSION} (${DATE:-no date}) ---"
+
+            # Build API request
+            REQUEST_BODY=$(jq -n \
+              --arg model "claude-haiku-4-5-20251001" \
+              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nUse the analyze_changelog_impact tool to report your analysis." \
+              --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}" \
+              --argjson tools "[$TOOL_SCHEMA]" \
+              '{
+                model: $model,
+                max_tokens: 1024,
+                system: $system,
+                tools: $tools,
+                tool_choice: {"type": "tool", "name": "analyze_changelog_impact"},
+                messages: [{"role": "user", "content": $content}]
+              }')
+
+            # Call Anthropic API
+            HTTP_STATUS=$(curl -s -w "%{http_code}" -o "$RUNNER_TEMP/api-response-${VERSION}.json" \
+              -X POST "https://api.anthropic.com/v1/messages" \
+              -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+              -H "anthropic-version: 2023-06-01" \
+              -H "content-type: application/json" \
+              -d "$REQUEST_BODY")
+
+            if [ "$HTTP_STATUS" != "200" ]; then
+              echo "::warning::API request failed for v${VERSION} (HTTP ${HTTP_STATUS})"
+              if [ -f "$RUNNER_TEMP/api-response-${VERSION}.json" ]; then
+                echo "API error response:"
+                cat "$RUNNER_TEMP/api-response-${VERSION}.json"
+              fi
+              API_ERRORS=$((API_ERRORS + 1))
+              continue
+            fi
+
+            # Extract structured result from tool_use content block
+            ANALYSIS=$(jq -r '.content[] | select(.type == "tool_use") | .input' "$RUNNER_TEMP/api-response-${VERSION}.json")
+
+            if [ -z "$ANALYSIS" ] || [ "$ANALYSIS" = "null" ]; then
+              echo "::warning::No tool_use response found for v${VERSION}"
+              API_ERRORS=$((API_ERRORS + 1))
+              continue
+            fi
+
+            # Save analysis result
+            echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+
+            # Extract key fields for logging
+            RELEVANT=$(echo "$ANALYSIS" | jq -r '.relevant')
+            SEVERITY=$(echo "$ANALYSIS" | jq -r '.severity')
+            SUMMARY=$(echo "$ANALYSIS" | jq -r '.summary')
+
+            echo "  Relevant: ${RELEVANT}"
+            echo "  Severity: ${SEVERITY}"
+            echo "  Summary: ${SUMMARY}"
+
+            # In dry-run mode, log the full response
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "  [dry-run] Full analysis:"
+              echo "$ANALYSIS" | jq '.'
+            fi
+
+            # Collect relevant versions
+            if [ "$RELEVANT" = "true" ]; then
+              RELEVANT_RESULTS=$(echo "$RELEVANT_RESULTS" | jq \
+                --arg version "$VERSION" \
+                --arg date "$DATE" \
+                --argjson analysis "$ANALYSIS" \
+                '. + [{"version": $version, "date": $date, "analysis": $analysis}]')
+            fi
+          done
+
+          # Save relevant versions for Phase 3
+          echo "$RELEVANT_RESULTS" > "$RUNNER_TEMP/relevant-versions.json"
+
+          RELEVANT_COUNT=$(echo "$RELEVANT_RESULTS" | jq 'length')
+          echo ""
+          echo "=== Analysis Summary ==="
+          echo "Versions analyzed: ${VERSION_COUNT}"
+          echo "Relevant to ASM: ${RELEVANT_COUNT}"
+          echo "API errors: ${API_ERRORS}"
+
+          if [ "$API_ERRORS" -gt 0 ]; then
+            echo "::warning::${API_ERRORS} API error(s) occurred during analysis"
+          fi
+
+          # Export for subsequent steps
+          echo "RELEVANT_COUNT=${RELEVANT_COUNT}" >> "$GITHUB_ENV"
+          echo "API_ERRORS=${API_ERRORS}" >> "$GITHUB_ENV"
+
+      - name: Ensure required labels exist
+        if: env.SKIP_REMAINING != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Ensuring required labels exist..."
+          gh label create "compatibility" --description "Upstream compatibility tracking" --color "D93F0B" --force
+          gh label create "automated" --description "Created by automated workflow" --color "BFD4F2" --force
+          gh label create "severity:high" --description "High severity — urgent response needed" --color "B60205" --force
+          gh label create "severity:medium" --description "Medium severity — should address soon" --color "FBCA04" --force
+          gh label create "severity:low" --description "Low severity — address when convenient" --color "0E8A16" --force
+          echo "Labels verified"
+
+      - name: Create issues for relevant versions
+        if: env.SKIP_REMAINING != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+        run: |
+          RELEVANT_COUNT=$(jq 'length' "$RUNNER_TEMP/relevant-versions.json")
+          ISSUES_CREATED=0
+          ISSUES_SKIPPED=0
+
+          if [ "$RELEVANT_COUNT" -eq 0 ]; then
+            echo "No relevant versions found — no issues to create"
+            echo "ISSUES_CREATED=0" >> "$GITHUB_ENV"
+            echo "ISSUES_SKIPPED=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Processing $RELEVANT_COUNT relevant version(s) for issue creation..."
+
+          for i in $(seq 0 $((RELEVANT_COUNT - 1))); do
+            VERSION=$(jq -r ".[$i].version" "$RUNNER_TEMP/relevant-versions.json")
+            DATE=$(jq -r ".[$i].date" "$RUNNER_TEMP/relevant-versions.json")
+            SEVERITY=$(jq -r ".[$i].analysis.severity" "$RUNNER_TEMP/relevant-versions.json")
+            SUMMARY=$(jq -r ".[$i].analysis.summary" "$RUNNER_TEMP/relevant-versions.json")
+            CATEGORIES=$(jq -r ".[$i].analysis.impact_categories | join(\", \")" "$RUNNER_TEMP/relevant-versions.json")
+
+            # Get raw changelog content for this version from new-versions.json
+            RAW_CONTENT=$(jq -r --arg v "$VERSION" '.[] | select(.version == $v) | .content' "$RUNNER_TEMP/new-versions.json")
+
+            echo ""
+            echo "--- v${VERSION} ---"
+
+            # Deduplication check
+            EXISTING=$(gh issue list --search "COMPAT: Claude Code v${VERSION} in:title" --state all --json number --jq '.[0].number' 2>/dev/null || true)
+
+            if [ -n "$EXISTING" ]; then
+              echo "  Issue already exists for v${VERSION} (#${EXISTING}) — skipping"
+              ISSUES_SKIPPED=$((ISSUES_SKIPPED + 1))
+              continue
+            fi
+
+            # Construct title (truncate to keep under 100 chars)
+            TITLE="COMPAT: Claude Code v${VERSION} — ${SUMMARY}"
+            if [ ${#TITLE} -gt 100 ]; then
+              TITLE="${TITLE:0:97}..."
+            fi
+
+            # Construct labels
+            LABELS="compatibility,automated,severity:${SEVERITY}"
+
+            # Build suggested actions list
+            ACTIONS_MD=$(jq -r ".[$i].analysis.suggested_actions[] | \"- \" + ." "$RUNNER_TEMP/relevant-versions.json")
+
+            # Blockquote the raw changelog content
+            BLOCKQUOTED=$(echo "$RAW_CONTENT" | sed 's/^/> /')
+
+            # Build issue body via temp file (avoids YAML parser issues with markdown)
+            BODY_FILE="$RUNNER_TEMP/issue-body-${VERSION}.md"
+            {
+              echo "## Claude Code v${VERSION}"
+              echo ""
+              echo "**Release date:** ${DATE}"
+              echo "**Severity:** ${SEVERITY}"
+              echo "**Impact categories:** ${CATEGORIES}"
+              echo ""
+              echo "## Analysis"
+              echo ""
+              echo "${SUMMARY}"
+              echo ""
+              echo "## Changelog Entries"
+              echo ""
+              echo "${BLOCKQUOTED}"
+              echo ""
+              echo "## Suggested Actions"
+              echo ""
+              echo "${ACTIONS_MD}"
+              echo ""
+              echo "## References"
+              echo ""
+              echo "- [Full changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)"
+              echo ""
+              echo "---"
+              echo "*This issue was automatically generated by the changelog-check workflow.*"
+            } > "$BODY_FILE"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "  [dry-run] Would create issue:"
+              echo "    Title: ${TITLE}"
+              echo "    Labels: ${LABELS}"
+              echo "    Body preview (first 5 lines):"
+              head -5 "$BODY_FILE" | sed 's/^/    /'
+            else
+              gh issue create --title "$TITLE" --label "$LABELS" --body-file "$BODY_FILE"
+              echo "  Issue created for v${VERSION}"
+              ISSUES_CREATED=$((ISSUES_CREATED + 1))
+
+              # Rate limit: 2-second delay between issue creations
+              if [ $i -lt $((RELEVANT_COUNT - 1)) ]; then
+                sleep 2
+              fi
+            fi
+          done
+
+          echo ""
+          echo "Issues created: ${ISSUES_CREATED}"
+          echo "Issues skipped (duplicates): ${ISSUES_SKIPPED}"
+          echo "ISSUES_CREATED=${ISSUES_CREATED}" >> "$GITHUB_ENV"
+          echo "ISSUES_SKIPPED=${ISSUES_SKIPPED}" >> "$GITHUB_ENV"
+
+      - name: Update changelog tracker
+        if: env.SKIP_REMAINING != 'true'
+        env:
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+        run: |
+          # Determine the newest version processed (first entry in new-versions.json, which is sorted descending)
+          NEWEST_VERSION=$(jq -r '.[0].version' "$RUNNER_TEMP/new-versions.json")
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          echo "Updating tracker to v${NEWEST_VERSION} (checked at ${CURRENT_TIME})"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "[dry-run] Would update .github/changelog-tracker.json:"
+            echo "  last_reviewed_version: ${NEWEST_VERSION}"
+            echo "  last_checked: ${CURRENT_TIME}"
+          else
+            # Update the tracker file
+            jq -n \
+              --arg version "$NEWEST_VERSION" \
+              --arg checked "$CURRENT_TIME" \
+              '{"last_reviewed_version": $version, "last_checked": $checked}' \
+              > .github/changelog-tracker.json
+
+            # Commit and push only if the tracker changed
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .github/changelog-tracker.json
+
+            if git diff --cached --quiet; then
+              echo "Tracker unchanged — skipping commit"
+            else
+              git commit -m "chore: update changelog tracker to v${NEWEST_VERSION}"
+              git push
+              echo "Tracker updated and pushed"
+            fi
+          fi
+
+          echo "NEWEST_VERSION=${NEWEST_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          echo ""
+          echo "========================================="
+          echo "  Changelog Check — Workflow Summary"
+          echo "========================================="
+
+          if [ "${{ env.SKIP_REMAINING }}" = "true" ]; then
+            echo "Result: No new versions to process"
+            exit 0
+          fi
+
+          echo "Versions analyzed: $(jq 'length' "$RUNNER_TEMP/new-versions.json" 2>/dev/null || echo 'N/A')"
+          echo "Relevant to ASM:  ${RELEVANT_COUNT:-N/A}"
+          echo "Issues created:   ${ISSUES_CREATED:-N/A}"
+          echo "Issues skipped:   ${ISSUES_SKIPPED:-N/A}"
+          echo "API errors:       ${API_ERRORS:-N/A}"
+          echo "Tracker version:  ${NEWEST_VERSION:-N/A}"
+          echo "Dry-run mode:     ${{ inputs.dry-run || 'false' }}"
+
+          if [ "${API_ERRORS:-0}" -gt 0 ]; then
+            echo ""
+            echo "::warning::${API_ERRORS} API error(s) occurred — some versions may not have been analyzed"
+          fi
+
+          echo "========================================="
