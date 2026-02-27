@@ -149,7 +149,7 @@ As a maintainer, I want automated monitoring of Claude Code changelog entries so
 
 ### FR-6: Scheduled Execution
 
-- Run as a GitHub Actions workflow on a cron schedule (e.g., weekly on Mondays)
+- Run as a GitHub Actions workflow on a daily cron schedule (e.g., `cron: '0 9 * * *'` — every day at 9 AM UTC)
 - Support manual triggering via `workflow_dispatch` for on-demand checks
 - Workflow uses `gh` CLI for issue creation (authenticated via `GITHUB_TOKEN`)
 
@@ -245,6 +245,6 @@ As a maintainer, I want automated monitoring of Claude Code changelog entries so
 - [ ] GitHub issues are created with correct title format, body, and labels
 - [ ] Duplicate issues are not created for already-processed versions
 - [ ] Dry run mode logs proposed issues without creating them
-- [ ] Workflow runs on schedule (weekly) and via manual dispatch
+- [ ] Workflow runs on schedule (daily) and via manual dispatch
 - [ ] Workflow logs are clear and actionable on both success and failure
 - [ ] No new npm dependencies added to the project

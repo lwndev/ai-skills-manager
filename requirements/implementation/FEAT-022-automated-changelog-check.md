@@ -8,7 +8,7 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-022 | [#91](https://github.com/lwndev/ai-skills-manager/issues/91) | [FEAT-022-automated-changelog-check.md](../features/FEAT-022-automated-changelog-check.md) | Medium | Medium | Pending |
+| FEAT-022 | [#91](https://github.com/lwndev/ai-skills-manager/issues/91) | [FEAT-022-automated-changelog-check.md](../features/FEAT-022-automated-changelog-check.md) | Medium | Medium | ✅ Complete |
 
 ## Recommended Build Sequence
 
@@ -25,7 +25,7 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 
 1. Create `.github/workflows/changelog-check.yml` with:
    - `name: Changelog Check`
-   - Trigger on `schedule` (weekly, e.g., `cron: '0 9 * * 1'` — Mondays at 9 AM UTC)
+   - Trigger on `schedule` (daily, e.g., `cron: '0 9 * * *'` — every day at 9 AM UTC)
    - Trigger on `workflow_dispatch` with `dry-run` boolean input (default: `false`)
    - Single job `check-changelog` running on `ubuntu-latest`
    - Permissions: `issues: write`, `contents: write` (for committing tracker file)
@@ -67,7 +67,7 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 
 ### Phase 2: LLM-Powered Impact Analysis
 **Feature:** [FEAT-022](../features/FEAT-022-automated-changelog-check.md) | [#91](https://github.com/lwndev/ai-skills-manager/issues/91)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Core intelligence**: The LLM analysis is what distinguishes relevant from irrelevant changes — it must work correctly before issue creation
@@ -105,16 +105,16 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 5. Collect all relevant versions (where `relevant == true`) into `$RUNNER_TEMP/relevant-versions.json`
 
 #### Deliverables
-- [ ] Anthropic API integration step in workflow with tool use for structured output
-- [ ] ASM context variable defined and easily maintainable
-- [ ] Analysis results logged for each version
-- [ ] Dry-run mode outputs analysis without proceeding to issue creation
+- [x] Anthropic API integration step in workflow with tool use for structured output
+- [x] ASM context variable defined and easily maintainable
+- [x] Analysis results logged for each version
+- [x] Dry-run mode outputs analysis without proceeding to issue creation
 
 ---
 
 ### Phase 3: GitHub Issue Creation & Tracker Update
 **Feature:** [FEAT-022](../features/FEAT-022-automated-changelog-check.md) | [#91](https://github.com/lwndev/ai-skills-manager/issues/91)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - **Final integration**: Connects the analysis pipeline to actionable GitHub issues
@@ -185,11 +185,11 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
    - If any API errors occurred, log them as warnings
 
 #### Deliverables
-- [ ] Issue creation step with deduplication, formatting, and rate limiting
-- [ ] Label setup step ensuring required labels exist
-- [ ] Tracker update step with git commit
-- [ ] Dry-run mode fully functional (logs but no side effects)
-- [ ] Clear workflow summary output
+- [x] Issue creation step with deduplication, formatting, and rate limiting
+- [x] Label setup step ensuring required labels exist
+- [x] Tracker update step with git commit
+- [x] Dry-run mode fully functional (logs but no side effects)
+- [x] Clear workflow summary output
 
 ---
 
@@ -251,14 +251,14 @@ This feature is entirely self-contained within GitHub Actions:
 | Anthropic API downtime | Medium | Low | Log error, skip version, don't update tracker — retry on next scheduled run |
 | API key rotation/expiry | High | Low | Clear error message in workflow logs; documented in repo secrets |
 | GitHub rate limits on issue creation | Low | Low | 2-second delay between creations; typical runs create 0-2 issues |
-| Tracker file merge conflicts | Low | Low | Bot commits to main; workflow runs weekly so conflicts are unlikely |
+| Tracker file merge conflicts | Low | Low | Bot commits to main; tracker updates are atomic so conflicts are unlikely |
 | False positives (irrelevant issues) | Medium | Medium | LLM analysis with structured tool use reduces noise; easy to close false positives |
-| False negatives (missed relevant changes) | Medium | Low | Weekly schedule provides timely coverage; manual dispatch for ad-hoc checks |
+| False negatives (missed relevant changes) | Medium | Low | Daily schedule provides timely coverage; manual dispatch for ad-hoc checks |
 
 ## Success Criteria
 
 - [ ] Workflow file exists at `.github/workflows/changelog-check.yml`
-- [ ] Workflow runs on weekly schedule and via manual dispatch
+- [ ] Workflow runs on daily schedule and via manual dispatch
 - [ ] Changelog is fetched, parsed into per-version entries, and version-compared correctly
 - [ ] Tracking file persists last reviewed version across runs
 - [ ] `ANTHROPIC_API_KEY` secret documented as required
