@@ -34,7 +34,7 @@ Address 2 npm audit vulnerabilities (1 high, 1 moderate) that are blocking the p
 
 **Completed:** 2026-02-27
 
-**Pull Request:** [#PR](https://github.com/lwndev/ai-skills-manager/pull/PR)
+**Pull Request:** [#97](https://github.com/lwndev/ai-skills-manager/pull/97)
 
 ## Notes
 
