@@ -225,6 +225,141 @@ As a maintainer, I want automated monitoring of Claude Code changelog entries so
 - Verify deduplication by running twice against the same changelog state
 - Verify tracking file is updated after successful run
 
+### Local Testing Directions
+
+All manual testing is done from your local terminal using the `gh` CLI. The workflow runs on GitHub Actions — you trigger and observe it remotely.
+
+#### Prerequisites
+
+- `gh` CLI installed and authenticated (`gh auth status`)
+- `ANTHROPIC_API_KEY` added as a repository secret (`gh secret list` to verify)
+- Current branch pushed (the workflow runs against the default branch)
+
+#### 1. Dry-run test
+
+Trigger the workflow in dry-run mode and watch the output:
+
+```bash
+gh workflow run changelog-check.yml -f dry-run=true
+```
+
+Wait a few seconds, then find and watch the run:
+
+```bash
+gh run list --workflow=changelog-check.yml --limit=1
+gh run watch          # watches the most recent run in progress
+```
+
+After it completes, view the full log output:
+
+```bash
+gh run view --log     # shows logs for the most recent completed run
+```
+
+**What to verify:**
+- Changelog fetched successfully (byte count logged)
+- Versions parsed into JSON (version count logged)
+- Tracker read correctly (shows last reviewed version or "first run")
+- LLM analysis returned structured results (relevant, severity, summary logged per version)
+- `[dry-run]` prefix on proposed issue titles — no actual issues created
+- `[dry-run]` prefix on tracker update — no commit pushed
+- Workflow summary section at the end with all counts
+
+#### 2. Live run (creates issues)
+
+```bash
+gh workflow run changelog-check.yml -f dry-run=false
+gh run watch
+```
+
+**What to verify:**
+- Issues created with `COMPAT: Claude Code vX.Y.Z — ...` title format
+- Labels applied: `compatibility`, `automated`, `severity:{high|medium|low}`
+- Issue body contains: Analysis, Changelog Entries (blockquoted), Suggested Actions, References
+- Tracker file committed and pushed (check with `git pull` and inspect `.github/changelog-tracker.json`)
+
+Check created issues:
+
+```bash
+gh issue list --label=compatibility --label=automated
+```
+
+#### 3. Deduplication test
+
+Run the workflow again against the same changelog state:
+
+```bash
+gh workflow run changelog-check.yml -f dry-run=false
+gh run watch
+```
+
+**What to verify:**
+- Log shows "Issue already exists for vX.Y.Z (#N) — skipping" for previously created versions
+- No duplicate issues created (compare `gh issue list --label=automated` before and after)
+- Tracker version unchanged (no new commit)
+
+#### 4. Verify tracker file updated
+
+After a successful live run:
+
+```bash
+git pull
+cat .github/changelog-tracker.json
+```
+
+**What to verify:**
+- `last_reviewed_version` matches the latest Claude Code changelog version
+- `last_checked` has a recent UTC timestamp
+
+#### 5. First-run behavior test
+
+Reset the tracker to simulate a first run, commit, and push:
+
+```bash
+echo '{"last_reviewed_version": "", "last_checked": ""}' > .github/changelog-tracker.json
+git add .github/changelog-tracker.json
+git commit -m "test: reset changelog tracker for first-run test"
+git push
+```
+
+Then trigger:
+
+```bash
+gh workflow run changelog-check.yml -f dry-run=true
+gh run watch
+gh run view --log
+```
+
+**What to verify:**
+- Log shows "First run detected — will only process the latest version"
+- Only 1 version analyzed (not the entire changelog history)
+
+> **Cleanup:** After testing, either let the next live run restore the tracker, or reset it to the correct version manually.
+
+#### 6. Changelog URL failure test
+
+This test requires temporarily breaking the fetch URL in the workflow file. It is optional — the behavior can also be verified by reading the workflow source (the `curl -sf` will exit non-zero and the step logs `::error::Failed to fetch changelog`).
+
+If you want to test it live:
+
+1. Temporarily change the URL in `.github/workflows/changelog-check.yml` to an invalid path (e.g., append `-BROKEN`)
+2. Commit, push, and trigger the workflow
+3. Verify the workflow run shows as failed with the error message
+4. Revert the URL change
+
+#### Viewing past runs
+
+```bash
+# List recent runs
+gh run list --workflow=changelog-check.yml --limit=5
+
+# View a specific run's logs
+gh run view <run-id> --log
+
+# View only a specific job's logs
+gh run view <run-id> --log --job=<job-id>
+```
+
 ## Future Enhancements
 
 - Provide ASM source code context to the LLM for even more precise impact analysis (e.g., identify specific files/functions affected)
