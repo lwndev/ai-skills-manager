@@ -152,6 +152,9 @@ As a maintainer, I want automated monitoring of Claude Code changelog entries so
 - Run as a GitHub Actions workflow on a daily cron schedule (e.g., `cron: '0 9 * * *'` — every day at 9 AM UTC)
 - Support manual triggering via `workflow_dispatch` for on-demand checks
 - Workflow uses `gh` CLI for issue creation (authenticated via `GITHUB_TOKEN`)
+- Use a concurrency group (`cancel-in-progress: false`) to prevent conflicting concurrent runs (e.g., manual dispatch during cron)
+- Set a job-level timeout (`timeout-minutes: 10`) to cap worst-case runtime
+- Set a per-request timeout (`--max-time 60`) on API calls to prevent hanging connections
 
 ### FR-7: Dry Run Mode
 
@@ -165,6 +168,8 @@ As a maintainer, I want automated monitoring of Claude Code changelog entries so
 
 - Workflow must not fail silently — log clear messages on success (no new versions, or issues created) and failure (fetch error, parse error)
 - Idempotent: re-running the workflow should not create duplicate issues
+- Tracker must not advance past versions where API analysis failed — failed versions are retried on the next run
+- Label creation must not overwrite existing labels (description, color) on every run
 
 ### NFR-2: Minimal Dependencies
 

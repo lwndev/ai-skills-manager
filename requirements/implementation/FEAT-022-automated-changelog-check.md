@@ -125,7 +125,7 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 
 1. Add label setup step:
    - Ensure required labels exist: `compatibility`, `automated`, `severity:high`, `severity:medium`, `severity:low`
-   - Use `gh label create` with `--force` flag (creates if missing, no-ops if exists)
+   - Use `gh label create` with `2>/dev/null || true` (creates if missing, silently skips if exists without overwriting)
 
 2. Add issue creation step that loops over relevant versions:
    - **Deduplication check**: For each version, run:
@@ -190,6 +190,47 @@ Implement a GitHub Actions workflow that automatically monitors the Claude Code 
 - [x] Tracker update step with git commit
 - [x] Dry-run mode fully functional (logs but no side effects)
 - [x] Clear workflow summary output
+
+---
+
+### Phase 4: PR Review Fixes
+**Feature:** [FEAT-022](../features/FEAT-022-automated-changelog-check.md) | [#91](https://github.com/lwndev/ai-skills-manager/issues/91)
+**Status:** ✅ Complete
+**PR Review:** [#95 comment](https://github.com/lwndev/ai-skills-manager/pull/95#issuecomment-3977218010)
+
+#### Rationale
+- **Code review feedback**: Addresses 4 issues identified during PR #95 review to improve reliability and correctness
+
+#### Changes
+
+1. **Tracker advancement guard** (Issue 1 — Medium):
+   - Added `env.API_ERRORS == '0'` condition to the "Update changelog tracker" step
+   - Prevents the tracker from advancing past versions where API analysis failed
+   - On the next scheduled run, failed versions are retried; issue deduplication prevents duplicates for already-processed versions
+
+2. **Complete AWK JSON escaping** (Issue 2 — Low):
+   - Added `\b` (backspace, `\010`) and `\f` (form feed, `\014`) escaping to both AWK parser blocks
+   - Completes coverage of all JSON control character escape sequences
+   - The existing `jq -e '.'` validation step remains as a safety net
+
+3. **Concurrency and timeout guards** (Issue 3 — Low):
+   - Added `concurrency: { group: changelog-check, cancel-in-progress: false }` at the workflow level to prevent conflicting concurrent runs
+   - Added `timeout-minutes: 10` to the job to cap worst-case total runtime
+   - Added `--max-time 60` to the `curl` API call to prevent hanging connections
+
+4. **Label creation without overwrite** (Issue 4 — Low):
+   - Replaced `gh label create --force` with `gh label create ... 2>/dev/null || true`
+   - Creates labels only if they don't exist; leaves existing labels (description, color) untouched
+
+5. **Workflow summary resilience** (Nitpick 2):
+   - No change needed — existing `2>/dev/null || echo 'N/A'` pattern already handles missing data gracefully
+
+#### Deliverables
+- [x] Tracker update step guarded by `API_ERRORS == '0'`
+- [x] AWK JSON escaping includes `\b` and `\f`
+- [x] Workflow-level concurrency group and job timeout
+- [x] `curl` API call has `--max-time 60`
+- [x] Label creation uses `2>/dev/null || true` instead of `--force`
 
 ---
 
