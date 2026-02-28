@@ -15,10 +15,15 @@ permissions:
   issues: write
   contents: write
 
+concurrency:
+  group: changelog-check
+  cancel-in-progress: false
+
 jobs:
   check-changelog:
     name: Check Claude Code Changelog
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -59,6 +64,8 @@ jobs:
               gsub(/\n/, "\\n", content)
               gsub(/\t/, "\\t", content)
               gsub(/\r/, "", content)
+              gsub(/\010/, "\\b", content)
+              gsub(/\014/, "\\f", content)
               printf "\n{\"version\":\"%s\",\"date\":\"%s\",\"content\":\"%s\"}", version, date, content
               first = 0
             }
@@ -91,6 +98,8 @@ jobs:
               gsub(/\n/, "\\n", content)
               gsub(/\t/, "\\t", content)
               gsub(/\r/, "", content)
+              gsub(/\010/, "\\b", content)
+              gsub(/\014/, "\\f", content)
               printf "\n{\"version\":\"%s\",\"date\":\"%s\",\"content\":\"%s\"}", version, date, content
             }
             printf "\n]"
@@ -261,7 +270,7 @@ jobs:
               }')
 
             # Call Anthropic API
-            HTTP_STATUS=$(curl -s -w "%{http_code}" -o "$RUNNER_TEMP/api-response-${VERSION}.json" \
+            HTTP_STATUS=$(curl -s --max-time 60 -w "%{http_code}" -o "$RUNNER_TEMP/api-response-${VERSION}.json" \
               -X POST "https://api.anthropic.com/v1/messages" \
               -H "x-api-key: ${ANTHROPIC_API_KEY}" \
               -H "anthropic-version: 2023-06-01" \
@@ -339,11 +348,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Ensuring required labels exist..."
-          gh label create "compatibility" --description "Upstream compatibility tracking" --color "D93F0B" --force
-          gh label create "automated" --description "Created by automated workflow" --color "BFD4F2" --force
-          gh label create "severity:high" --description "High severity — urgent response needed" --color "B60205" --force
-          gh label create "severity:medium" --description "Medium severity — should address soon" --color "FBCA04" --force
-          gh label create "severity:low" --description "Low severity — address when convenient" --color "0E8A16" --force
+          gh label create "compatibility" --description "Upstream compatibility tracking" --color "D93F0B" 2>/dev/null || true
+          gh label create "automated" --description "Created by automated workflow" --color "BFD4F2" 2>/dev/null || true
+          gh label create "severity:high" --description "High severity — urgent response needed" --color "B60205" 2>/dev/null || true
+          gh label create "severity:medium" --description "Medium severity — should address soon" --color "FBCA04" 2>/dev/null || true
+          gh label create "severity:low" --description "Low severity — address when convenient" --color "0E8A16" 2>/dev/null || true
           echo "Labels verified"
 
       - name: Create issues for relevant versions
@@ -456,7 +465,7 @@ jobs:
           echo "ISSUES_SKIPPED=${ISSUES_SKIPPED}" >> "$GITHUB_ENV"
 
       - name: Update changelog tracker
-        if: env.SKIP_REMAINING != 'true'
+        if: env.SKIP_REMAINING != 'true' && env.API_ERRORS == '0'
         env:
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
         run: |
