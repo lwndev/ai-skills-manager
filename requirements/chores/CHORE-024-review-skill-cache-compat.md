@@ -37,7 +37,7 @@ Claude Code v2.1.63 fixed `/clear` not resetting cached skills, which directly i
 
 **Completed:** 2026-03-07
 
-**Pull Request:** TBD
+**Pull Request:** [#106](https://github.com/lwndev/ai-skills-manager/pull/106)
 
 ## Notes
 
