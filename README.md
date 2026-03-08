@@ -1177,6 +1177,9 @@ ASM could not create the backup directory at `~/.asm/backups/`. Check permission
 **Error: Skill is currently being updated**
 Another update operation is in progress for this skill. Wait for it to complete or check if a stale lock file exists.
 
+**Installed or updated skill not showing up?**
+Claude Code caches skills in memory for the duration of a conversation. After running `asm install`, `asm update`, or `asm uninstall`, run `/clear` or start a new conversation to pick up the changes. See [Skill Cache Behavior](docs/asm/skill-cache-behavior.md) for details.
+
 ### Debug Mode
 
 For troubleshooting, you can enable debug logging by setting the `ASM_DEBUG` environment variable:
