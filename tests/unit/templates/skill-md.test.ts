@@ -281,6 +281,7 @@ describe('generateSkillMd', () => {
       expect(result).toContain('$0');
       expect(result).toContain('$ARGUMENTS[0]');
       expect(result).toContain('${CLAUDE_SESSION_ID}');
+      expect(result).toContain('${CLAUDE_SKILL_DIR}');
     });
 
     it('distinguishes Open Agent Skills Spec from Claude Code Extensions', () => {

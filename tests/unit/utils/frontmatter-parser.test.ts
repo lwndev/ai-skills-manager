@@ -313,6 +313,44 @@ Content.
       expect(result.data?.description).toContain('quotes');
       expect(result.data?.description).toContain('colons');
     });
+
+    it('handles description with colon when quoted', () => {
+      const content = `---
+name: my-skill
+description: "Use when: the user needs help"
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.description).toBe('Use when: the user needs help');
+    });
+
+    it('handles description with colon mid-value (YAML allows this)', () => {
+      const content = `---
+name: my-skill
+description: A skill that handles key:value pairs
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.description).toBe('A skill that handles key:value pairs');
+    });
+
+    it('handles missing description field', () => {
+      const content = `---
+name: my-skill
+---
+
+Content.
+`;
+      const result = parseFrontmatter(content);
+      expect(result.success).toBe(true);
+      expect(result.data?.description).toBeUndefined();
+    });
   });
 
   describe('allowed-tools normalization', () => {
