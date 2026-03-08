@@ -27,20 +27,20 @@ Review and address Claude Code v2.1.69 changes that affect ASM's skill system. T
 
 ## Acceptance Criteria
 
-- [ ] Verify description validation handles colons in description values (upstream fix for frontmatter parsing)
-- [ ] Verify skill scaffolding generates non-empty `description:` frontmatter (upstream now requires it for visibility)
-- [ ] Document `${CLAUDE_SKILL_DIR}` variable in scaffolding templates or guidance comments
-- [ ] Verify skill discovery logic does not load skills from gitignored directories
-- [ ] Test frontmatter parsing with edge cases: colons in values, missing description fields
-- [ ] All existing tests pass after changes (`npm run quality`)
+- [x] Verify description validation handles colons in description values (upstream fix for frontmatter parsing)
+- [x] Verify skill scaffolding generates non-empty `description:` frontmatter (upstream now requires it for visibility)
+- [x] Document `${CLAUDE_SKILL_DIR}` variable in scaffolding templates or guidance comments
+- [x] Verify skill discovery logic does not load skills from gitignored directories
+- [x] Test frontmatter parsing with edge cases: colons in values, missing description fields
+- [x] All existing tests pass after changes (`npm run quality`)
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-07
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#TBD](https://github.com/lwndev/ai-skills-manager/pull/TBD)
 
 ## Notes
 
