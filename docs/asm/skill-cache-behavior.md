@@ -8,12 +8,12 @@ Claude Code loads skill files from disk into memory at conversation start. Once 
 
 After installing, updating, or uninstalling a skill with ASM, use one of these methods to pick up the changes:
 
-1. **Run `/clear`** — Resets the conversation and reloads all skills from disk. Available since Claude Code v2.1.63.
+1. **Run `/clear`** — Resets the conversation and reloads all skills from disk (requires Claude Code v2.1.63+).
 2. **Start a new conversation** — Skills are always loaded fresh at conversation start.
 
 ### Claude Code Version Note
 
-In Claude Code versions **before v2.1.63**, the `/clear` command did not reset cached skills. Users on older versions must start a new conversation to pick up skill changes. Upgrading to v2.1.63 or later is recommended.
+The `/clear` cache reset was introduced in Claude Code v2.1.63. Earlier versions did not reset cached skills on `/clear`, requiring a new conversation to pick up skill changes. Upgrading to v2.1.63 or later is recommended.
 
 ## How ASM Interacts with Skills
 
