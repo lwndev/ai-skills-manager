@@ -39,7 +39,7 @@ Review and address Claude Code v2.1.71 changes that affect ASM's skill system. T
 
 **Completed:** 2026-03-07
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#109](https://github.com/lwndev/ai-skills-manager/pull/109)
 
 ## Notes
 
