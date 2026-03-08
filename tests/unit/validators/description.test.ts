@@ -30,6 +30,18 @@ describe('validateDescription', () => {
         valid: true,
       });
     });
+
+    it('accepts description with colons', () => {
+      expect(validateDescription('Use when: the user needs help')).toEqual({
+        valid: true,
+      });
+    });
+
+    it('accepts description with multiple colons', () => {
+      expect(validateDescription('Trigger: user says "run" or "execute". Context: any')).toEqual({
+        valid: true,
+      });
+    });
   });
 
   describe('invalid descriptions - empty', () => {

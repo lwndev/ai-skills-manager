@@ -571,6 +571,7 @@ Access skill arguments in your template:
 - $0 or $ARGUMENTS[0]: First argument passed to the skill
 - $1 or $ARGUMENTS[1]: Second argument
 - \${CLAUDE_SESSION_ID}: Current session identifier
+- \${CLAUDE_SKILL_DIR}: Resolves to this skill's directory path (since v2.1.69)
 - Use ARGUMENTS array for programmatic access in scripts
 
 BEST PRACTICES:
