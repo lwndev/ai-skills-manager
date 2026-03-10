@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan addresses the high false positive rate (75%) in the automated changelog-check workflow (FEAT-022). Four improvements target the root cause: the LLM lacks sufficient context about ASM's architectural boundaries, leading it to flag irrelevant Claude Code changes. The changes are confined to a single file (`.github/workflows/changelog-check.yml`) and involve enriching the ASM context, adding a codebase grep pre-filter, upgrading the analysis model, and tightening the relevance criteria.
+This plan addresses the high false positive rate (75%) in the automated changelog-check workflow (FEAT-022). Four phases target the root cause: the LLM lacks sufficient context about ASM's architectural boundaries, leading it to flag irrelevant Claude Code changes. The changes are confined to a single file (`.github/workflows/changelog-check.yml`) and involve enriching the ASM context (Phase 1), adding an `affected_asm_files` accountability field with a model upgrade (Phase 2), adding a codebase grep pre-filter (Phase 3), and auto-demoting low-confidence results where no affected files are identified (Phase 4).
 
 ## Features Summary
 
@@ -126,6 +126,45 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 
 ---
 
+### Phase 4: Low-Confidence Result Demotion
+**Feature:** [FEAT-023](../features/FEAT-023-changelog-check-false-positive-reduction.md) (FR-2, FR-5) | [#110](https://github.com/lwndev/ai-skills-manager/issues/110)
+**Status:** ✅ Complete
+
+#### Rationale
+- The low-confidence warning added in Phase 2 correctly identifies false positives (relevant=true, 0 affected files), but the workflow only logs a warning — it doesn't act on the signal
+- v2.1.70 is the sole remaining false positive and exhibits exactly this pattern: flagged as relevant with medium severity but zero affected ASM files
+- This phase converts the passive warning into an active demotion, closing the gap between detection and action
+- Two complementary changes: a prompt-level instruction (tell the LLM to self-correct) and a workflow-level safety net (auto-demote if it doesn't)
+- Placed after Phase 3 because it depends on the grep pre-filter and affected_asm_files field being stable
+
+#### Implementation Steps
+1. Add an explicit instruction to the system prompt (after the existing relevance criteria):
+   ```
+   - If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.
+   ```
+2. Add auto-demotion logic after the existing low-confidence warning (lines 404-406):
+   ```bash
+   if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -eq 0 ]; then
+     echo "  ::warning::v${VERSION} flagged as relevant but no affected ASM files — demoting to not relevant"
+     RELEVANT="false"
+     # Update the analysis JSON with the demotion
+     ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: no affected files identified]"')
+   fi
+   ```
+3. Update the dry-run output to indicate when a result was demoted so it's visible in workflow logs
+4. Test by running dry-run mode:
+   - v2.1.70 should now be demoted to not-relevant (was the remaining false positive)
+   - v2.1.71 should remain not-relevant (already correct)
+   - v2.1.69 should remain relevant with 2 affected files (not demoted)
+
+#### Deliverables
+- [x] System prompt updated with "must identify specific files" instruction
+- [x] Auto-demotion logic replaces passive low-confidence warning
+- [x] Dry-run output shows demotion events (demoted analysis logged before relevance collection)
+- [ ] Dry-run verification against v2.1.69 (still relevant), v2.1.70 (demoted), v2.1.71 (still not relevant)
+
+---
+
 ## Shared Infrastructure
 
 No new shared infrastructure required. All changes are confined to `.github/workflows/changelog-check.yml`.
@@ -137,9 +176,10 @@ No new shared infrastructure required. All changes are confined to `.github/work
 - Run `workflow_dispatch` with `dry-run: true` after each phase
 - Validate against known versions:
   - v2.1.70, v2.1.71 → expected: `relevant: false`
-  - v2.1.69 → expected: `relevant: true`
+  - v2.1.69 → expected: `relevant: true` with ≥1 affected file (not demoted)
 - Verify grep output appears in workflow logs (Phase 3)
 - Verify `affected_asm_files` field is populated appropriately (Phase 2)
+- Verify auto-demotion events appear in workflow logs when relevant=true but 0 affected files (Phase 4)
 
 ### No Automated Tests
 - This feature modifies a GitHub Actions workflow file, which cannot be unit tested
@@ -161,6 +201,7 @@ No new shared infrastructure required. All changes are confined to `.github/work
 | Over-correction causes false negatives | High | Low | Test against v2.1.69 (known true positive) in every phase; instructions explicitly say "no false negatives" |
 | Shell escaping issues in grep patterns | Medium | Medium | Sanitize extracted terms; use `grep -F` for literal matching where possible |
 | YAML syntax errors in workflow file | High | Low | Validate YAML after each edit; test with `act` locally if available |
+| Auto-demotion causes false negatives for novel changes | Medium | Low | Only demotes when affected_asm_files is empty; genuinely impactful changes (new file formats, path changes) will have identifiable files; v2.1.69 validation confirms true positives survive |
 
 ## Success Criteria
 

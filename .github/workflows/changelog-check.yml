@@ -348,7 +348,7 @@ jobs:
             # Build API request
             REQUEST_BODY=$(jq -n \
               --arg model "claude-sonnet-4-6" \
-              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n\nUse the analyze_changelog_impact tool to report your analysis." \
+              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n- If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.\n\nUse the analyze_changelog_impact tool to report your analysis." \
               --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}${GREP_SECTION}" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
@@ -402,7 +402,10 @@ jobs:
             echo "  Affected ASM files: ${AFFECTED_FILES}"
 
             if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -eq 0 ]; then
-              echo "  ::warning::v${VERSION} flagged as relevant but no affected ASM files specified — low confidence result"
+              echo "  ::warning::v${VERSION} flagged as relevant but no affected ASM files — demoting to not relevant"
+              RELEVANT="false"
+              ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: no affected files identified]"')
+              echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
             fi
 
             # In dry-run mode, log the full response
