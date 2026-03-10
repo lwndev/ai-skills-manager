@@ -170,6 +170,73 @@ jobs:
             echo "SKIP_REMAINING=false" >> "$GITHUB_ENV"
           fi
 
+      - name: Grep codebase for changelog terms
+        if: env.SKIP_REMAINING != 'true'
+        run: |
+          set -euo pipefail
+          echo "Extracting key terms from changelog entries and searching ASM codebase..."
+
+          VERSION_COUNT=$(jq 'length' "$RUNNER_TEMP/new-versions.json")
+
+          for i in $(seq 0 $((VERSION_COUNT - 1))); do
+            VERSION=$(jq -r ".[$i].version" "$RUNNER_TEMP/new-versions.json")
+            CONTENT=$(jq -r ".[$i].content" "$RUNNER_TEMP/new-versions.json")
+
+            echo ""
+            echo "--- Extracting terms for v${VERSION} ---"
+
+            # Extract key terms from changelog content:
+            # 1. Backtick-delimited terms (e.g., `SKILL.md`, `.claude/skills/`)
+            # 2. File paths (e.g., settings.json, *.md)
+            # 3. Quoted terms
+            TERMS=$( (echo "$CONTENT" | \
+              grep -oE '`[^`]+`' | sed 's/`//g' | head -15 || true; \
+              echo "$CONTENT" | \
+              grep -oE '[a-zA-Z0-9_/.-]+\.(md|json|yml|yaml|ts|js|toml)' | head -10 || true; \
+              echo "$CONTENT" | \
+              grep -oE '"[^"]{2,30}"' | sed 's/"//g' | head -5 || true) )
+
+            # Deduplicate and limit to 15 terms
+            TERMS=$(echo "$TERMS" | sort -u | head -15)
+
+            TERM_COUNT=$(echo "$TERMS" | grep -c . || echo "0")
+            echo "  Extracted ${TERM_COUNT} unique term(s)"
+
+            GREP_OUTPUT="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+
+            if [ "$TERM_COUNT" -eq 0 ]; then
+              echo "No specific technical terms could be extracted for codebase search." > "$GREP_OUTPUT"
+              echo "  No terms extracted — skipping grep"
+              continue
+            fi
+
+            # Search ASM's src/ directory for each term
+            > "$GREP_OUTPUT"
+            while IFS= read -r term; do
+              [ -z "$term" ] && continue
+              echo "  Searching for: $term"
+              echo "### \`$term\`" >> "$GREP_OUTPUT"
+              # Use -F for literal matching, -I to skip binary files, -rn for recursive with line numbers
+              MATCHES=$(grep -FIrn "$term" src/ 2>/dev/null | head -5 || true)
+              if [ -n "$MATCHES" ]; then
+                echo "$MATCHES" >> "$GREP_OUTPUT"
+              else
+                echo "No matches in src/" >> "$GREP_OUTPUT"
+              fi
+              echo "" >> "$GREP_OUTPUT"
+            done <<< "$TERMS"
+
+            # Truncate grep output to 2000 characters to stay within token limits
+            GREP_SIZE=$(wc -c < "$GREP_OUTPUT")
+            if [ "$GREP_SIZE" -gt 2000 ]; then
+              echo "  Truncating grep output from ${GREP_SIZE} to 2000 characters"
+              head -c 2000 "$GREP_OUTPUT" > "$GREP_OUTPUT.tmp" && mv "$GREP_OUTPUT.tmp" "$GREP_OUTPUT"
+              echo -e "\n\n[... output truncated at 2000 characters ...]" >> "$GREP_OUTPUT"
+            fi
+
+            echo "  Grep results saved ($(wc -c < "$GREP_OUTPUT") bytes)"
+          done
+
       - name: Analyze changelog impact with LLM
         if: env.SKIP_REMAINING != 'true'
         env:
@@ -180,21 +247,32 @@ jobs:
           ASM_CONTEXT=$(cat <<'CONTEXT'
           AI Skills Manager (ASM) is a TypeScript CLI tool for managing Claude Code Agent Skills.
           It provides commands to: scaffold, validate, package, install, update, uninstall, and list skills.
+          ASM operates entirely at the filesystem level — it reads and writes files, but never interacts with Claude Code at runtime.
 
-          ASM's touchpoints with Claude Code include:
-          - The `.claude/skills/` directory structure (where skills are installed)
-          - SKILL.md frontmatter schema (YAML metadata: name, version, description, triggers, compatibility)
-          - Skill discovery (how Claude Code finds and loads installed skills)
-          - CLI compatibility flags (e.g., `claude-code>=2.1` in frontmatter)
-          - The `.claude/` configuration directory structure and settings files
+          ASM ONLY interacts with:
+          - Files in `.claude/skills/` and `~/.claude/skills/` directories (reading, writing, deleting SKILL.md files)
+          - SKILL.md file content: frontmatter YAML (name, version, description, triggers, compatibility) and markdown body
+          - Directory structure scanning for SKILL.md files (skill discovery)
+          - Package archives (`.tar.gz`) for skill distribution
+          - The `claude-code>=X.Y` compatibility flag in frontmatter (version string comparison only)
+
+          ASM does NOT interact with:
+          - Claude Code's runtime or conversation system
+          - Settings files (`settings.json`, `settings.local.json`, or any non-skill config)
+          - Plugin installation or management
+          - Claude Code's internal prompt or token optimization
+          - Slash commands or their execution
+          - The Claude Code CLI process itself (ASM is a separate CLI tool)
+          - MCP servers, tools, or any runtime integrations
+          - Claude Code's authentication, billing, or account management
 
           Impact categories to assess:
-          - skills-system: Changes to skill format, discovery, installation, or execution
-          - frontmatter: Changes to YAML frontmatter fields, schema, or validation
-          - cli-behavior: Changes to Claude Code CLI that affect how ASM interacts with it
-          - config-paths: Changes to `.claude/` directory structure, settings files, or skill storage locations
-          - breaking-change: Any backward-incompatible change that could break existing ASM functionality
-          - deprecation: Any deprecated feature that ASM currently depends on
+          - skills-system: Changes to skill file format, `.claude/skills/` directory structure, or skill discovery mechanism
+          - frontmatter: Changes to YAML frontmatter fields, schema, or validation rules for SKILL.md files
+          - cli-behavior: Changes that alter the `.claude/skills/` directory contract or SKILL.md file contract
+          - config-paths: Changes to `.claude/skills/` directory location or SKILL.md file naming
+          - breaking-change: Any backward-incompatible change to skill file format or directory structure
+          - deprecation: Any deprecated feature related to skill files or the `.claude/skills/` directory
           CONTEXT
           )
 
@@ -231,9 +309,14 @@ jobs:
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Specific ASM areas or code to review/update (empty array if not relevant)"
+                },
+                "affected_asm_files": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Specific ASM source files in src/ that would need modifications. Empty array if no files are affected."
                 }
               },
-              "required": ["relevant", "impact_categories", "severity", "summary", "suggested_actions"]
+              "required": ["relevant", "impact_categories", "severity", "summary", "suggested_actions", "affected_asm_files"]
             }
           }
           TOOLDEF
@@ -254,11 +337,28 @@ jobs:
             echo ""
             echo "--- Analyzing v${VERSION} (${DATE:-no date}) ---"
 
+            # Load grep results for this version (if available)
+            GREP_SECTION_FILE="$RUNNER_TEMP/grep-section-${VERSION}.txt"
+            GREP_RESULTS_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+            if [ -f "$GREP_RESULTS_FILE" ]; then
+              {
+                printf '\n\n## Codebase Grep Results\n\nThe following terms from the changelog were searched in ASM'\''s src/ directory:\n\n'
+                cat "$GREP_RESULTS_FILE"
+              } > "$GREP_SECTION_FILE"
+            else
+              printf '\n\n## Codebase Grep Results\n\nNo specific technical terms could be extracted for codebase search.' > "$GREP_SECTION_FILE"
+            fi
+
+            # Build user message content file for safe jq ingestion
+            CONTENT_FILE="$RUNNER_TEMP/llm-content-${VERSION}.txt"
+            printf '## Claude Code v%s (%s)\n\n%s' "$VERSION" "$DATE" "$CONTENT" > "$CONTENT_FILE"
+            cat "$GREP_SECTION_FILE" >> "$CONTENT_FILE"
+
             # Build API request
             REQUEST_BODY=$(jq -n \
-              --arg model "claude-haiku-4-5-20251001" \
-              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nUse the analyze_changelog_impact tool to report your analysis." \
-              --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}" \
+              --arg model "claude-sonnet-4-6" \
+              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n- If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.\n- Your affected_asm_files claims must be supported by the codebase grep results. If the grep results show no matches for changelog terms in a file, do not list that file as affected.\n\nUse the analyze_changelog_impact tool to report your analysis." \
+              --rawfile content "$CONTENT_FILE" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
                 model: $model,
@@ -303,10 +403,40 @@ jobs:
             RELEVANT=$(echo "$ANALYSIS" | jq -r '.relevant')
             SEVERITY=$(echo "$ANALYSIS" | jq -r '.severity')
             SUMMARY=$(echo "$ANALYSIS" | jq -r '.summary')
+            AFFECTED_FILES=$(echo "$ANALYSIS" | jq -r '.affected_asm_files | length')
 
             echo "  Relevant: ${RELEVANT}"
             echo "  Severity: ${SEVERITY}"
             echo "  Summary: ${SUMMARY}"
+            echo "  Affected ASM files: ${AFFECTED_FILES}"
+
+            if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -eq 0 ]; then
+              echo "  ::warning::v${VERSION} flagged as relevant but no affected ASM files — demoting to not relevant"
+              RELEVANT="false"
+              ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: no affected files identified]"')
+              echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+            fi
+
+            # Phase 5: Cross-reference affected files against grep results
+            if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -gt 0 ]; then
+              CORROBORATION_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+              CORROBORATED=0
+              if [ -f "$CORROBORATION_FILE" ]; then
+                for af in $(echo "$ANALYSIS" | jq -r '.affected_asm_files[]'); do
+                  if grep -q "$af" "$CORROBORATION_FILE"; then
+                    CORROBORATED=$((CORROBORATED + 1))
+                  fi
+                done
+              fi
+              if [ "$CORROBORATED" -eq 0 ]; then
+                echo "  ::warning::v${VERSION} affected files not corroborated by grep results — demoting to not relevant"
+                RELEVANT="false"
+                ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: affected files not found in grep results]"')
+                echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+              else
+                echo "  Grep corroboration: ${CORROBORATED}/${AFFECTED_FILES} affected file(s) confirmed"
+              fi
+            fi
 
             # In dry-run mode, log the full response
             if [ "$DRY_RUN" = "true" ]; then
@@ -381,8 +511,9 @@ jobs:
             SUMMARY=$(jq -r ".[$i].analysis.summary" "$RUNNER_TEMP/relevant-versions.json")
             CATEGORIES=$(jq -r ".[$i].analysis.impact_categories | join(\", \")" "$RUNNER_TEMP/relevant-versions.json")
 
-            # Get raw changelog content for this version from new-versions.json
+            # Get raw changelog content and affected files for this version
             RAW_CONTENT=$(jq -r --arg v "$VERSION" '.[] | select(.version == $v) | .content' "$RUNNER_TEMP/new-versions.json")
+            AFFECTED_ASM_FILES=$(jq -r ".[$i].analysis.affected_asm_files // [] | .[]" "$RUNNER_TEMP/relevant-versions.json")
 
             echo ""
             echo "--- v${VERSION} ---"
@@ -432,6 +563,14 @@ jobs:
               echo ""
               echo "${ACTIONS_MD}"
               echo ""
+              if [ -n "$AFFECTED_ASM_FILES" ]; then
+                echo "## Affected Files"
+                echo ""
+                echo "$AFFECTED_ASM_FILES" | while read -r f; do
+                  echo "- \`$f\`"
+                done
+                echo ""
+              fi
               echo "## References"
               echo ""
               echo "- [Full changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)"
