@@ -180,21 +180,32 @@ jobs:
           ASM_CONTEXT=$(cat <<'CONTEXT'
           AI Skills Manager (ASM) is a TypeScript CLI tool for managing Claude Code Agent Skills.
           It provides commands to: scaffold, validate, package, install, update, uninstall, and list skills.
+          ASM operates entirely at the filesystem level — it reads and writes files, but never interacts with Claude Code at runtime.
 
-          ASM's touchpoints with Claude Code include:
-          - The `.claude/skills/` directory structure (where skills are installed)
-          - SKILL.md frontmatter schema (YAML metadata: name, version, description, triggers, compatibility)
-          - Skill discovery (how Claude Code finds and loads installed skills)
-          - CLI compatibility flags (e.g., `claude-code>=2.1` in frontmatter)
-          - The `.claude/` configuration directory structure and settings files
+          ASM ONLY interacts with:
+          - Files in `.claude/skills/` and `~/.claude/skills/` directories (reading, writing, deleting SKILL.md files)
+          - SKILL.md file content: frontmatter YAML (name, version, description, triggers, compatibility) and markdown body
+          - Directory structure scanning for SKILL.md files (skill discovery)
+          - Package archives (`.tar.gz`) for skill distribution
+          - The `claude-code>=X.Y` compatibility flag in frontmatter (version string comparison only)
+
+          ASM does NOT interact with:
+          - Claude Code's runtime or conversation system
+          - Settings files (`settings.json`, `settings.local.json`, or any non-skill config)
+          - Plugin installation or management
+          - Claude Code's internal prompt or token optimization
+          - Slash commands or their execution
+          - The Claude Code CLI process itself (ASM is a separate CLI tool)
+          - MCP servers, tools, or any runtime integrations
+          - Claude Code's authentication, billing, or account management
 
           Impact categories to assess:
-          - skills-system: Changes to skill format, discovery, installation, or execution
-          - frontmatter: Changes to YAML frontmatter fields, schema, or validation
-          - cli-behavior: Changes to Claude Code CLI that affect how ASM interacts with it
-          - config-paths: Changes to `.claude/` directory structure, settings files, or skill storage locations
-          - breaking-change: Any backward-incompatible change that could break existing ASM functionality
-          - deprecation: Any deprecated feature that ASM currently depends on
+          - skills-system: Changes to skill file format, `.claude/skills/` directory structure, or skill discovery mechanism
+          - frontmatter: Changes to YAML frontmatter fields, schema, or validation rules for SKILL.md files
+          - cli-behavior: Changes that alter the `.claude/skills/` directory contract or SKILL.md file contract
+          - config-paths: Changes to `.claude/skills/` directory location or SKILL.md file naming
+          - breaking-change: Any backward-incompatible change to skill file format or directory structure
+          - deprecation: Any deprecated feature related to skill files or the `.claude/skills/` directory
           CONTEXT
           )
 
@@ -257,7 +268,7 @@ jobs:
             # Build API request
             REQUEST_BODY=$(jq -n \
               --arg model "claude-haiku-4-5-20251001" \
-              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nUse the analyze_changelog_impact tool to report your analysis." \
+              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n\nUse the analyze_changelog_impact tool to report your analysis." \
               --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
