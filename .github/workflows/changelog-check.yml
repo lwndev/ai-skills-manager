@@ -170,6 +170,72 @@ jobs:
             echo "SKIP_REMAINING=false" >> "$GITHUB_ENV"
           fi
 
+      - name: Grep codebase for changelog terms
+        if: env.SKIP_REMAINING != 'true'
+        run: |
+          echo "Extracting key terms from changelog entries and searching ASM codebase..."
+
+          VERSION_COUNT=$(jq 'length' "$RUNNER_TEMP/new-versions.json")
+
+          for i in $(seq 0 $((VERSION_COUNT - 1))); do
+            VERSION=$(jq -r ".[$i].version" "$RUNNER_TEMP/new-versions.json")
+            CONTENT=$(jq -r ".[$i].content" "$RUNNER_TEMP/new-versions.json")
+
+            echo ""
+            echo "--- Extracting terms for v${VERSION} ---"
+
+            # Extract key terms from changelog content:
+            # 1. Backtick-delimited terms (e.g., `SKILL.md`, `.claude/skills/`)
+            # 2. File paths (e.g., settings.json, *.md)
+            # 3. Quoted terms
+            TERMS=$(echo "$CONTENT" | \
+              grep -oE '`[^`]+`' | sed 's/`//g' | head -15; \
+              echo "$CONTENT" | \
+              grep -oE '[a-zA-Z0-9_/.-]+\.(md|json|yml|yaml|ts|js|toml)' | head -10; \
+              echo "$CONTENT" | \
+              grep -oE '"[^"]{2,30}"' | sed 's/"//g' | head -5)
+
+            # Deduplicate and limit to 15 terms
+            TERMS=$(echo "$TERMS" | sort -u | head -15)
+
+            TERM_COUNT=$(echo "$TERMS" | grep -c . || echo "0")
+            echo "  Extracted ${TERM_COUNT} unique term(s)"
+
+            GREP_OUTPUT="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+
+            if [ "$TERM_COUNT" -eq 0 ]; then
+              echo "No specific technical terms could be extracted for codebase search." > "$GREP_OUTPUT"
+              echo "  No terms extracted — skipping grep"
+              continue
+            fi
+
+            # Search ASM's src/ directory for each term
+            > "$GREP_OUTPUT"
+            while IFS= read -r term; do
+              [ -z "$term" ] && continue
+              echo "  Searching for: $term"
+              echo "### \`$term\`" >> "$GREP_OUTPUT"
+              # Use -F for literal matching, -I to skip binary files, -rn for recursive with line numbers
+              MATCHES=$(grep -FIrn "$term" src/ 2>/dev/null | head -5)
+              if [ -n "$MATCHES" ]; then
+                echo "$MATCHES" >> "$GREP_OUTPUT"
+              else
+                echo "No matches in src/" >> "$GREP_OUTPUT"
+              fi
+              echo "" >> "$GREP_OUTPUT"
+            done <<< "$TERMS"
+
+            # Truncate grep output to 2000 characters to stay within token limits
+            GREP_SIZE=$(wc -c < "$GREP_OUTPUT")
+            if [ "$GREP_SIZE" -gt 2000 ]; then
+              echo "  Truncating grep output from ${GREP_SIZE} to 2000 characters"
+              truncate -s 2000 "$GREP_OUTPUT"
+              echo -e "\n\n[... output truncated at 2000 characters ...]" >> "$GREP_OUTPUT"
+            fi
+
+            echo "  Grep results saved ($(wc -c < "$GREP_OUTPUT") bytes)"
+          done
+
       - name: Analyze changelog impact with LLM
         if: env.SKIP_REMAINING != 'true'
         env:
@@ -270,11 +336,20 @@ jobs:
             echo ""
             echo "--- Analyzing v${VERSION} (${DATE:-no date}) ---"
 
+            # Load grep results for this version (if available)
+            GREP_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+            if [ -f "$GREP_FILE" ]; then
+              GREP_RESULTS=$(cat "$GREP_FILE")
+              GREP_SECTION="\n\n## Codebase Grep Results\n\nThe following terms from the changelog were searched in ASM's src/ directory:\n\n${GREP_RESULTS}"
+            else
+              GREP_SECTION="\n\n## Codebase Grep Results\n\nNo specific technical terms could be extracted for codebase search."
+            fi
+
             # Build API request
             REQUEST_BODY=$(jq -n \
               --arg model "claude-sonnet-4-6" \
               --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n\nUse the analyze_changelog_impact tool to report your analysis." \
-              --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}" \
+              --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}${GREP_SECTION}" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
                 model: $model,

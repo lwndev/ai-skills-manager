@@ -81,7 +81,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 
 ### Phase 3: Add Codebase Grep Pre-Filter
 **Feature:** [FEAT-023](../features/FEAT-023-changelog-check-false-positive-reduction.md) (FR-3) | [#110](https://github.com/lwndev/ai-skills-manager/issues/110)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Most complex change — adds a new workflow step and modifies how the LLM prompt is constructed
@@ -118,10 +118,10 @@ This plan addresses the high false positive rate (75%) in the automated changelo
    - v2.1.69 should show matches for relevant terms and remain flagged
 
 #### Deliverables
-- [ ] New "Grep codebase for changelog terms" workflow step
-- [ ] Term extraction logic with reasonable limits
-- [ ] Grep results passed to LLM as additional context
-- [ ] Edge case handling (no terms, long output, binary files)
+- [x] New "Grep codebase for changelog terms" workflow step
+- [x] Term extraction logic with reasonable limits
+- [x] Grep results passed to LLM as additional context
+- [x] Edge case handling (no terms, long output, binary files)
 - [ ] Full end-to-end dry-run verification against v2.1.69, v2.1.70, v2.1.71
 
 ---
