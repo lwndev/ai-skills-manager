@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan addresses the high false positive rate (75%) in the automated changelog-check workflow (FEAT-022). Four phases target the root cause: the LLM lacks sufficient context about ASM's architectural boundaries, leading it to flag irrelevant Claude Code changes. The changes are confined to a single file (`.github/workflows/changelog-check.yml`) and involve enriching the ASM context (Phase 1), adding an `affected_asm_files` accountability field with a model upgrade (Phase 2), adding a codebase grep pre-filter (Phase 3), and auto-demoting low-confidence results where no affected files are identified (Phase 4).
+This plan addresses the high false positive rate (75%) in the automated changelog-check workflow (FEAT-022). Five phases target the root cause: the LLM lacks sufficient context about ASM's architectural boundaries, leading it to flag irrelevant Claude Code changes. The changes are confined to a single file (`.github/workflows/changelog-check.yml`) and involve enriching the ASM context (Phase 1), adding an `affected_asm_files` accountability field with a model upgrade (Phase 2), adding a codebase grep pre-filter (Phase 3), auto-demoting low-confidence results where no affected files are identified (Phase 4), and cross-referencing claimed affected files against grep evidence (Phase 5).
 
 ## Features Summary
 
@@ -165,6 +165,59 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 
 ---
 
+### Phase 5: Grep-Corroborated Affected Files Validation
+**Feature:** [FEAT-023](../features/FEAT-023-changelog-check-false-positive-reduction.md) (FR-2, FR-3) | [#110](https://github.com/lwndev/ai-skills-manager/issues/110)
+**Status:** ✅ Complete
+
+#### Rationale
+- Phase 4 dry-run revealed the LLM can fabricate plausible-sounding affected files to justify a relevance claim — v2.1.70 named `src/commands/list.ts` as affected by a "skill listing re-injection" runtime fix, even though the grep pre-filter found no related matches in that file
+- The grep results from Phase 3 already provide ground-truth evidence of which files reference changelog terms, but this evidence is only used as LLM context — not as a hard validation gate
+- This phase cross-references the LLM's `affected_asm_files` claims against the grep results: if none of the claimed files appear in the grep output, the claim is unsupported and the result is demoted
+- This creates a two-layer demotion system: Phase 4 catches zero-file claims, Phase 5 catches fabricated-file claims
+- No additional API calls or workflow steps required — just post-processing logic after the existing LLM analysis
+
+#### Implementation Steps
+1. After the Phase 4 auto-demotion check, add a grep-corroboration check for results that are still `relevant=true`:
+   ```bash
+   if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -gt 0 ]; then
+     # Cross-reference affected files against grep results
+     GREP_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+     CORROBORATED=0
+     if [ -f "$GREP_FILE" ]; then
+       # Check if any affected file path appears in the grep results
+       for af in $(echo "$ANALYSIS" | jq -r '.affected_asm_files[]'); do
+         if grep -q "$af" "$GREP_FILE"; then
+           CORROBORATED=$((CORROBORATED + 1))
+         fi
+       done
+     fi
+     if [ "$CORROBORATED" -eq 0 ]; then
+       echo "  ::warning::v${VERSION} affected files not corroborated by grep results — demoting to not relevant"
+       RELEVANT="false"
+       ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: affected files not found in grep results]"')
+       echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+     else
+       echo "  Grep corroboration: ${CORROBORATED}/${AFFECTED_FILES} affected file(s) confirmed"
+     fi
+   fi
+   ```
+2. Add a prompt instruction to reinforce evidence-based reasoning (append to existing relevance criteria):
+   ```
+   - Your affected_asm_files claims must be supported by the codebase grep results. If the grep results show no matches for changelog terms in a file, do not list that file as affected.
+   ```
+3. Test by running dry-run mode:
+   - v2.1.70: LLM may still claim `src/commands/list.ts`, but grep results won't contain that file for the "skill listing re-injection" terms → demoted
+   - v2.1.69: grep results contain matches in the claimed affected files (frontmatter parsing, skill discovery) → not demoted
+   - v2.1.71: already not relevant → unaffected
+
+#### Deliverables
+- [x] Grep-corroboration logic added after Phase 4 demotion check
+- [x] System prompt updated with grep-evidence instruction
+- [x] Dry-run output shows corroboration counts for relevant results
+- [ ] Dry-run verification against v2.1.69 (corroborated), v2.1.70 (demoted), v2.1.71 (still not relevant)
+
+---
+
 ## Shared Infrastructure
 
 No new shared infrastructure required. All changes are confined to `.github/workflows/changelog-check.yml`.
@@ -202,6 +255,7 @@ No new shared infrastructure required. All changes are confined to `.github/work
 | Shell escaping issues in grep patterns | Medium | Medium | Sanitize extracted terms; use `grep -F` for literal matching where possible |
 | YAML syntax errors in workflow file | High | Low | Validate YAML after each edit; test with `act` locally if available |
 | Auto-demotion causes false negatives for novel changes | Medium | Low | Only demotes when affected_asm_files is empty; genuinely impactful changes (new file formats, path changes) will have identifiable files; v2.1.69 validation confirms true positives survive |
+| Grep-corroboration too strict for novel terms not yet in codebase | Medium | Low | Only triggers when LLM claims specific files are affected but grep found no changelog terms in those files; truly novel changes (e.g., new directory paths) would still have terms like `.claude/skills/` matching in existing code; v2.1.69 validates that genuine impacts survive corroboration |
 
 ## Success Criteria
 

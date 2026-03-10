@@ -348,7 +348,7 @@ jobs:
             # Build API request
             REQUEST_BODY=$(jq -n \
               --arg model "claude-sonnet-4-6" \
-              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n- If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.\n\nUse the analyze_changelog_impact tool to report your analysis." \
+              --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n- If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.\n- Your affected_asm_files claims must be supported by the codebase grep results. If the grep results show no matches for changelog terms in a file, do not list that file as affected.\n\nUse the analyze_changelog_impact tool to report your analysis." \
               --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}${GREP_SECTION}" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
@@ -406,6 +406,27 @@ jobs:
               RELEVANT="false"
               ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: no affected files identified]"')
               echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+            fi
+
+            # Phase 5: Cross-reference affected files against grep results
+            if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -gt 0 ]; then
+              GREP_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+              CORROBORATED=0
+              if [ -f "$GREP_FILE" ]; then
+                for af in $(echo "$ANALYSIS" | jq -r '.affected_asm_files[]'); do
+                  if grep -q "$af" "$GREP_FILE"; then
+                    CORROBORATED=$((CORROBORATED + 1))
+                  fi
+                done
+              fi
+              if [ "$CORROBORATED" -eq 0 ]; then
+                echo "  ::warning::v${VERSION} affected files not corroborated by grep results — demoting to not relevant"
+                RELEVANT="false"
+                ANALYSIS=$(echo "$ANALYSIS" | jq '.relevant = false | .severity = "low" | .summary = .summary + " [auto-demoted: affected files not found in grep results]"')
+                echo "$ANALYSIS" > "$RUNNER_TEMP/analysis-${VERSION}.json"
+              else
+                echo "  Grep corroboration: ${CORROBORATED}/${AFFECTED_FILES} affected file(s) confirmed"
+              fi
             fi
 
             # In dry-run mode, log the full response
