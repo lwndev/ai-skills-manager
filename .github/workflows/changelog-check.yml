@@ -242,9 +242,14 @@ jobs:
                   "type": "array",
                   "items": { "type": "string" },
                   "description": "Specific ASM areas or code to review/update (empty array if not relevant)"
+                },
+                "affected_asm_files": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Specific ASM source files in src/ that would need modifications. Empty array if no files are affected."
                 }
               },
-              "required": ["relevant", "impact_categories", "severity", "summary", "suggested_actions"]
+              "required": ["relevant", "impact_categories", "severity", "summary", "suggested_actions", "affected_asm_files"]
             }
           }
           TOOLDEF
@@ -267,7 +272,7 @@ jobs:
 
             # Build API request
             REQUEST_BODY=$(jq -n \
-              --arg model "claude-haiku-4-5-20251001" \
+              --arg model "claude-sonnet-4-6" \
               --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n\nUse the analyze_changelog_impact tool to report your analysis." \
               --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}" \
               --argjson tools "[$TOOL_SCHEMA]" \
@@ -314,10 +319,16 @@ jobs:
             RELEVANT=$(echo "$ANALYSIS" | jq -r '.relevant')
             SEVERITY=$(echo "$ANALYSIS" | jq -r '.severity')
             SUMMARY=$(echo "$ANALYSIS" | jq -r '.summary')
+            AFFECTED_FILES=$(echo "$ANALYSIS" | jq -r '.affected_asm_files | length')
 
             echo "  Relevant: ${RELEVANT}"
             echo "  Severity: ${SEVERITY}"
             echo "  Summary: ${SUMMARY}"
+            echo "  Affected ASM files: ${AFFECTED_FILES}"
+
+            if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -eq 0 ]; then
+              echo "  ::warning::v${VERSION} flagged as relevant but no affected ASM files specified — low confidence result"
+            fi
 
             # In dry-run mode, log the full response
             if [ "$DRY_RUN" = "true" ]; then
@@ -392,8 +403,9 @@ jobs:
             SUMMARY=$(jq -r ".[$i].analysis.summary" "$RUNNER_TEMP/relevant-versions.json")
             CATEGORIES=$(jq -r ".[$i].analysis.impact_categories | join(\", \")" "$RUNNER_TEMP/relevant-versions.json")
 
-            # Get raw changelog content for this version from new-versions.json
+            # Get raw changelog content and affected files for this version
             RAW_CONTENT=$(jq -r --arg v "$VERSION" '.[] | select(.version == $v) | .content' "$RUNNER_TEMP/new-versions.json")
+            AFFECTED_ASM_FILES=$(jq -r ".[$i].analysis.affected_asm_files // [] | .[]" "$RUNNER_TEMP/relevant-versions.json")
 
             echo ""
             echo "--- v${VERSION} ---"
@@ -443,6 +455,14 @@ jobs:
               echo ""
               echo "${ACTIONS_MD}"
               echo ""
+              if [ -n "$AFFECTED_ASM_FILES" ]; then
+                echo "## Affected Files"
+                echo ""
+                echo "$AFFECTED_ASM_FILES" | while read -r f; do
+                  echo "- \`$f\`"
+                done
+                echo ""
+              fi
               echo "## References"
               echo ""
               echo "- [Full changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)"

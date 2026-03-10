@@ -41,7 +41,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 
 ### Phase 2: Add `affected_asm_files` Field and Upgrade Model
 **Feature:** [FEAT-023](../features/FEAT-023-changelog-check-false-positive-reduction.md) (FR-2, FR-4) | [#110](https://github.com/lwndev/ai-skills-manager/issues/110)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Combines two complementary changes: the `affected_asm_files` field forces the LLM to provide concrete evidence, and the Sonnet upgrade gives it the reasoning capability to use that field well
@@ -71,11 +71,11 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 6. Test by running dry-run and verifying the model produces reasonable file paths for genuinely relevant versions
 
 #### Deliverables
-- [ ] `affected_asm_files` field added to tool schema with `required` constraint
-- [ ] Model upgraded from `claude-haiku-4-5-20251001` to `claude-sonnet-4-6`
-- [ ] Low-confidence warning for relevant results with empty affected files
-- [ ] Affected files section in issue body template
-- [ ] Dry-run verification
+- [x] `affected_asm_files` field added to tool schema with `required` constraint
+- [x] Model upgraded from `claude-haiku-4-5-20251001` to `claude-sonnet-4-6`
+- [x] Low-confidence warning for relevant results with empty affected files
+- [x] Affected files section in issue body template
+- [ ] Dry-run verification (manual — run workflow after merge)
 
 ---
 
