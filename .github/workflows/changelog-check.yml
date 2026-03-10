@@ -173,6 +173,7 @@ jobs:
       - name: Grep codebase for changelog terms
         if: env.SKIP_REMAINING != 'true'
         run: |
+          set -euo pipefail
           echo "Extracting key terms from changelog entries and searching ASM codebase..."
 
           VERSION_COUNT=$(jq 'length' "$RUNNER_TEMP/new-versions.json")
@@ -188,12 +189,12 @@ jobs:
             # 1. Backtick-delimited terms (e.g., `SKILL.md`, `.claude/skills/`)
             # 2. File paths (e.g., settings.json, *.md)
             # 3. Quoted terms
-            TERMS=$(echo "$CONTENT" | \
-              grep -oE '`[^`]+`' | sed 's/`//g' | head -15; \
+            TERMS=$( (echo "$CONTENT" | \
+              grep -oE '`[^`]+`' | sed 's/`//g' | head -15 || true; \
               echo "$CONTENT" | \
-              grep -oE '[a-zA-Z0-9_/.-]+\.(md|json|yml|yaml|ts|js|toml)' | head -10; \
+              grep -oE '[a-zA-Z0-9_/.-]+\.(md|json|yml|yaml|ts|js|toml)' | head -10 || true; \
               echo "$CONTENT" | \
-              grep -oE '"[^"]{2,30}"' | sed 's/"//g' | head -5)
+              grep -oE '"[^"]{2,30}"' | sed 's/"//g' | head -5 || true) )
 
             # Deduplicate and limit to 15 terms
             TERMS=$(echo "$TERMS" | sort -u | head -15)
@@ -216,7 +217,7 @@ jobs:
               echo "  Searching for: $term"
               echo "### \`$term\`" >> "$GREP_OUTPUT"
               # Use -F for literal matching, -I to skip binary files, -rn for recursive with line numbers
-              MATCHES=$(grep -FIrn "$term" src/ 2>/dev/null | head -5)
+              MATCHES=$(grep -FIrn "$term" src/ 2>/dev/null | head -5 || true)
               if [ -n "$MATCHES" ]; then
                 echo "$MATCHES" >> "$GREP_OUTPUT"
               else
@@ -229,7 +230,7 @@ jobs:
             GREP_SIZE=$(wc -c < "$GREP_OUTPUT")
             if [ "$GREP_SIZE" -gt 2000 ]; then
               echo "  Truncating grep output from ${GREP_SIZE} to 2000 characters"
-              truncate -s 2000 "$GREP_OUTPUT"
+              head -c 2000 "$GREP_OUTPUT" > "$GREP_OUTPUT.tmp" && mv "$GREP_OUTPUT.tmp" "$GREP_OUTPUT"
               echo -e "\n\n[... output truncated at 2000 characters ...]" >> "$GREP_OUTPUT"
             fi
 
@@ -337,19 +338,27 @@ jobs:
             echo "--- Analyzing v${VERSION} (${DATE:-no date}) ---"
 
             # Load grep results for this version (if available)
-            GREP_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
-            if [ -f "$GREP_FILE" ]; then
-              GREP_RESULTS=$(cat "$GREP_FILE")
-              GREP_SECTION="\n\n## Codebase Grep Results\n\nThe following terms from the changelog were searched in ASM's src/ directory:\n\n${GREP_RESULTS}"
+            GREP_SECTION_FILE="$RUNNER_TEMP/grep-section-${VERSION}.txt"
+            GREP_RESULTS_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+            if [ -f "$GREP_RESULTS_FILE" ]; then
+              {
+                printf '\n\n## Codebase Grep Results\n\nThe following terms from the changelog were searched in ASM'\''s src/ directory:\n\n'
+                cat "$GREP_RESULTS_FILE"
+              } > "$GREP_SECTION_FILE"
             else
-              GREP_SECTION="\n\n## Codebase Grep Results\n\nNo specific technical terms could be extracted for codebase search."
+              printf '\n\n## Codebase Grep Results\n\nNo specific technical terms could be extracted for codebase search.' > "$GREP_SECTION_FILE"
             fi
+
+            # Build user message content file for safe jq ingestion
+            CONTENT_FILE="$RUNNER_TEMP/llm-content-${VERSION}.txt"
+            printf '## Claude Code v%s (%s)\n\n%s' "$VERSION" "$DATE" "$CONTENT" > "$CONTENT_FILE"
+            cat "$GREP_SECTION_FILE" >> "$CONTENT_FILE"
 
             # Build API request
             REQUEST_BODY=$(jq -n \
               --arg model "claude-sonnet-4-6" \
               --arg system "You are a software compatibility analyst. Analyze the following Claude Code changelog entry and determine its impact on AI Skills Manager (ASM).\n\n${ASM_CONTEXT}\n\nIMPORTANT RELEVANCE CRITERIA:\n- Only mark as relevant if the change would require ASM code modifications or would break existing ASM functionality. Documentation-only or 'good to know' items should be marked as not relevant.\n- Changes to Claude Code's internal runtime, conversation handling, prompt optimization, settings management, or plugin system are NOT relevant to ASM unless they directly change the skill file format or .claude/skills/ directory structure.\n- If a change mentions 'skills' but only affects how Claude Code executes or loads skills at runtime (not how skill files are structured or stored), it is NOT relevant to ASM.\n- If you cannot identify at least one specific file in ASM's src/ directory that would need modification, you MUST mark the entry as not relevant. A change that is 'good to know' but requires zero code changes is not relevant.\n- Your affected_asm_files claims must be supported by the codebase grep results. If the grep results show no matches for changelog terms in a file, do not list that file as affected.\n\nUse the analyze_changelog_impact tool to report your analysis." \
-              --arg content "## Claude Code v${VERSION} (${DATE})\n\n${CONTENT}${GREP_SECTION}" \
+              --rawfile content "$CONTENT_FILE" \
               --argjson tools "[$TOOL_SCHEMA]" \
               '{
                 model: $model,
@@ -410,11 +419,11 @@ jobs:
 
             # Phase 5: Cross-reference affected files against grep results
             if [ "$RELEVANT" = "true" ] && [ "$AFFECTED_FILES" -gt 0 ]; then
-              GREP_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
+              CORROBORATION_FILE="$RUNNER_TEMP/grep-results-${VERSION}.txt"
               CORROBORATED=0
-              if [ -f "$GREP_FILE" ]; then
+              if [ -f "$CORROBORATION_FILE" ]; then
                 for af in $(echo "$ANALYSIS" | jq -r '.affected_asm_files[]'); do
-                  if grep -q "$af" "$GREP_FILE"; then
+                  if grep -q "$af" "$CORROBORATION_FILE"; then
                     CORROBORATED=$((CORROBORATED + 1))
                   fi
                 done
