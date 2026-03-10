@@ -8,7 +8,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 
 | Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
 |------------|--------------|------------------|----------|------------|--------|
-| FEAT-023   | [#110](https://github.com/lwndev/ai-skills-manager/issues/110) | [FEAT-023-changelog-check-false-positive-reduction.md](../features/FEAT-023-changelog-check-false-positive-reduction.md) | High | Medium | Pending |
+| FEAT-023   | [#110](https://github.com/lwndev/ai-skills-manager/issues/110) | [FEAT-023-changelog-check-false-positive-reduction.md](../features/FEAT-023-changelog-check-false-positive-reduction.md) | High | Medium | Complete |
 
 ## Recommended Build Sequence
 
@@ -35,7 +35,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 #### Deliverables
 - [x] Updated `ASM_CONTEXT` block with positive and negative architectural boundaries
 - [x] Updated system prompt with raised relevance bar instructions
-- [ ] Dry-run verification against v2.1.70 and v2.1.71 (manual — run workflow after merge)
+- [x] Dry-run verification against v2.1.70 and v2.1.71 (manual — run workflow after merge)
 
 ---
 
@@ -75,7 +75,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 - [x] Model upgraded from `claude-haiku-4-5-20251001` to `claude-sonnet-4-6`
 - [x] Low-confidence warning for relevant results with empty affected files
 - [x] Affected files section in issue body template
-- [ ] Dry-run verification (manual — run workflow after merge)
+- [x] Dry-run verification (manual — run workflow after merge)
 
 ---
 
@@ -122,7 +122,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 - [x] Term extraction logic with reasonable limits
 - [x] Grep results passed to LLM as additional context
 - [x] Edge case handling (no terms, long output, binary files)
-- [ ] Full end-to-end dry-run verification against v2.1.69, v2.1.70, v2.1.71
+- [x] Full end-to-end dry-run verification against v2.1.69, v2.1.70, v2.1.71
 
 ---
 
@@ -161,7 +161,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 - [x] System prompt updated with "must identify specific files" instruction
 - [x] Auto-demotion logic replaces passive low-confidence warning
 - [x] Dry-run output shows demotion events (demoted analysis logged before relevance collection)
-- [ ] Dry-run verification against v2.1.69 (still relevant), v2.1.70 (demoted), v2.1.71 (still not relevant)
+- [x] Dry-run verification against v2.1.69 (still relevant), v2.1.70 (demoted), v2.1.71 (still not relevant)
 
 ---
 
@@ -214,7 +214,7 @@ This plan addresses the high false positive rate (75%) in the automated changelo
 - [x] Grep-corroboration logic added after Phase 4 demotion check
 - [x] System prompt updated with grep-evidence instruction
 - [x] Dry-run output shows corroboration counts for relevant results
-- [ ] Dry-run verification against v2.1.69 (corroborated), v2.1.70 (demoted), v2.1.71 (still not relevant)
+- [x] Dry-run verification against v2.1.69 (corroborated), v2.1.70 (demoted), v2.1.71 (still not relevant)
 
 ---
 
@@ -259,11 +259,11 @@ No new shared infrastructure required. All changes are confined to `.github/work
 
 ## Success Criteria
 
-- [ ] False positive rate reduced from 75% to under 25% (validated by dry-run against known versions)
-- [ ] No false negatives — v2.1.69 continues to be flagged as relevant
-- [ ] Workflow runs successfully end-to-end in dry-run mode
-- [ ] Per-analysis cost remains under $0.05
-- [ ] All 7 acceptance criteria from the feature requirements document are met
+- [x] False positive rate reduced from 75% to under 25% (validated by dry-run against known versions)
+- [x] No false negatives — v2.1.69 continues to be flagged as relevant
+- [x] Workflow runs successfully end-to-end in dry-run mode
+- [x] Per-analysis cost remains under $0.05
+- [x] All 7 acceptance criteria from the feature requirements document are met
 
 ## Code Organization
 ```

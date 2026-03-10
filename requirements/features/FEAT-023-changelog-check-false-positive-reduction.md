@@ -101,11 +101,11 @@ The LLM prompt provides a generic description of ASM but doesn't convey the crit
 - Verify grep pre-filter output appears in workflow logs
 
 ## Acceptance Criteria
-- [ ] ASM_CONTEXT includes explicit positive and negative architectural boundaries
-- [ ] Tool schema includes `affected_asm_files` field
-- [ ] Codebase grep pre-filter step runs before LLM analysis and passes results to the prompt
-- [ ] Model upgraded from Haiku 4.5 to Sonnet 4.6
-- [ ] System prompt includes raised relevance bar instructions
-- [ ] Dry-run against v2.1.70 and v2.1.71 correctly marks them as not relevant
-- [ ] Dry-run against v2.1.69 correctly marks it as relevant
-- [ ] Workflow runs successfully end-to-end in dry-run mode
+- [x] ASM_CONTEXT includes explicit positive and negative architectural boundaries
+- [x] Tool schema includes `affected_asm_files` field
+- [x] Codebase grep pre-filter step runs before LLM analysis and passes results to the prompt
+- [x] Model upgraded from Haiku 4.5 to Sonnet 4.6
+- [x] System prompt includes raised relevance bar instructions
+- [x] Dry-run against v2.1.70 and v2.1.71 correctly marks them as not relevant
+- [x] Dry-run against v2.1.69 correctly marks it as relevant
+- [x] Workflow runs successfully end-to-end in dry-run mode
