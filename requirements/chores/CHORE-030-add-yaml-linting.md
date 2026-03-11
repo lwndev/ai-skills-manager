@@ -33,11 +33,11 @@ Add YAML linting to the project's quality checks by integrating `eslint-plugin-y
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-11
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#114](https://github.com/lwndev/ai-skills-manager/pull/114)
 
 ## Notes
 
