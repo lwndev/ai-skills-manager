@@ -24,12 +24,12 @@ Add YAML linting to the project's quality checks by integrating `eslint-plugin-y
 
 ## Acceptance Criteria
 
-- [ ] `eslint-plugin-yml` installed as a dev dependency
-- [ ] `eslint.config.js` updated with YAML plugin and Prettier-compatible rules
-- [ ] `*.yml` files are not excluded from ESLint ignores
-- [ ] `npm run lint` lints YAML files without errors
-- [ ] `npm run quality` passes
-- [ ] No changes to existing YAML file behavior (lint-only, no functional changes)
+- [x] `eslint-plugin-yml` installed as a dev dependency
+- [x] `eslint.config.js` updated with YAML plugin and Prettier-compatible rules
+- [x] `*.yml` files are not excluded from ESLint ignores
+- [x] `npm run lint` lints YAML files without errors
+- [x] `npm run quality` passes
+- [x] No changes to existing YAML file behavior (lint-only, no functional changes)
 
 ## Completion
 
