@@ -34,7 +34,7 @@ Tighten permission error message assertions in update and scaffold API tests to 
 
 **Completed:** 2026-03-11
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#115](https://github.com/lwndev/ai-skills-manager/pull/115)
 
 ## Notes
 
