@@ -35,7 +35,7 @@ CHORE-028 standardized permission error assertion patterns across API test files
 
 **Completed:** 2026-03-11
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#116](https://github.com/lwndev/ai-skills-manager/pull/116)
 
 ## Notes
 
