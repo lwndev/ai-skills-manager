@@ -25,9 +25,9 @@ Standardize the permission error test assertion pattern across API test files. C
 
 ## Acceptance Criteria
 
-- [ ] All permission error tests across the four API test files use the same assertion pattern
-- [ ] No mixed assertion styles remain for permission error checks
-- [ ] All tests pass after changes (`npm run quality`)
+- [x] All permission error tests across the four API test files use the same assertion pattern
+- [x] No mixed assertion styles remain for permission error checks
+- [x] All tests pass after changes (`npm run quality`)
 
 ## Completion
 
