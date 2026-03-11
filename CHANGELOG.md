@@ -5,6 +5,31 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-03-11
+
+### Added
+
+- **Automated changelog check workflow** (FEAT-022): GitHub Actions workflow that monitors the Claude Code changelog for changes that may impact ASM, automatically creating compatibility tracking issues (#95)
+- **YAML linting** (CHORE-030): Integrated `eslint-plugin-yml` into ESLint flat config; YAML files (`.github/workflows/*.yml`) are now linted via `npm run lint` and `npm run quality` (#114)
+
+### Changed
+
+- **Reduced changelog check false positives** (FEAT-023): Enhanced LLM prompt with architectural boundary descriptions, added source file citation requirement, upgraded analysis model to Sonnet 4.6, and added codebase grep pre-filter (#112)
+- **Renamed changelog-check workflow** (CHORE-032): Workflow file renamed to `claude-code-changelog-check` for clarity (#118)
+- **Standardized permission error test assertions** (CHORE-028): Consistent assertion style across all API test files (#113)
+- **Tightened permission error assertions** (CHORE-029): Test assertions now verify the file/skill path is included in permission error messages (#115)
+- **Converted `.catch()` inline assertions** (CHORE-031): Replaced inline `.catch()` assertion patterns with `expect().rejects` style across test suite (#116)
+
+### Fixed
+
+- **ajv ReDoS vulnerability** (CHORE-023): Bumped ajv from 6.12.6 to 6.14.0 to resolve moderate-severity GHSA-2g4f-4pwh-qvx6 (#100)
+- **minimatch ReDoS vulnerability**: Added minimatch override to resolve high-severity GHSA-3ppc-4f35-3m26 in eslint, jest, and archiver dependency trees (#97)
+- **npm audit vulnerabilities**: Resolved 32 transitive vulnerabilities in eslint and jest dependency trees (#93)
+
+### Compatibility
+
+- Verified compatibility with Claude Code v2.1.63 (#106), v2.1.69 (#107), v2.1.70 (#108), v2.1.71 (#109) — no ASM code changes required
+
 ## [1.8.0] - 2026-02-15
 
 ### Breaking Changes
