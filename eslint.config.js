@@ -2,6 +2,7 @@ const js = require('@eslint/js');
 const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsparser = require('@typescript-eslint/parser');
 const prettier = require('eslint-config-prettier');
+const yml = require('eslint-plugin-yml');
 
 module.exports = [
   {
@@ -44,5 +45,6 @@ module.exports = [
       'no-undef': 'off', // TypeScript handles this
     },
   },
+  ...yml.configs['flat/prettier'],
   prettier,
 ];

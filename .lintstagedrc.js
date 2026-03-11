@@ -3,4 +3,7 @@ module.exports = {
     'eslint --fix',
     'prettier --write',
   ],
+  '*.yml': [
+    'eslint --fix',
+  ],
 };
