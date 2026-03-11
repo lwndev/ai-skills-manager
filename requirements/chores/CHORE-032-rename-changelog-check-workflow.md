@@ -52,11 +52,11 @@ This workflow is triggered by `schedule` and `workflow_dispatch` only — no oth
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `In Progress`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-11
 
-**Pull Request:** TBD
+**Pull Request:** [#118](https://github.com/lwndev/ai-skills-manager/pull/118)
 
 ## Notes
 
