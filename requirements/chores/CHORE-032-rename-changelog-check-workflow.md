@@ -52,7 +52,7 @@ This workflow is triggered by `schedule` and `workflow_dispatch` only — no oth
 
 ## Completion
 
-**Status:** `In Progress`
+**Status:** `Complete`
 
 **Completed:** 2026-03-11
 
