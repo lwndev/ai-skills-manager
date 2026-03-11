@@ -1362,7 +1362,7 @@ describe('update API error mapping (mocked)', () => {
         fail('Expected FileSystemError');
       } catch (error) {
         expect(error).toBeInstanceOf(FSError);
-        expect((error as FileSystemError).message).toContain('Permission denied');
+        expect((error as FileSystemError).message).toMatch(/Permission denied.*"\/test\/package\.skill"/);
       }
     });
 
@@ -1383,7 +1383,7 @@ describe('update API error mapping (mocked)', () => {
         fail('Expected FileSystemError');
       } catch (error) {
         expect(error).toBeInstanceOf(FSError);
-        expect((error as FileSystemError).message).toContain('Permission denied');
+        expect((error as FileSystemError).message).toMatch(/Permission denied.*"\/test\/package\.skill"/);
       }
     });
 

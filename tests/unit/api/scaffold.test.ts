@@ -519,7 +519,7 @@ describe('scaffold API function', () => {
         fail('Expected FileSystemError to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(FsErr);
-        expect((error as Error).message).toContain('Permission denied');
+        expect((error as Error).message).toMatch(/Permission denied.*".*eacces-test"/);
       }
     });
 
@@ -538,7 +538,7 @@ describe('scaffold API function', () => {
         fail('Expected FileSystemError to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(FsErr);
-        expect((error as Error).message).toContain('Permission denied');
+        expect((error as Error).message).toMatch(/Permission denied.*".*eperm-test"/);
       }
     });
 
@@ -681,7 +681,7 @@ describe('scaffold API function', () => {
         fail('Expected FileSystemError to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(FsErr);
-        expect((error as Error).message).toContain('Permission denied');
+        expect((error as Error).message).toMatch(/Permission denied.*".*writeacces-test"/);
         expect(mockMkdir).toHaveBeenCalled();
       }
     });
