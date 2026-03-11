@@ -35,7 +35,7 @@ Standardize the permission error test assertion pattern across API test files. C
 
 **Completed:** 2026-03-11
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#113](https://github.com/lwndev/ai-skills-manager/pull/113)
 
 ## Notes
 
