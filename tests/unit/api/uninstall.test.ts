@@ -1014,11 +1014,13 @@ describe('uninstall API error mapping (mocked)', () => {
       permError.code = 'EACCES';
       mockUninstallSkill.mockRejectedValue(permError);
 
-      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
-        (e: unknown) => e
-      );
-      expect(error).toBeInstanceOf(FSE);
-      expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      }
     });
 
     it('maps EPERM to FileSystemError with permission denied message', async () => {
@@ -1028,11 +1030,13 @@ describe('uninstall API error mapping (mocked)', () => {
       permError.code = 'EPERM';
       mockUninstallSkill.mockRejectedValue(permError);
 
-      const error = await uninstallFn({ names: ['test-skill'], force: true }).catch(
-        (e: unknown) => e
-      );
-      expect(error).toBeInstanceOf(FSE);
-      expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      try {
+        await uninstallFn({ names: ['test-skill'], force: true });
+        fail('Expected FileSystemError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FSE);
+        expect((error as Error).message).toMatch(/Permission denied.*"test-skill"/);
+      }
     });
 
     it('wraps unknown Error as FileSystemError', async () => {
