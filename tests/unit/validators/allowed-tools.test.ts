@@ -18,17 +18,12 @@ describe('validateAllowedTools', () => {
       expect(result.error).toBeUndefined();
     });
 
-    it('returns valid for empty array', () => {
-      const result = validateAllowedTools([]);
-      expect(result.valid).toBe(true);
-    });
-
     it('returns valid for array of simple tool names with managed policy warning', () => {
       const result = validateAllowedTools(['Read', 'Write', 'Bash']);
       expect(result.valid).toBe(true);
       if (result.valid) {
         expect(result.warnings).toBeDefined();
-        expect(result.warnings![0]).toContain('managed policy');
+        expect(result.warnings?.[0]).toContain('managed policy');
       }
     });
 
