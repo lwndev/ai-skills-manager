@@ -270,8 +270,11 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const allowedToolsResult = validateAllowedTools(frontmatter['allowed-tools']);
   checks.allowedToolsFormat = {
     passed: allowedToolsResult.valid,
-    error: allowedToolsResult.error,
+    error: allowedToolsResult.valid ? undefined : allowedToolsResult.error,
   };
+  // Collect warnings from allowed-tools validation
+  const allowedToolsWarnings =
+    allowedToolsResult.valid && allowedToolsResult.warnings ? allowedToolsResult.warnings : [];
 
   // Step 19: Name matches directory check
   // Validates that frontmatter name matches parent directory name
@@ -294,7 +297,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   // Step 20: File size analysis (generates warnings, not errors)
   // Analyze body content for size recommendations
   const fileSizeAnalysis = analyzeFileSize(parseResult.body || '');
-  const warnings = [...hooksWarnings, ...fileSizeAnalysis.warnings];
+  const warnings = [...hooksWarnings, ...allowedToolsWarnings, ...fileSizeAnalysis.warnings];
 
   return buildResult(
     fileResult.resolvedPath || skillPath,

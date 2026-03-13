@@ -75,6 +75,10 @@ function escapeYamlString(value: string): string {
 
 /**
  * Get default allowed-tools based on template type
+ *
+ * Note: As of Claude Code v2.1.74, allowed-tools cannot override managed policy
+ * 'ask' rules. Tools restricted by managed policy will still require user
+ * approval regardless of allowed-tools declarations.
  */
 function getDefaultAllowedTools(templateType: TemplateType): string[] | undefined {
   switch (templateType) {
@@ -177,15 +181,20 @@ function generateFrontmatter(params: SkillTemplateParams, options?: TemplateOpti
   }
 
   // Determine allowed-tools: explicit params override template defaults
+  // Note: allowed-tools cannot override managed policy 'ask' rules (v2.1.74+)
   const allowedTools = params.allowedTools ?? getDefaultAllowedTools(templateType);
 
   if (allowedTools && allowedTools.length > 0) {
+    lines.push(
+      '# Note: allowed-tools cannot override managed policy ask rules (Claude Code v2.1.74+)'
+    );
     lines.push('allowed-tools:');
     for (const tool of allowedTools) {
       lines.push(`  - ${escapeYamlString(tool.trim())}`);
     }
   } else if (!options?.minimal) {
     lines.push('# allowed-tools:');
+    lines.push('#   Note: Cannot override managed policy ask rules (Claude Code v2.1.74+)');
     lines.push('#   - Bash');
     lines.push('#   - Read');
     lines.push('#   - Write');
@@ -600,6 +609,10 @@ Common tools you can specify in allowed-tools:
 - Task: Launch subagents for complex operations
 
 If no allowed-tools are specified, the skill inherits default tool access.
+
+IMPORTANT (Claude Code v2.1.74+): allowed-tools cannot override managed policy
+'ask' rules. Tools restricted by managed policy will still require user approval
+regardless of what is declared in allowed-tools.
 
 SCRIPTS DIRECTORY:
 The scripts/ subdirectory can contain helper scripts that your skill

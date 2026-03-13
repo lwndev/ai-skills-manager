@@ -21,13 +21,15 @@ describe('validateAllowedTools', () => {
     it('returns valid for empty array', () => {
       const result = validateAllowedTools([]);
       expect(result.valid).toBe(true);
-      expect(result.error).toBeUndefined();
     });
 
-    it('returns valid for array of simple tool names', () => {
+    it('returns valid for array of simple tool names with managed policy warning', () => {
       const result = validateAllowedTools(['Read', 'Write', 'Bash']);
       expect(result.valid).toBe(true);
-      expect(result.error).toBeUndefined();
+      if (result.valid) {
+        expect(result.warnings).toBeDefined();
+        expect(result.warnings![0]).toContain('managed policy');
+      }
     });
 
     it('returns valid for Task(AgentName) pattern', () => {
@@ -159,9 +161,20 @@ describe('validateAllowedTools', () => {
       expect(result.error).toContain('index 0');
     });
 
-    it('returns valid for single-element array', () => {
+    it('returns valid for single-element array with warning', () => {
       const result = validateAllowedTools(['Read']);
       expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.warnings).toHaveLength(1);
+      }
+    });
+
+    it('returns valid with no warnings for empty array', () => {
+      const result = validateAllowedTools([]);
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.warnings).toBeUndefined();
+      }
     });
 
     it('returns invalid for array with boolean at index 0', () => {
