@@ -5,6 +5,21 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2] - 2026-03-13
+
+### Changed
+
+- **Migrated test suite from Jest to Vitest** (FEAT-024): Replaced Jest with Vitest as the test runner, updated all test files to use Vitest APIs (`vi.fn()`, `vi.mock()`, `vi.doMock()`), converted Jest config to `vitest.config.ts`, and removed Jest dependencies (#121)
+- **Added managed policy warning for allowed-tools** (CHORE-033): Validation now warns when a skill's `allowed-tools` field could bypass managed policy `ask` rules (#122)
+
+### Fixed
+
+- **CI release notes generation**: Use explicit previous tag for release notes generation to ensure correct diff range
+
+### Compatibility
+
+- Updated changelog tracker to Claude Code v2.1.74 — no ASM code changes required
+
 ## [1.8.1] - 2026-03-11
 
 ### Added
