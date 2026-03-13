@@ -3,14 +3,13 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    root: 'tests/',
-    include: ['**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     globals: true,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/index.ts'],
-      reportsDirectory: path.resolve(__dirname, 'coverage'),
+      reportsDirectory: 'coverage',
       reporter: ['text', 'lcov', 'html', 'json-summary'],
     },
   },

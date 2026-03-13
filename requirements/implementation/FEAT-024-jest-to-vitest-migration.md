@@ -54,7 +54,7 @@ Migrate the AI Skills Manager test suite from Jest to Vitest, replacing the test
 
 ### Phase 2: Migrate Mock Files and Test API Calls
 **Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - With the runner configured, this phase updates the 10 test files that use Jest-specific APIs and the 2 manual mock files
@@ -76,12 +76,39 @@ Migrate the AI Skills Manager test suite from Jest to Vitest, replacing the test
    - `tests/unit/utils/output.test.ts` — uses `jest.spyOn()`
 4. For files using `jest.doMock()` + `jest.resetModules()` + dynamic `await import()`: verify Vitest's `vi.doMock()` + `vi.resetModules()` produces the same behavior (this is the highest-risk pattern)
 5. Verify: run `npm test` to confirm all migrated files pass
+6. **Additional:** Migrated 2 files not in original plan:
+   - `tests/performance/update-benchmark.test.ts` — `jest.useFakeTimers()` → `vi.useFakeTimers()`
+   - `tests/integration/api/scaffold.test.ts` — `require()` → `import()` for Vitest ESM compatibility
 
 #### Deliverables
-- [ ] Mock files updated with `vi.fn()` replacing `jest.fn()`
-- [ ] All 10 test files migrated from `jest.*` to `vi.*` APIs
-- [ ] `vi.doMock()` + dynamic import pattern validated in API test files
-- [ ] `npm test` passes for all migrated files
+- [x] Mock files updated with `vi.fn()` replacing `jest.fn()`
+- [x] All 10 test files migrated from `jest.*` to `vi.*` APIs
+- [x] `vi.doMock()` + dynamic import pattern validated in API test files
+- [x] `npm test` passes for all migrated files
+
+---
+
+### Phase 2.5: Fix Flaky Performance Benchmark Test
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- The `should track timing variance` test in `tests/performance/update-benchmark.test.ts` is a pre-existing flaky test that was masked by Jest's higher per-test overhead
+- Vitest's faster execution exposes the root cause: the test measures 5 iterations of a trivial synchronous operation (`generateContent(10000)`), which on fast machines completes in sub-millisecond time, producing `mean ≈ 0` and a coefficient of variation (`stdDev / mean`) of `NaN` or `Infinity`
+- This must be fixed before Phase 3's final verification, which requires all 115 test files to pass
+
+#### Root Cause
+The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstable when `mean` approaches zero. The `generateContent()` call completes so fast that `Date.now()` granularity (1ms) can't distinguish iterations — timings are either all `0ms` (producing `0/0 = NaN`) or a mix of `0` and `1` (producing extreme variance ratios).
+
+#### Implementation Steps
+1. Replace the trivial `generateContent(10000)` workload with a heavier operation that produces measurable, consistent timings (e.g., increase to `generateContent(500000)` or use an I/O-bound operation like temp file write/read)
+2. Add a guard for the degenerate case: skip the variance assertion if `mean < 1ms` (timings too small to be statistically meaningful)
+3. Verify the test passes reliably across 5 consecutive runs: `for i in {1..5}; do npx vitest run tests/performance/update-benchmark.test.ts; done`
+
+#### Deliverables
+- [x] `tests/performance/update-benchmark.test.ts` `should track timing variance` test no longer flaky
+- [x] Test passes on 5 consecutive runs
+- [x] No performance test files skipped or disabled
 
 ---
 
@@ -129,6 +156,7 @@ Migrate the AI Skills Manager test suite from Jest to Vitest, replacing the test
 - **Incremental validation**: Each phase ends with a test run to catch regressions early
 - **Phase 1**: Single simple test file validates runner configuration
 - **Phase 2**: Full `npm test` validates API migration across all 115 files
+- **Phase 2.5**: Flaky performance benchmark fixed and verified across 5 consecutive runs
 - **Phase 3**: Full `npm run quality` validates end-to-end parity including lint, coverage, and audit
 - **No test logic changes**: Only framework API calls change (`jest.*` → `vi.*`). Test assertions, setup, and teardown logic remain identical.
 
@@ -149,6 +177,7 @@ Migrate the AI Skills Manager test suite from Jest to Vitest, replacing the test
 | Snapshot format differs, causing false test failures | Low | High | Expected — delete and regenerate snapshots in Phase 3 |
 | `overrides` in package.json were Jest-specific | Low | Low | Verify `minimatch` and `test-exclude` overrides are still needed; remove if not |
 | `globals: true` causes naming conflicts | Low | Low | If conflicts arise, switch to explicit imports in affected files only |
+| Vitest's faster execution exposes pre-existing flaky tests | Low | High | Identified in Phase 2 — `should track timing variance` fails due to sub-millisecond timings; fix in Phase 2.5 |
 
 ## Success Criteria
 

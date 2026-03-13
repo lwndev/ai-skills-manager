@@ -766,17 +766,17 @@ describe('uninstall API function', () => {
  * via integration tests.
  */
 describe('uninstall API error mapping (mocked)', () => {
-  let mockUninstallSkill: jest.Mock;
-  let mockIsDryRunPreview: jest.Mock;
-  let mockGetScopePath: jest.Mock;
+  let mockUninstallSkill: ReturnType<typeof vi.fn>;
+  let mockIsDryRunPreview: ReturnType<typeof vi.fn>;
+  let mockGetScopePath: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    jest.resetModules();
-    mockUninstallSkill = jest.fn();
-    mockIsDryRunPreview = jest.fn().mockReturnValue(false);
-    mockGetScopePath = jest.fn().mockReturnValue('/mock/skills/path');
+    vi.resetModules();
+    mockUninstallSkill = vi.fn();
+    mockIsDryRunPreview = vi.fn().mockReturnValue(false);
+    mockGetScopePath = vi.fn().mockReturnValue('/mock/skills/path');
 
-    jest.doMock('../../../src/generators/uninstaller', () => ({
+    vi.doMock('../../../src/generators/uninstaller', () => ({
       uninstallSkill: mockUninstallSkill,
       isDryRunPreview: mockIsDryRunPreview,
       getScopePath: mockGetScopePath,
@@ -784,8 +784,8 @@ describe('uninstall API error mapping (mocked)', () => {
   });
 
   afterEach(() => {
-    jest.resetModules();
-    jest.restoreAllMocks();
+    vi.resetModules();
+    vi.restoreAllMocks();
   });
 
   async function getUninstall() {

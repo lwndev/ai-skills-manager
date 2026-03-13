@@ -22,14 +22,14 @@ import {
 import type { CliScaffoldOptions } from '../../../src/commands/scaffold';
 
 // Mock @inquirer/prompts
-jest.mock('@inquirer/prompts', () => ({
-  select: jest.fn(),
-  input: jest.fn(),
-  confirm: jest.fn(),
+vi.mock('@inquirer/prompts', () => ({
+  select: vi.fn(),
+  input: vi.fn(),
+  confirm: vi.fn(),
 }));
 
 // Mock @inquirer/core for ExitPromptError
-jest.mock('@inquirer/core', () => {
+vi.mock('@inquirer/core', () => {
   class ExitPromptError extends Error {
     name = 'ExitPromptError';
   }
@@ -37,19 +37,19 @@ jest.mock('@inquirer/core', () => {
 });
 
 // Mock the scaffold API
-jest.mock('../../../src/api', () => ({
-  scaffold: jest.fn(),
+vi.mock('../../../src/api', () => ({
+  scaffold: vi.fn(),
 }));
 
 // Mock output utilities — use spies so commander integration tests still see real console output
-jest.mock('../../../src/utils/output', () => {
-  const actual = jest.requireActual('../../../src/utils/output');
+vi.mock('../../../src/utils/output', async () => {
+  const actual = await vi.importActual('../../../src/utils/output');
   return {
     ...actual,
-    displayCreatedFiles: jest.fn(),
-    displayNextSteps: jest.fn(),
-    displayMinimalNextSteps: jest.fn(),
-    displayInfo: jest.fn(),
+    displayCreatedFiles: vi.fn(),
+    displayNextSteps: vi.fn(),
+    displayMinimalNextSteps: vi.fn(),
+    displayInfo: vi.fn(),
   };
 });
 
@@ -58,10 +58,10 @@ import { ExitPromptError } from '@inquirer/core';
 import { scaffold } from '../../../src/api';
 import * as output from '../../../src/utils/output';
 
-const mockSelect = select as jest.MockedFunction<typeof select>;
-const mockInput = input as jest.MockedFunction<typeof input>;
-const mockConfirm = confirm as jest.MockedFunction<typeof confirm>;
-const mockScaffold = scaffold as jest.MockedFunction<typeof scaffold>;
+const mockSelect = vi.mocked(select);
+const mockInput = vi.mocked(input);
+const mockConfirm = vi.mocked(confirm);
+const mockScaffold = vi.mocked(scaffold);
 
 // Custom error to capture process.exit calls
 class ProcessExitError extends Error {
@@ -416,7 +416,7 @@ describe('scaffold-interactive', () => {
 
   describe('runInteractivePrompts()', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     /**
@@ -881,7 +881,7 @@ describe('scaffold-interactive', () => {
     let consoleOutput: string[];
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       consoleOutput = [];
       originalConsoleLog = console.log;
       originalProcessExit = process.exit;
@@ -989,7 +989,7 @@ describe('scaffold-interactive', () => {
       await runInteractiveScaffold('test-skill', options);
 
       // Verify summary was displayed through the output module
-      const mockDisplayInfo = output.displayInfo as jest.MockedFunction<typeof output.displayInfo>;
+      const mockDisplayInfo = vi.mocked(output.displayInfo);
       expect(mockDisplayInfo).toHaveBeenCalledWith(
         expect.stringContaining('Scaffold configuration:')
       );

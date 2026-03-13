@@ -491,26 +491,26 @@ describe('scaffold API function', () => {
      * Returns scaffold + error classes from the same module scope
      * so instanceof checks work correctly.
      */
-    async function importScaffoldWithMockedFs(fsMocks: Record<string, jest.Mock>) {
-      jest.resetModules();
-      const realFs = jest.requireActual<typeof fs>('fs/promises');
-      jest.doMock('fs/promises', () => ({ ...realFs, ...fsMocks }));
+    async function importScaffoldWithMockedFs(fsMocks: Record<string, ReturnType<typeof vi.fn>>) {
+      vi.resetModules();
+      const realFs = await vi.importActual<typeof fs>('fs/promises');
+      vi.doMock('fs/promises', () => ({ ...realFs, ...fsMocks }));
       const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
       const errors = await import('../../../src/errors');
       return { scaffold: mockedScaffold, ...errors };
     }
 
     afterEach(() => {
-      jest.resetModules();
+      vi.resetModules();
     });
 
     it('maps EACCES error to FileSystemError with permission denied message', async () => {
       const eaccesErr = Object.assign(new Error('EACCES'), { code: 'EACCES' });
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue(eaccesErr),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue(eaccesErr),
+          writeFile: vi.fn(),
         }
       );
 
@@ -527,9 +527,9 @@ describe('scaffold API function', () => {
       const epermErr = Object.assign(new Error('EPERM'), { code: 'EPERM' });
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue(epermErr),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue(epermErr),
+          writeFile: vi.fn(),
         }
       );
 
@@ -546,9 +546,9 @@ describe('scaffold API function', () => {
       const enoentErr = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue(enoentErr),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue(enoentErr),
+          writeFile: vi.fn(),
         }
       );
 
@@ -562,17 +562,17 @@ describe('scaffold API function', () => {
     });
 
     it('re-throws FileSystemError without wrapping', async () => {
-      jest.resetModules();
-      const realFs = jest.requireActual<typeof fs>('fs/promises');
+      vi.resetModules();
+      const realFs = await vi.importActual<typeof fs>('fs/promises');
       // Import errors first so the error instance shares the same class as scaffold
       const { FileSystemError: FsErr } = await import('../../../src/errors');
       const originalError = new FsErr('original fs error', '/some/path');
 
-      jest.doMock('fs/promises', () => ({
+      vi.doMock('fs/promises', () => ({
         ...realFs,
-        stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-        mkdir: jest.fn().mockRejectedValue(originalError),
-        writeFile: jest.fn(),
+        stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockRejectedValue(originalError),
+        writeFile: vi.fn(),
       }));
       const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
 
@@ -586,16 +586,16 @@ describe('scaffold API function', () => {
     });
 
     it('re-throws SecurityError without wrapping', async () => {
-      jest.resetModules();
-      const realFs = jest.requireActual<typeof fs>('fs/promises');
+      vi.resetModules();
+      const realFs = await vi.importActual<typeof fs>('fs/promises');
       const { SecurityError: SecErr } = await import('../../../src/errors');
       const originalError = new SecErr('original security error');
 
-      jest.doMock('fs/promises', () => ({
+      vi.doMock('fs/promises', () => ({
         ...realFs,
-        stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-        mkdir: jest.fn().mockRejectedValue(originalError),
-        writeFile: jest.fn(),
+        stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        mkdir: vi.fn().mockRejectedValue(originalError),
+        writeFile: vi.fn(),
       }));
       const { scaffold: mockedScaffold } = await import('../../../src/api/scaffold');
 
@@ -611,9 +611,9 @@ describe('scaffold API function', () => {
     it('wraps plain Error with its message in FileSystemError', async () => {
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue(new Error('something went wrong')),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue(new Error('something went wrong')),
+          writeFile: vi.fn(),
         }
       );
 
@@ -630,9 +630,9 @@ describe('scaffold API function', () => {
     it('wraps string error with String(error) in FileSystemError', async () => {
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue('string error value'),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue('string error value'),
+          writeFile: vi.fn(),
         }
       );
 
@@ -649,9 +649,9 @@ describe('scaffold API function', () => {
     it('wraps null error with String(error) in FileSystemError', async () => {
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
-          mkdir: jest.fn().mockRejectedValue(null),
-          writeFile: jest.fn(),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
+          mkdir: vi.fn().mockRejectedValue(null),
+          writeFile: vi.fn(),
         }
       );
 
@@ -667,12 +667,12 @@ describe('scaffold API function', () => {
 
     it('maps EACCES from writeFile to FileSystemError with permission denied', async () => {
       const eaccesErr = Object.assign(new Error('EACCES'), { code: 'EACCES' });
-      const mockMkdir = jest.fn().mockResolvedValue(undefined);
+      const mockMkdir = vi.fn().mockResolvedValue(undefined);
       const { scaffold: mockedScaffold, FileSystemError: FsErr } = await importScaffoldWithMockedFs(
         {
-          stat: jest.fn().mockRejectedValue(new Error('ENOENT')),
+          stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
           mkdir: mockMkdir,
-          writeFile: jest.fn().mockRejectedValue(eaccesErr),
+          writeFile: vi.fn().mockRejectedValue(eaccesErr),
         }
       );
 
@@ -785,12 +785,12 @@ describe('scaffold API function', () => {
   });
 
   describe('resolveOutputPath scope resolution (without explicit output)', () => {
-    let getProjectSpy: jest.SpyInstance;
-    let getPersonalSpy: jest.SpyInstance;
+    let getProjectSpy: ReturnType<typeof vi.spyOn>;
+    let getPersonalSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-      getProjectSpy = jest.spyOn(scopeResolver, 'getProjectSkillsDir').mockReturnValue(tempDir);
-      getPersonalSpy = jest.spyOn(scopeResolver, 'getPersonalSkillsDir').mockReturnValue(tempDir);
+      getProjectSpy = vi.spyOn(scopeResolver, 'getProjectSkillsDir').mockReturnValue(tempDir);
+      getPersonalSpy = vi.spyOn(scopeResolver, 'getPersonalSkillsDir').mockReturnValue(tempDir);
     });
 
     afterEach(() => {

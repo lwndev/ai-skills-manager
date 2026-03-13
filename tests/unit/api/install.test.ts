@@ -694,21 +694,21 @@ describe('install API function', () => {
  * API transforms them into FileSystemError with "Permission denied" messages.
  */
 describe('install API permission errors (mocked)', () => {
-  let mockInstallSkill: jest.Mock;
+  let mockInstallSkill: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    jest.resetModules();
-    mockInstallSkill = jest.fn();
-    jest.doMock('../../../src/generators/installer', () => ({
+    vi.resetModules();
+    mockInstallSkill = vi.fn();
+    vi.doMock('../../../src/generators/installer', () => ({
       installSkill: mockInstallSkill,
-      isInstallResult: jest.fn(),
-      isDryRunPreview: jest.fn(),
-      isOverwriteRequired: jest.fn(),
+      isInstallResult: vi.fn(),
+      isDryRunPreview: vi.fn(),
+      isOverwriteRequired: vi.fn(),
     }));
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('handles EACCES permission error', async () => {

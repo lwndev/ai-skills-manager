@@ -67,6 +67,12 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 - Update any GitHub Actions workflows that reference Jest directly
 - Ensure CI runs use the updated npm scripts
 
+### FR-9: Fix Tests Destabilized by Runner Change
+- Vitest's faster execution can expose pre-existing flaky tests that were masked by Jest's higher per-test overhead
+- Any test that becomes flaky under Vitest must be fixed as part of the migration — not skipped or disabled
+- Specifically: the `should track timing variance` performance benchmark in `tests/performance/update-benchmark.test.ts` uses a sub-millisecond workload that produces `NaN` or extreme coefficient-of-variation values when `mean ≈ 0`
+- Fix by increasing workload size to produce measurable timings, or adding a guard to skip the variance assertion when timings are below statistical significance (< 1ms)
+
 ## Non-Functional Requirements
 
 ### NFR-1: Performance
@@ -97,6 +103,7 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 3. **Snapshot format differences**: Vitest snapshots may differ from Jest snapshots — requires regeneration, not a functional issue
 4. **Global API availability**: Vitest can run with or without global APIs (`describe`, `it`, `expect`). Decide whether to use `globals: true` in config or add explicit imports to every test file
 5. **Coverage provider**: Vitest supports both `v8` and `istanbul` for coverage — choose the appropriate provider based on accuracy and performance needs
+6. **Timing-sensitive tests**: Vitest's faster execution can cause timing-based assertions (e.g., coefficient of variation checks) to fail when operations complete in sub-millisecond time, making `Date.now()` granularity insufficient for statistical analysis
 
 ## Testing Requirements
 
@@ -112,6 +119,7 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 
 ### Performance Tests
 - Performance and benchmark tests must produce equivalent results
+- Timing variance test must pass reliably across multiple consecutive runs (not flaky)
 
 ### Security Tests
 - All 4 security tests must pass unchanged
@@ -132,3 +140,4 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 - [ ] E2E tests pass after `npm run build`
 - [ ] `npm run quality` passes (lint + test:coverage + audit)
 - [ ] No test files skipped or disabled as part of migration
+- [ ] No flaky tests remain after migration (timing-sensitive tests fixed)
