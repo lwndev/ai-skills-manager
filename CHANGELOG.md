@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **CI release notes generation**: Use explicit previous tag for release notes generation to ensure correct diff range
+- **CI release notes generation**: Use explicit previous tag for release notes generation to ensure correct diff range (5ca35da)
 
 ### Compatibility
 

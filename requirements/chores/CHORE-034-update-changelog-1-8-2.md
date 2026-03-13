@@ -22,13 +22,13 @@ Update `CHANGELOG.md` with a new `[1.8.2]` section documenting all changes merge
 
 ## Acceptance Criteria
 
-- [ ] `CHANGELOG.md` has a new `## [1.8.2] - 2026-03-13` section above `## [1.8.1]`
-- [ ] Jest-to-Vitest migration documented under Changed (FEAT-024, #121)
-- [ ] Managed policy warning for allowed-tools documented under Changed (CHORE-033, #122)
-- [ ] Changelog tracker v2.1.74 bump documented under Compatibility
-- [ ] CI release notes fix documented under Fixed
-- [ ] Entries follow Keep a Changelog format consistent with existing entries
-- [ ] `npm run quality` passes
+- [x] `CHANGELOG.md` has a new `## [1.8.2] - 2026-03-13` section above `## [1.8.1]`
+- [x] Jest-to-Vitest migration documented under Changed (FEAT-024, #121)
+- [x] Managed policy warning for allowed-tools documented under Changed (CHORE-033, #122)
+- [x] Changelog tracker v2.1.74 bump documented under Compatibility
+- [x] CI release notes fix documented under Fixed
+- [x] Entries follow Keep a Changelog format consistent with existing entries
+- [x] `npm run quality` passes
 
 ## Completion
 
