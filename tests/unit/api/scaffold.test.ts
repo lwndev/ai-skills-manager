@@ -10,6 +10,7 @@
  * 6. Never prompts for user input (uses force option)
  */
 
+import type { Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -491,7 +492,7 @@ describe('scaffold API function', () => {
      * Returns scaffold + error classes from the same module scope
      * so instanceof checks work correctly.
      */
-    async function importScaffoldWithMockedFs(fsMocks: Record<string, ReturnType<typeof vi.fn>>) {
+    async function importScaffoldWithMockedFs(fsMocks: Record<string, Mock>) {
       vi.resetModules();
       const realFs = await vi.importActual<typeof fs>('fs/promises');
       vi.doMock('fs/promises', () => ({ ...realFs, ...fsMocks }));

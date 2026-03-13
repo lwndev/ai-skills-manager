@@ -12,6 +12,7 @@
  * 8. Supports dry run mode
  */
 
+import type { Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -694,7 +695,7 @@ describe('install API function', () => {
  * API transforms them into FileSystemError with "Permission denied" messages.
  */
 describe('install API permission errors (mocked)', () => {
-  let mockInstallSkill: ReturnType<typeof vi.fn>;
+  let mockInstallSkill: Mock;
 
   beforeEach(() => {
     vi.resetModules();

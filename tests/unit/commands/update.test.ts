@@ -6,6 +6,7 @@
  */
 
 import { Command } from 'commander';
+import type { Mock } from 'vitest';
 
 // --- Mocks ---
 
@@ -90,20 +91,20 @@ describe('update CLI command', () => {
   let consoleErrors: string[];
 
   // Import mocked modules (resolved after vi.mock hoisting)
-  let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockUpdateSkill: ReturnType<typeof vi.fn>;
-  let mockValidatePackageFile: ReturnType<typeof vi.fn>;
-  let mockValidateSkillName: ReturnType<typeof vi.fn>;
-  let mockValidateUninstallScope: ReturnType<typeof vi.fn>;
-  let mockDisplayError: ReturnType<typeof vi.fn>;
-  let mockFormatUpdateProgress: ReturnType<typeof vi.fn>;
-  let mockFormatUpdateSuccess: ReturnType<typeof vi.fn>;
-  let mockFormatDryRun: ReturnType<typeof vi.fn>;
-  let mockFormatQuietOutput: ReturnType<typeof vi.fn>;
-  let mockFormatError: ReturnType<typeof vi.fn>;
-  let mockFormatCancelledUpdate: ReturnType<typeof vi.fn>;
-  let mockFormatRollbackSuccess: ReturnType<typeof vi.fn>;
-  let mockFormatRollbackFailed: ReturnType<typeof vi.fn>;
+  let mockUpdate: Mock;
+  let mockUpdateSkill: Mock;
+  let mockValidatePackageFile: Mock;
+  let mockValidateSkillName: Mock;
+  let mockValidateUninstallScope: Mock;
+  let mockDisplayError: Mock;
+  let mockFormatUpdateProgress: Mock;
+  let mockFormatUpdateSuccess: Mock;
+  let mockFormatDryRun: Mock;
+  let mockFormatQuietOutput: Mock;
+  let mockFormatError: Mock;
+  let mockFormatCancelledUpdate: Mock;
+  let mockFormatRollbackSuccess: Mock;
+  let mockFormatRollbackFailed: Mock;
 
   beforeEach(async () => {
     consoleOutput = [];
@@ -128,20 +129,20 @@ describe('update CLI command', () => {
     const outputModule = await import('../../../src/utils/output');
     const formatterModule = await import('../../../src/formatters/update-formatter');
 
-    mockUpdate = apiModule.update as ReturnType<typeof vi.fn>;
-    mockUpdateSkill = updaterModule.updateSkill as ReturnType<typeof vi.fn>;
-    mockValidatePackageFile = packageFileModule.validatePackageFile as ReturnType<typeof vi.fn>;
-    mockValidateSkillName = nameModule.validateSkillName as ReturnType<typeof vi.fn>;
-    mockValidateUninstallScope = scopeModule.validateUninstallScope as ReturnType<typeof vi.fn>;
-    mockDisplayError = outputModule.displayError as ReturnType<typeof vi.fn>;
-    mockFormatUpdateProgress = formatterModule.formatUpdateProgress as ReturnType<typeof vi.fn>;
-    mockFormatUpdateSuccess = formatterModule.formatUpdateSuccess as ReturnType<typeof vi.fn>;
-    mockFormatDryRun = formatterModule.formatDryRun as ReturnType<typeof vi.fn>;
-    mockFormatQuietOutput = formatterModule.formatQuietOutput as ReturnType<typeof vi.fn>;
-    mockFormatError = formatterModule.formatError as ReturnType<typeof vi.fn>;
-    mockFormatCancelledUpdate = formatterModule.formatCancelledUpdate as ReturnType<typeof vi.fn>;
-    mockFormatRollbackSuccess = formatterModule.formatRollbackSuccess as ReturnType<typeof vi.fn>;
-    mockFormatRollbackFailed = formatterModule.formatRollbackFailed as ReturnType<typeof vi.fn>;
+    mockUpdate = apiModule.update as Mock;
+    mockUpdateSkill = updaterModule.updateSkill as Mock;
+    mockValidatePackageFile = packageFileModule.validatePackageFile as Mock;
+    mockValidateSkillName = nameModule.validateSkillName as Mock;
+    mockValidateUninstallScope = scopeModule.validateUninstallScope as Mock;
+    mockDisplayError = outputModule.displayError as Mock;
+    mockFormatUpdateProgress = formatterModule.formatUpdateProgress as Mock;
+    mockFormatUpdateSuccess = formatterModule.formatUpdateSuccess as Mock;
+    mockFormatDryRun = formatterModule.formatDryRun as Mock;
+    mockFormatQuietOutput = formatterModule.formatQuietOutput as Mock;
+    mockFormatError = formatterModule.formatError as Mock;
+    mockFormatCancelledUpdate = formatterModule.formatCancelledUpdate as Mock;
+    mockFormatRollbackSuccess = formatterModule.formatRollbackSuccess as Mock;
+    mockFormatRollbackFailed = formatterModule.formatRollbackFailed as Mock;
 
     // Reset all mocks
     mockUpdate.mockReset();

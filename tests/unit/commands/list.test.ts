@@ -10,7 +10,7 @@
  */
 
 import { Command } from 'commander';
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 // Mock dependencies before importing the module under test
 vi.mock('../../../src/api', () => ({ list: vi.fn() }));
@@ -41,9 +41,9 @@ describe('list CLI command', () => {
   let originalConsoleError: typeof console.error;
   let originalProcessExit: typeof process.exit;
   let consoleOutput: string[];
-  let mockList: ReturnType<typeof vi.fn>;
-  let mockDisplayError: ReturnType<typeof vi.fn>;
-  let mockDisplayWarning: ReturnType<typeof vi.fn>;
+  let mockList: Mock;
+  let mockDisplayError: Mock;
+  let mockDisplayWarning: Mock;
 
   beforeEach(async () => {
     consoleOutput = [];
@@ -59,9 +59,9 @@ describe('list CLI command', () => {
     // Get mocked modules
     const api = await import('../../../src/api');
     const outputUtils = await import('../../../src/utils/output');
-    mockList = api.list as ReturnType<typeof vi.fn>;
-    mockDisplayError = outputUtils.displayError as ReturnType<typeof vi.fn>;
-    mockDisplayWarning = outputUtils.displayWarning as ReturnType<typeof vi.fn>;
+    mockList = api.list as Mock;
+    mockDisplayError = outputUtils.displayError as Mock;
+    mockDisplayWarning = outputUtils.displayWarning as Mock;
 
     // Reset mocks
     mockList.mockReset();

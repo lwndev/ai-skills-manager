@@ -6,6 +6,7 @@
  */
 
 import { Command } from 'commander';
+import type { Mock } from 'vitest';
 import type { DetailedValidateResult } from '../../../src/types/api';
 
 // --- Mocks ---
@@ -77,9 +78,9 @@ describe('validate CLI command', () => {
   let consoleErrors: string[];
 
   // Import mocked modules (resolved after vi.mock hoisting)
-  let mockValidate: ReturnType<typeof vi.fn>;
-  let mockFormatValidationOutput: ReturnType<typeof vi.fn>;
-  let mockDisplayError: ReturnType<typeof vi.fn>;
+  let mockValidate: Mock;
+  let mockFormatValidationOutput: Mock;
+  let mockDisplayError: Mock;
 
   beforeEach(async () => {
     consoleOutput = [];
@@ -100,9 +101,9 @@ describe('validate CLI command', () => {
     const formatterModule = await import('../../../src/formatters/validate-formatter');
     const outputModule = await import('../../../src/utils/output');
 
-    mockValidate = validateModule.validate as ReturnType<typeof vi.fn>;
-    mockFormatValidationOutput = formatterModule.formatValidationOutput as ReturnType<typeof vi.fn>;
-    mockDisplayError = outputModule.displayError as ReturnType<typeof vi.fn>;
+    mockValidate = validateModule.validate as Mock;
+    mockFormatValidationOutput = formatterModule.formatValidationOutput as Mock;
+    mockDisplayError = outputModule.displayError as Mock;
 
     mockValidate.mockReset();
     mockFormatValidationOutput.mockReset();

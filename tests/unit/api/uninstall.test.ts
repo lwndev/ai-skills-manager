@@ -11,6 +11,7 @@
  * 7. Throws FileSystemError for permission errors
  */
 
+import type { Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -766,9 +767,9 @@ describe('uninstall API function', () => {
  * via integration tests.
  */
 describe('uninstall API error mapping (mocked)', () => {
-  let mockUninstallSkill: ReturnType<typeof vi.fn>;
-  let mockIsDryRunPreview: ReturnType<typeof vi.fn>;
-  let mockGetScopePath: ReturnType<typeof vi.fn>;
+  let mockUninstallSkill: Mock;
+  let mockIsDryRunPreview: Mock;
+  let mockGetScopePath: Mock;
 
   beforeEach(() => {
     vi.resetModules();

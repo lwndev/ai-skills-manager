@@ -6,6 +6,7 @@
  */
 
 import { Command } from 'commander';
+import type { Mock } from 'vitest';
 import type {
   DryRunPreview,
   UninstallResult,
@@ -145,18 +146,18 @@ describe('uninstall CLI command', () => {
   let consoleOutput: string[];
 
   // Mocked module references
-  let mockValidateSkillName: ReturnType<typeof vi.fn>;
-  let mockValidateUninstallScope: ReturnType<typeof vi.fn>;
-  let mockUninstallSkill: ReturnType<typeof vi.fn>;
-  let mockUninstallMultipleSkills: ReturnType<typeof vi.fn>;
-  let mockIsDryRunPreview: ReturnType<typeof vi.fn>;
-  let mockDiscoverSkill: ReturnType<typeof vi.fn>;
-  let mockCollectSkillFiles: ReturnType<typeof vi.fn>;
-  let mockCheckResourceLimits: ReturnType<typeof vi.fn>;
-  let mockIsInterrupted: ReturnType<typeof vi.fn>;
-  let mockConfirmUninstall: ReturnType<typeof vi.fn>;
-  let mockConfirmMultiUninstall: ReturnType<typeof vi.fn>;
-  let mockConfirmBulkForceUninstall: ReturnType<typeof vi.fn>;
+  let mockValidateSkillName: Mock;
+  let mockValidateUninstallScope: Mock;
+  let mockUninstallSkill: Mock;
+  let mockUninstallMultipleSkills: Mock;
+  let mockIsDryRunPreview: Mock;
+  let mockDiscoverSkill: Mock;
+  let mockCollectSkillFiles: Mock;
+  let mockCheckResourceLimits: Mock;
+  let mockIsInterrupted: Mock;
+  let mockConfirmUninstall: Mock;
+  let mockConfirmMultiUninstall: Mock;
+  let mockConfirmBulkForceUninstall: Mock;
 
   beforeEach(async () => {
     consoleOutput = [];
@@ -178,18 +179,18 @@ describe('uninstall CLI command', () => {
     const signalHandler = await import('../../../src/utils/signal-handler');
     const prompts = await import('../../../src/utils/prompts');
 
-    mockValidateSkillName = nameValidator.validateSkillName as ReturnType<typeof vi.fn>;
-    mockValidateUninstallScope = scopeValidator.validateUninstallScope as ReturnType<typeof vi.fn>;
-    mockUninstallSkill = uninstaller.uninstallSkill as ReturnType<typeof vi.fn>;
-    mockUninstallMultipleSkills = uninstaller.uninstallMultipleSkills as ReturnType<typeof vi.fn>;
-    mockIsDryRunPreview = uninstaller.isDryRunPreview as ReturnType<typeof vi.fn>;
-    mockDiscoverSkill = discovery.discoverSkill as ReturnType<typeof vi.fn>;
-    mockCollectSkillFiles = fileEnum.collectSkillFiles as ReturnType<typeof vi.fn>;
-    mockCheckResourceLimits = fileEnum.checkResourceLimits as ReturnType<typeof vi.fn>;
-    mockIsInterrupted = signalHandler.isInterrupted as ReturnType<typeof vi.fn>;
-    mockConfirmUninstall = prompts.confirmUninstall as ReturnType<typeof vi.fn>;
-    mockConfirmMultiUninstall = prompts.confirmMultiUninstall as ReturnType<typeof vi.fn>;
-    mockConfirmBulkForceUninstall = prompts.confirmBulkForceUninstall as ReturnType<typeof vi.fn>;
+    mockValidateSkillName = nameValidator.validateSkillName as Mock;
+    mockValidateUninstallScope = scopeValidator.validateUninstallScope as Mock;
+    mockUninstallSkill = uninstaller.uninstallSkill as Mock;
+    mockUninstallMultipleSkills = uninstaller.uninstallMultipleSkills as Mock;
+    mockIsDryRunPreview = uninstaller.isDryRunPreview as Mock;
+    mockDiscoverSkill = discovery.discoverSkill as Mock;
+    mockCollectSkillFiles = fileEnum.collectSkillFiles as Mock;
+    mockCheckResourceLimits = fileEnum.checkResourceLimits as Mock;
+    mockIsInterrupted = signalHandler.isInterrupted as Mock;
+    mockConfirmUninstall = prompts.confirmUninstall as Mock;
+    mockConfirmMultiUninstall = prompts.confirmMultiUninstall as Mock;
+    mockConfirmBulkForceUninstall = prompts.confirmBulkForceUninstall as Mock;
 
     // Reset all mocks to their default return values
     mockValidateSkillName.mockReturnValue({ valid: true });
@@ -834,8 +835,8 @@ describe('uninstall CLI command', () => {
   describe('signal handler lifecycle', () => {
     it('sets up and resets the interrupt handler', async () => {
       const signalHandler = await import('../../../src/utils/signal-handler');
-      const mockSetup = signalHandler.setupInterruptHandler as ReturnType<typeof vi.fn>;
-      const mockReset = signalHandler.resetInterruptHandler as ReturnType<typeof vi.fn>;
+      const mockSetup = signalHandler.setupInterruptHandler as Mock;
+      const mockReset = signalHandler.resetInterruptHandler as Mock;
 
       mockDiscoverSkill.mockResolvedValue({
         type: 'found',
@@ -853,7 +854,7 @@ describe('uninstall CLI command', () => {
 
     it('resets interrupt handler even when an error occurs', async () => {
       const signalHandler = await import('../../../src/utils/signal-handler');
-      const mockReset = signalHandler.resetInterruptHandler as ReturnType<typeof vi.fn>;
+      const mockReset = signalHandler.resetInterruptHandler as Mock;
 
       mockDiscoverSkill.mockRejectedValue(new Error('boom'));
 

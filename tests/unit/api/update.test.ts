@@ -14,6 +14,7 @@
  * 10. Supports keepBackup option
  */
 
+import type { Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -743,7 +744,7 @@ describe('update API function', () => {
  * These tests mock the generator to verify error translation.
  */
 describe('update API error mapping (mocked)', () => {
-  let mockUpdateSkill: ReturnType<typeof vi.fn>;
+  let mockUpdateSkill: Mock;
 
   beforeEach(() => {
     vi.resetModules();
