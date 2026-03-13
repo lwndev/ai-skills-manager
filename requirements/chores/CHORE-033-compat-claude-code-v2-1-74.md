@@ -35,7 +35,7 @@ Review and update ASM's `allowed-tools` validation, scaffolding, and documentati
 
 **Completed:** 2026-03-13
 
-**Pull Request:** TBD
+**Pull Request:** [#122](https://github.com/lwndev/ai-skills-manager/pull/122)
 
 ## Notes
 
