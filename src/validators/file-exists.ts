@@ -10,16 +10,11 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ValidationResult } from './name';
-
 const SKILL_FILENAME = 'SKILL.md';
 
-export interface FileExistsResult extends ValidationResult {
-  /** Resolved absolute path to SKILL.md */
-  resolvedPath?: string;
-  /** Content of the SKILL.md file */
-  content?: string;
-}
+export type FileExistsResult =
+  | { valid: true; resolvedPath: string; content: string }
+  | { valid: false; error: string; resolvedPath?: undefined; content?: undefined };
 
 /**
  * Validate that a skill path exists and contains SKILL.md

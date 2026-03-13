@@ -7,10 +7,7 @@
  * - Reserved words: "anthropic", "claude" (cannot be used as the name or as part of the name)
  */
 
-export interface ValidationResult {
-  valid: boolean;
-  error?: string;
-}
+export type ValidationResult = { valid: true } | { valid: false; error: string };
 
 /**
  * Truncate a value for display in error messages.

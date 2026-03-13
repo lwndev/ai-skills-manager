@@ -113,7 +113,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const fileResult = await validateFileExists(skillPath);
   checks.fileExists = {
     passed: fileResult.valid,
-    error: fileResult.error,
+    error: fileResult.valid ? undefined : fileResult.error,
   };
 
   // Cannot continue without file
@@ -126,7 +126,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const parseResult = parseFrontmatter(fileResult.content);
   checks.frontmatterValid = {
     passed: parseResult.success,
-    error: parseResult.error,
+    error: parseResult.success ? undefined : parseResult.error,
   };
 
   // Cannot continue without valid frontmatter
@@ -140,14 +140,14 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const requiredResult = validateRequiredFields(frontmatter);
   checks.requiredFields = {
     passed: requiredResult.valid,
-    error: requiredResult.error,
+    error: requiredResult.valid ? undefined : requiredResult.error,
   };
 
   // Step 4: Allowed properties check
   const keysResult = validateFrontmatterKeys(frontmatter);
   checks.allowedProperties = {
     passed: keysResult.valid,
-    error: keysResult.error,
+    error: keysResult.valid ? undefined : keysResult.error,
   };
 
   // Step 5: Name format check (only if name exists)
@@ -155,7 +155,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     const nameResult = validateName(frontmatter.name);
     checks.nameFormat = {
       passed: nameResult.valid,
-      error: nameResult.error,
+      error: nameResult.valid ? undefined : nameResult.error,
     };
   } else {
     // Name is missing or empty - mark as passed (already reported in requiredFields)
@@ -170,7 +170,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     const descResult = validateDescription(frontmatter.description);
     checks.descriptionFormat = {
       passed: descResult.valid,
-      error: descResult.error,
+      error: descResult.valid ? undefined : descResult.error,
     };
   } else {
     // Description is missing or empty - mark as passed (already reported in requiredFields)
@@ -185,7 +185,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const compatResult = validateCompatibility(frontmatter.compatibility);
   checks.compatibilityFormat = {
     passed: compatResult.valid,
-    error: compatResult.error,
+    error: compatResult.valid ? undefined : compatResult.error,
   };
 
   // Step 8: Context format check (Claude Code 2.1.x)
@@ -193,7 +193,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const contextResult = validateContext(frontmatter.context);
   checks.contextFormat = {
     passed: contextResult.valid,
-    error: contextResult.error,
+    error: contextResult.valid ? undefined : contextResult.error,
   };
 
   // Step 9: Agent format check (Claude Code 2.1.x)
@@ -201,7 +201,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const agentResult = validateAgent(frontmatter.agent);
   checks.agentFormat = {
     passed: agentResult.valid,
-    error: agentResult.error,
+    error: agentResult.valid ? undefined : agentResult.error,
   };
 
   // Step 10: Hooks format check (Claude Code 2.1.x)
@@ -219,35 +219,35 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   const userInvocableResult = validateUserInvocable(frontmatter['user-invocable']);
   checks.userInvocableFormat = {
     passed: userInvocableResult.valid,
-    error: userInvocableResult.error,
+    error: userInvocableResult.valid ? undefined : userInvocableResult.error,
   };
 
   // Step 12: Argument hint format check
   const argumentHintResult = validateArgumentHint(frontmatter['argument-hint']);
   checks.argumentHintFormat = {
     passed: argumentHintResult.valid,
-    error: argumentHintResult.error,
+    error: argumentHintResult.valid ? undefined : argumentHintResult.error,
   };
 
   // Step 13: Keep coding instructions format check
   const keepCodingResult = validateKeepCodingInstructions(frontmatter['keep-coding-instructions']);
   checks.keepCodingInstructionsFormat = {
     passed: keepCodingResult.valid,
-    error: keepCodingResult.error,
+    error: keepCodingResult.valid ? undefined : keepCodingResult.error,
   };
 
   // Step 14: Tools format check
   const toolsResult = validateTools(frontmatter.tools);
   checks.toolsFormat = {
     passed: toolsResult.valid,
-    error: toolsResult.error,
+    error: toolsResult.valid ? undefined : toolsResult.error,
   };
 
   // Step 15: Color format check
   const colorResult = validateColor(frontmatter.color);
   checks.colorFormat = {
     passed: colorResult.valid,
-    error: colorResult.error,
+    error: colorResult.valid ? undefined : colorResult.error,
   };
 
   // Step 16: Disable model invocation format check
@@ -256,22 +256,25 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   );
   checks.disableModelInvocationFormat = {
     passed: disableModelResult.valid,
-    error: disableModelResult.error,
+    error: disableModelResult.valid ? undefined : disableModelResult.error,
   };
 
   // Step 17: Version format check
   const versionResult = validateVersion(frontmatter.version);
   checks.versionFormat = {
     passed: versionResult.valid,
-    error: versionResult.error,
+    error: versionResult.valid ? undefined : versionResult.error,
   };
 
   // Step 18: Allowed tools format check
   const allowedToolsResult = validateAllowedTools(frontmatter['allowed-tools']);
   checks.allowedToolsFormat = {
     passed: allowedToolsResult.valid,
-    error: allowedToolsResult.error,
+    error: allowedToolsResult.valid ? undefined : allowedToolsResult.error,
   };
+  // Collect warnings from allowed-tools validation
+  const allowedToolsWarnings =
+    allowedToolsResult.valid && allowedToolsResult.warnings ? allowedToolsResult.warnings : [];
 
   // Step 19: Name matches directory check
   // Validates that frontmatter name matches parent directory name
@@ -283,7 +286,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
     const dirResult = validateDirectoryName(fileResult.resolvedPath, frontmatter.name);
     checks.nameMatchesDirectory = {
       passed: dirResult.valid,
-      error: dirResult.error,
+      error: dirResult.valid ? undefined : dirResult.error,
     };
   } else {
     // Skip if name is missing/empty (already reported in requiredFields)
@@ -294,7 +297,7 @@ export async function validateSkill(skillPath: string): Promise<ValidationResult
   // Step 20: File size analysis (generates warnings, not errors)
   // Analyze body content for size recommendations
   const fileSizeAnalysis = analyzeFileSize(parseResult.body || '');
-  const warnings = [...hooksWarnings, ...fileSizeAnalysis.warnings];
+  const warnings = [...hooksWarnings, ...allowedToolsWarnings, ...fileSizeAnalysis.warnings];
 
   return buildResult(
     fileResult.resolvedPath || skillPath,

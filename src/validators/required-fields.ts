@@ -6,13 +6,11 @@
  * - 'description' field must be present and non-empty
  */
 
-import { ValidationResult } from './name';
 import { ParsedFrontmatter } from '../types/validation';
 
-export interface RequiredFieldsResult extends ValidationResult {
-  /** Missing field names (if any) */
-  missingFields?: string[];
-}
+export type RequiredFieldsResult =
+  | { valid: true }
+  | { valid: false; error: string; missingFields: string[] };
 
 /**
  * Validate that required fields are present in frontmatter

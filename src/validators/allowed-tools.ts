@@ -9,16 +9,22 @@
  * - Error for non-array types, arrays containing non-strings or empty strings
  */
 
-import { ValidationResult } from './name';
 import { validateToolEntry } from './tool-patterns';
+
+/**
+ * Result type for allowed-tools validation that includes optional warnings
+ */
+export type AllowedToolsValidationResult =
+  | { valid: true; warnings?: string[] }
+  | { valid: false; error: string };
 
 /**
  * Validate the allowed-tools field value
  *
  * @param value - The allowed-tools field value (undefined if absent)
- * @returns Validation result
+ * @returns Validation result with optional warnings
  */
-export function validateAllowedTools(value: unknown): ValidationResult {
+export function validateAllowedTools(value: unknown): AllowedToolsValidationResult {
   // Field is optional - undefined or null is valid
   if (value === undefined || value === null) {
     return { valid: true };
@@ -49,6 +55,16 @@ export function validateAllowedTools(value: unknown): ValidationResult {
         error: `Field 'allowed-tools' array contains an empty string at index ${i}. Each entry must be a non-empty tool permission pattern.`,
       };
     }
+  }
+
+  // Warn about managed policy constraint when allowed-tools is present
+  if (value.length > 0) {
+    return {
+      valid: true,
+      warnings: [
+        "allowed-tools cannot override managed policy 'ask' rules (Claude Code v2.1.74+). Tools restricted by managed policy will still require user approval regardless of allowed-tools.",
+      ],
+    };
   }
 
   return { valid: true };
