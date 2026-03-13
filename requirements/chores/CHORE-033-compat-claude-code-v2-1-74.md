@@ -24,18 +24,18 @@ Review and update ASM's `allowed-tools` validation, scaffolding, and documentati
 
 ## Acceptance Criteria
 
-- [ ] Review `src/validators/allowed-tools.ts` — determine if validation rules need updating to reflect that `allowed-tools` cannot override managed policy `ask` rules
-- [ ] Review `src/generators/validate.ts` (around line 270) — check if validation feedback or warnings should inform skill authors of this constraint
-- [ ] Review `src/templates/skill-md.ts` (lines 77, 179, 183) — update scaffolded templates or inline comments to note that `allowed-tools` cannot override managed policy `ask` rules
-- [ ] `npm run quality` passes after changes
+- [x] Review `src/validators/allowed-tools.ts` — determine if validation rules need updating to reflect that `allowed-tools` cannot override managed policy `ask` rules
+- [x] Review `src/generators/validate.ts` (around line 270) — check if validation feedback or warnings should inform skill authors of this constraint
+- [x] Review `src/templates/skill-md.ts` (lines 77, 179, 183) — update scaffolded templates or inline comments to note that `allowed-tools` cannot override managed policy `ask` rules
+- [x] `npm run quality` passes after changes
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-13
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** TBD
 
 ## Notes
 
