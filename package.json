@@ -52,7 +52,7 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix",
-    "quality": "npm run lint && npm run test:coverage && npm run audit",
+    "quality": "npm run lint && npm run test:coverage && node scripts/check-coverage.js && npm run audit",
     "prepare": "husky",
     "prepublishOnly": "npm run quality && npm run build",
     "preversion": "npm run build && npm test && npm run lint",

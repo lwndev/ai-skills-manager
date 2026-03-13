@@ -147,7 +147,7 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 
 ### Phase 4: Enforce Coverage Thresholds in Quality Gate
 **Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - The `npm run quality` script runs lint + test:coverage + audit but does **not** run `scripts/check-coverage.js` — coverage threshold enforcement only happens in CI as a separate step
@@ -172,10 +172,10 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 6. Run `npm test` — all test files must still pass (no regressions)
 
 #### Deliverables
-- [ ] `package.json` `quality` script includes `node scripts/check-coverage.js`
-- [ ] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
-- [ ] `npm run quality` passes with coverage threshold enforcement
-- [ ] No test files skipped or disabled
+- [x] `package.json` `quality` script includes `node scripts/check-coverage.js`
+- [x] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- [x] `npm run quality` passes with coverage threshold enforcement
+- [x] No test files skipped or disabled
 
 ---
 

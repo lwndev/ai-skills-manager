@@ -136,17 +136,17 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 - Run full `npm run quality` (lint + test:coverage + audit) to confirm parity
 
 ## Acceptance Criteria
-- [ ] `jest`, `ts-jest`, and `@types/jest` removed from `package.json`
-- [ ] `vitest` added to `devDependencies`
-- [ ] `jest.config.js` removed and `vitest.config.ts` created
-- [ ] All `package.json` scripts updated to use Vitest
-- [ ] All `jest.*` API calls replaced with `vi.*` equivalents across test files
-- [ ] Mock files updated or simplified for Vitest compatibility
-- [ ] Snapshot tests regenerated if format differs
-- [ ] All 115 test files pass with `npm test`
-- [ ] Coverage collection works with `npm run test:coverage`
-- [ ] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
-- [ ] `npm run quality` passes with coverage threshold check integrated (lint + test:coverage + check-coverage + audit)
-- [ ] E2E tests pass after `npm run build`
-- [ ] No test files skipped or disabled as part of migration
-- [ ] No flaky tests remain after migration (timing-sensitive tests fixed)
+- [x] `jest`, `ts-jest`, and `@types/jest` removed from `package.json`
+- [x] `vitest` added to `devDependencies`
+- [x] `jest.config.js` removed and `vitest.config.ts` created
+- [x] All `package.json` scripts updated to use Vitest
+- [x] All `jest.*` API calls replaced with `vi.*` equivalents across test files
+- [x] Mock files updated or simplified for Vitest compatibility
+- [x] Snapshot tests regenerated if format differs
+- [x] All 115 test files pass with `npm test`
+- [x] Coverage collection works with `npm run test:coverage`
+- [x] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- [x] `npm run quality` passes with coverage threshold check integrated (lint + test:coverage + check-coverage + audit)
+- [x] E2E tests pass after `npm run build`
+- [x] No test files skipped or disabled as part of migration
+- [x] No flaky tests remain after migration (timing-sensitive tests fixed)
