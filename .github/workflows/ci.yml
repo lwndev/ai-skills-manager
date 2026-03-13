@@ -42,7 +42,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Run e2e tests
-        run: npx jest tests/e2e/ --verbose
+        run: npx vitest run tests/e2e/ --reporter=verbose
 
       - name: Check coverage threshold
         run: node scripts/check-coverage.js

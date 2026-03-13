@@ -114,7 +114,7 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 
 ### Phase 3: Snapshots, CI, and Final Verification
 **Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Snapshot regeneration must happen after the runner is fully configured and API migration is complete
@@ -135,12 +135,46 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 10. Update `CLAUDE.md` memory note about test framework from Jest to Vitest
 
 #### Deliverables
-- [ ] Snapshot files regenerated for Vitest format
-- [ ] `.github/workflows/ci.yml` updated to use Vitest
-- [ ] All 115 test files pass with `npm test`
-- [ ] Coverage collection works with `npm run test:coverage`
-- [ ] E2E tests pass after `npm run build`
-- [ ] `npm run quality` passes (lint + test:coverage + audit)
+- [x] Snapshot files regenerated for Vitest format
+- [x] `.github/workflows/ci.yml` updated to use Vitest
+- [x] All 115 test files pass with `npm test`
+- [x] Coverage collection works with `npm run test:coverage`
+- [x] E2E tests pass after `npm run build`
+- [x] `npm run quality` passes (lint + test:coverage + audit)
+- [x] No test files skipped or disabled
+
+---
+
+### Phase 4: Enforce Coverage Thresholds in Quality Gate
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** Pending
+
+#### Rationale
+- The `npm run quality` script runs lint + test:coverage + audit but does **not** run `scripts/check-coverage.js` — coverage threshold enforcement only happens in CI as a separate step
+- This means `npm run quality` can pass locally while coverage is below thresholds, giving developers false confidence
+- The Vitest migration exposed (but did not cause) a pre-existing coverage gap: statements 77.20% (threshold 80%), branches 67.52% (threshold 75%), lines 77.27% (threshold 80%)
+- The biggest gaps are in `src/commands/` — `install.ts`, `uninstall.ts`, `update.ts`, and `validate.ts` all have 0% coverage
+- This phase integrates the coverage threshold check into `npm run quality` and closes the coverage gap so all thresholds pass
+
+#### Implementation Steps
+1. Update `package.json` `quality` script to include coverage threshold check:
+   - `"quality": "npm run lint && npm run test:coverage && node scripts/check-coverage.js && npm run audit"`
+2. Run `npm run quality` to confirm the coverage threshold failure is now surfaced
+3. Identify files below threshold contributing most to the gap (focus on `src/commands/` at 28.72% statements)
+4. Add or expand unit tests to close the coverage gap — target the highest-impact files first:
+   - `src/commands/install.ts` (0% → coverage)
+   - `src/commands/uninstall.ts` (0% → coverage)
+   - `src/commands/update.ts` (0% → coverage)
+   - `src/commands/validate.ts` (0% → coverage)
+   - `src/commands/list.ts` (2.5% → coverage)
+   - `src/commands/package.ts` (4.05% → coverage)
+5. Run `npm run quality` — must now pass with coverage thresholds enforced
+6. Run `npm test` — all test files must still pass (no regressions)
+
+#### Deliverables
+- [ ] `package.json` `quality` script includes `node scripts/check-coverage.js`
+- [ ] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- [ ] `npm run quality` passes with coverage threshold enforcement
 - [ ] No test files skipped or disabled
 
 ---
@@ -158,6 +192,7 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 - **Phase 2**: Full `npm test` validates API migration across all 115 files
 - **Phase 2.5**: Flaky performance benchmark fixed and verified across 5 consecutive runs
 - **Phase 3**: Full `npm run quality` validates end-to-end parity including lint, coverage, and audit
+- **Phase 4**: Integrates coverage threshold check into `npm run quality` and closes pre-existing coverage gaps
 - **No test logic changes**: Only framework API calls change (`jest.*` → `vi.*`). Test assertions, setup, and teardown logic remain identical.
 
 ## Dependencies and Prerequisites
@@ -178,13 +213,15 @@ The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstabl
 | `overrides` in package.json were Jest-specific | Low | Low | Verify `minimatch` and `test-exclude` overrides are still needed; remove if not |
 | `globals: true` causes naming conflicts | Low | Low | If conflicts arise, switch to explicit imports in affected files only |
 | Vitest's faster execution exposes pre-existing flaky tests | Low | High | Identified in Phase 2 — `should track timing variance` fails due to sub-millisecond timings; fix in Phase 2.5 |
+| Coverage below thresholds after migration | Medium | High | Pre-existing gap in `src/commands/` (0% coverage on 6 files); `npm run quality` didn't enforce thresholds locally. Fix in Phase 4 |
 
 ## Success Criteria
 
 - All 115 test files pass with `vitest run`
 - Coverage collection produces equivalent reports (text, lcov, html, json-summary)
+- Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- `npm run quality` passes with coverage threshold enforcement (`node scripts/check-coverage.js` included)
 - E2E tests pass after build
-- `npm run quality` passes without modifications to test logic
 - `jest`, `ts-jest`, and `@types/jest` fully removed from the project
 - CI pipeline runs successfully with Vitest
 - No test files skipped or disabled as part of migration

@@ -73,6 +73,14 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 - Specifically: the `should track timing variance` performance benchmark in `tests/performance/update-benchmark.test.ts` uses a sub-millisecond workload that produces `NaN` or extreme coefficient-of-variation values when `mean ≈ 0`
 - Fix by increasing workload size to produce measurable timings, or adding a guard to skip the variance assertion when timings are below statistical significance (< 1ms)
 
+### FR-10: Enforce Coverage Thresholds in Quality Gate
+- The `npm run quality` script must include the coverage threshold check (`node scripts/check-coverage.js`) so that coverage enforcement happens locally, not only in CI
+- Pre-existing coverage gaps exposed by the migration must be closed so all thresholds pass:
+  - Statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- The primary gap is in `src/commands/` where 6 command files have 0–4% coverage (`install.ts`, `uninstall.ts`, `update.ts`, `validate.ts`, `list.ts`, `package.ts`)
+- Add unit tests for these command files to bring overall coverage above thresholds
+- Ensure `npm run quality` passes end-to-end with the coverage check integrated
+
 ## Non-Functional Requirements
 
 ### NFR-1: Performance
@@ -81,7 +89,7 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 
 ### NFR-2: Error Handling
 - Test failure output should be clear and actionable (Vitest's default reporter)
-- Coverage thresholds (if any) should be preserved from Jest configuration
+- Coverage thresholds must be preserved from Jest configuration and enforced in `npm run quality` (not only CI)
 
 ### NFR-3: Developer Experience
 - `vitest` (watch mode) should provide immediate feedback during development
@@ -137,7 +145,8 @@ As a developer, I want the test suite to run on Vitest so that I get faster test
 - [ ] Snapshot tests regenerated if format differs
 - [ ] All 115 test files pass with `npm test`
 - [ ] Coverage collection works with `npm run test:coverage`
+- [ ] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- [ ] `npm run quality` passes with coverage threshold check integrated (lint + test:coverage + check-coverage + audit)
 - [ ] E2E tests pass after `npm run build`
-- [ ] `npm run quality` passes (lint + test:coverage + audit)
 - [ ] No test files skipped or disabled as part of migration
 - [ ] No flaky tests remain after migration (timing-sensitive tests fixed)
