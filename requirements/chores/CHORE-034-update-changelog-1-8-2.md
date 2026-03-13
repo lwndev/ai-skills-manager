@@ -32,8 +32,8 @@ Update `CHANGELOG.md` with a new `[1.8.2]` section documenting all changes merge
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-13
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#124](https://github.com/lwndev/ai-skills-manager/pull/124)
