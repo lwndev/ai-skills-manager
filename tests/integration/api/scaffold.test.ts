@@ -447,8 +447,13 @@ describe('scaffold API integration', () => {
     // We manually create the SKILL.md using generateSkillMd with template options
     // since the scaffold API doesn't support template options until Phase 4.
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { generateSkillMd } = require('../../../src/templates/skill-md');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let generateSkillMd: any;
+
+    beforeAll(async () => {
+      const mod = await import('../../../src/templates/skill-md');
+      generateSkillMd = mod.generateSkillMd;
+    });
 
     /**
      * Helper to create a skill directory with generated SKILL.md

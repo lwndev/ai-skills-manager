@@ -66,7 +66,7 @@ describe('Signal Handler', () => {
     });
 
     it('accepts optional cleanup function', () => {
-      const cleanup = jest.fn().mockResolvedValue(undefined);
+      const cleanup = vi.fn().mockResolvedValue(undefined);
       expect(() => setupInterruptHandler(cleanup)).not.toThrow();
     });
   });
@@ -125,7 +125,7 @@ describe('Signal Handler', () => {
     });
 
     it('accepts optional cleanup function', () => {
-      const cleanup = jest.fn().mockResolvedValue(undefined);
+      const cleanup = vi.fn().mockResolvedValue(undefined);
       const handler = createScopedInterruptHandler(cleanup);
       expect(handler.isInterrupted()).toBe(false);
       handler.dispose();

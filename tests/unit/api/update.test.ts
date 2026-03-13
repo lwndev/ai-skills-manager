@@ -14,6 +14,7 @@
  * 10. Supports keepBackup option
  */
 
+import type { Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -743,12 +744,12 @@ describe('update API function', () => {
  * These tests mock the generator to verify error translation.
  */
 describe('update API error mapping (mocked)', () => {
-  let mockUpdateSkill: jest.Mock;
+  let mockUpdateSkill: Mock;
 
   beforeEach(() => {
-    jest.resetModules();
-    mockUpdateSkill = jest.fn();
-    jest.doMock('../../../src/generators/updater', () => ({
+    vi.resetModules();
+    mockUpdateSkill = vi.fn();
+    vi.doMock('../../../src/generators/updater', () => ({
       updateSkill: mockUpdateSkill,
       UpdateError: class UpdateError extends Error {
         public readonly updateError: unknown;
@@ -762,8 +763,8 @@ describe('update API error mapping (mocked)', () => {
   });
 
   afterEach(() => {
-    jest.resetModules();
-    jest.restoreAllMocks();
+    vi.resetModules();
+    vi.restoreAllMocks();
   });
 
   describe('mapUpdateError cases', () => {
@@ -1362,7 +1363,9 @@ describe('update API error mapping (mocked)', () => {
         fail('Expected FileSystemError');
       } catch (error) {
         expect(error).toBeInstanceOf(FSError);
-        expect((error as FileSystemError).message).toMatch(/Permission denied.*"\/test\/package\.skill"/);
+        expect((error as FileSystemError).message).toMatch(
+          /Permission denied.*"\/test\/package\.skill"/
+        );
       }
     });
 
@@ -1383,7 +1386,9 @@ describe('update API error mapping (mocked)', () => {
         fail('Expected FileSystemError');
       } catch (error) {
         expect(error).toBeInstanceOf(FSError);
-        expect((error as FileSystemError).message).toMatch(/Permission denied.*"\/test\/package\.skill"/);
+        expect((error as FileSystemError).message).toMatch(
+          /Permission denied.*"\/test\/package\.skill"/
+        );
       }
     });
 

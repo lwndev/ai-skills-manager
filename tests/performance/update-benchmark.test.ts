@@ -155,8 +155,8 @@ This is a generated skill for performance testing.
   }
 
   describe('Progress Indicator Threshold', () => {
-    beforeEach(() => jest.useFakeTimers());
-    afterEach(() => jest.useRealTimers());
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
 
     it('should use 2-second default threshold', () => {
       const now = Date.now();
@@ -328,8 +328,8 @@ This is a generated skill for performance testing.
 
       for (let i = 0; i < iterations; i++) {
         const { durationMs } = await measureTime(async () => {
-          // Simple operation to measure baseline timing
-          const content = generateContent(10000);
+          // Use a heavier workload so Date.now() can distinguish iterations
+          const content = generateContent(500000);
           return content.length;
         });
         timings.push(durationMs);
@@ -340,9 +340,13 @@ This is a generated skill for performance testing.
       const variance = timings.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / timings.length;
       const stdDev = Math.sqrt(variance);
 
-      // Timing should be reasonably consistent (stdDev should be small relative to mean)
-      // Allow for CI variance
-      expect(stdDev / mean).toBeLessThan(1); // Coefficient of variation < 100%
+      // Guard: skip variance assertion if mean < 1ms (timings too small for
+      // Date.now() granularity to produce meaningful statistics)
+      if (mean >= 1) {
+        // Timing should be reasonably consistent (stdDev should be small relative to mean)
+        // Allow for CI variance
+        expect(stdDev / mean).toBeLessThan(1); // Coefficient of variation < 100%
+      }
     });
   });
 

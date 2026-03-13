@@ -10,13 +10,13 @@ import {
 } from '../../../src/generators/scaffold';
 
 // Mock readline for promptConfirmation tests
-jest.mock('readline', () => ({
-  createInterface: jest.fn().mockReturnValue({
-    question: jest.fn((question: string, callback: (answer: string) => void) => {
+vi.mock('readline', () => ({
+  createInterface: vi.fn().mockReturnValue({
+    question: vi.fn((question: string, callback: (answer: string) => void) => {
       // Default to 'n' (no) for tests
       callback('n');
     }),
-    close: jest.fn(),
+    close: vi.fn(),
   }),
 }));
 

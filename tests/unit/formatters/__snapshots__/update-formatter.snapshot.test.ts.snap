@@ -1,13 +1,13 @@
-// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Update Formatter Snapshots Backup Messages matches backup created format: backup-created 1`] = `
+exports[`Update Formatter Snapshots > Backup Messages > matches backup created format > backup-created 1`] = `
 Creating backup...
    Backup saved to: ~/.asm/backups/my-skill-20250115.skill
 `;
 
-exports[`Update Formatter Snapshots Backup Messages matches no backup warning format: no-backup-warning 1`] = `⚠ Warning: Proceeding without backup. If the update fails, the previous version cannot be automatically restored.`;
+exports[`Update Formatter Snapshots > Backup Messages > matches no backup warning format > no-backup-warning 1`] = `⚠ Warning: Proceeding without backup. If the update fails, the previous version cannot be automatically restored.`;
 
-exports[`Update Formatter Snapshots Cancelled Update matches interrupted format: cancelled-interrupted 1`] = `
+exports[`Update Formatter Snapshots > Cancelled Update > matches interrupted format > cancelled-interrupted 1`] = `
 
 ⚠ Update of 'my-skill' was interrupted
 
@@ -15,7 +15,7 @@ No changes were made.
 
 `;
 
-exports[`Update Formatter Snapshots Cancelled Update matches user cancelled format: cancelled-user 1`] = `
+exports[`Update Formatter Snapshots > Cancelled Update > matches user cancelled format > cancelled-user 1`] = `
 
 ℹ Update of 'my-skill' was cancelled
 
@@ -23,7 +23,7 @@ Cleanup completed. No changes were made.
 
 `;
 
-exports[`Update Formatter Snapshots Change Summary matches change summary with all types: change-summary-all-types 1`] = `
+exports[`Update Formatter Snapshots > Change Summary > matches change summary with all types > change-summary-all-types 1`] = `
 Changes:
    + new-file.md (added, 1000 B)
    + another.md (added, 500 B)
@@ -31,7 +31,7 @@ Changes:
    - old.md (removed)
 `;
 
-exports[`Update Formatter Snapshots Change Summary matches change summary with truncation: change-summary-truncated 1`] = `
+exports[`Update Formatter Snapshots > Change Summary > matches change summary with truncation > change-summary-truncated 1`] = `
 Changes:
    + file0.md (added, 100 B)
    + file1.md (added, 100 B)
@@ -41,7 +41,7 @@ Changes:
    ... and 10 more added files
 `;
 
-exports[`Update Formatter Snapshots Confirmation Prompt matches confirmation prompt format: confirmation-prompt 1`] = `
+exports[`Update Formatter Snapshots > Confirmation Prompt > matches confirmation prompt format > confirmation-prompt 1`] = `
 Updating skill: my-skill
 
 Current version:
@@ -64,7 +64,7 @@ Backup location: ~/.asm/backups/my-skill-20250115.skill
 This will replace the installed skill with the new version.
 `;
 
-exports[`Update Formatter Snapshots Downgrade Warning (requirements lines 369-381) matches downgrade warning format with dates: downgrade-warning-with-dates 1`] = `
+exports[`Update Formatter Snapshots > Downgrade Warning (requirements lines 369-381) > matches downgrade warning format with dates > downgrade-warning-with-dates 1`] = `
 
 ⚠ This appears to be a downgrade
    Current version date: 2025-01-15
@@ -72,13 +72,13 @@ exports[`Update Formatter Snapshots Downgrade Warning (requirements lines 369-38
 
 `;
 
-exports[`Update Formatter Snapshots Downgrade Warning (requirements lines 369-381) matches downgrade warning format without dates: downgrade-warning-no-dates 1`] = `
+exports[`Update Formatter Snapshots > Downgrade Warning (requirements lines 369-381) > matches downgrade warning format without dates > downgrade-warning-no-dates 1`] = `
 
 ⚠ This appears to be a downgrade
 
 `;
 
-exports[`Update Formatter Snapshots Dry-run Output (requirements lines 336-362) matches dry-run preview format with changes: dry-run-with-changes 1`] = `
+exports[`Update Formatter Snapshots > Dry-run Output (requirements lines 336-362) > matches dry-run preview format with changes > dry-run-with-changes 1`] = `
 Dry run: my-skill
 
 Update preview:
@@ -105,7 +105,7 @@ Backup would be created at:
 
 `;
 
-exports[`Update Formatter Snapshots Dry-run Output (requirements lines 336-362) matches dry-run preview format without changes: dry-run-no-changes 1`] = `
+exports[`Update Formatter Snapshots > Dry-run Output (requirements lines 336-362) > matches dry-run preview format without changes > dry-run-no-changes 1`] = `
 Dry run: my-skill
 
 Update preview:
@@ -129,7 +129,7 @@ Backup would be created at:
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches backup creation error format: error-backup-creation 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches backup creation error format > error-backup-creation 1`] = `
 
 ✗ Error: Failed to create backup
    Path: ~/.asm/backups/my-skill.skill
@@ -144,7 +144,7 @@ Suggestions:
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches filesystem error format: error-filesystem 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches filesystem error format > error-filesystem 1`] = `
 
 ✗ Error: File system error during write: Permission denied
    Path: /path/to/file
@@ -153,7 +153,7 @@ exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) ma
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches package mismatch error format: error-package-mismatch 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches package mismatch error format > error-package-mismatch 1`] = `
 
 ✗ Error: Package skill name does not match installed skill
    Installed skill: my-skill
@@ -166,7 +166,7 @@ Use the correct package for this skill, or install as a new skill:
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - case mismatch: error-security-case-mismatch 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches security error format - case mismatch > error-security-case-mismatch 1`] = `
 
 ✗ Error: Security Error: Skill name case mismatch
 
@@ -179,7 +179,7 @@ symlink substitution attack.
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - path traversal: error-security-path-traversal 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches security error format - path traversal > error-security-path-traversal 1`] = `
 
 ✗ Error: Security Error: Path traversal detected
 
@@ -189,7 +189,7 @@ exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) ma
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - symlink escape: error-security-symlink 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches security error format - symlink escape > error-security-symlink 1`] = `
 
 ✗ Error: Security Error: Symlink points outside allowed scope
 
@@ -201,7 +201,7 @@ This could indicate a malicious skill or misconfiguration.
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches security error format - zip bomb: error-security-zip-bomb 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches security error format - zip bomb > error-security-zip-bomb 1`] = `
 
 ✗ Error: Security Error: Potential ZIP bomb detected
 
@@ -213,7 +213,7 @@ The package has an unusually high compression ratio.
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches skill not found error format: error-skill-not-found 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches skill not found error format > error-skill-not-found 1`] = `
 
 ✗ Error: Skill 'missing-skill' not found in .claude/skills
 
@@ -226,7 +226,7 @@ Suggestions:
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches timeout error format: error-timeout 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches timeout error format > error-timeout 1`] = `
 
 ✗ Error: Operation timed out: backup
    Timeout: 120000ms
@@ -240,7 +240,7 @@ Suggestions:
 
 `;
 
-exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) matches validation error format: error-validation 1`] = `
+exports[`Update Formatter Snapshots > Error Output (requirements lines 272-302) > matches validation error format > error-validation 1`] = `
 
 ✗ Error: Invalid package structure
 
@@ -251,7 +251,7 @@ exports[`Update Formatter Snapshots Error Output (requirements lines 272-302) ma
 
 `;
 
-exports[`Update Formatter Snapshots Hard Link Warning matches hard link warning format: hard-link-warning 1`] = `
+exports[`Update Formatter Snapshots > Hard Link Warning > matches hard link warning format > hard-link-warning 1`] = `
 
 Updating skill: my-skill
 
@@ -268,7 +268,7 @@ Use --force to proceed anyway.
 
 `;
 
-exports[`Update Formatter Snapshots Invalid Package Error matches invalid package error format: invalid-package-error 1`] = `
+exports[`Update Formatter Snapshots > Invalid Package Error > matches invalid package error format > invalid-package-error 1`] = `
 
 ✗ Error: Invalid package './bad.skill'
    - Missing required file: SKILL.md
@@ -278,7 +278,7 @@ exports[`Update Formatter Snapshots Invalid Package Error matches invalid packag
 
 `;
 
-exports[`Update Formatter Snapshots Lock Conflict matches lock conflict format: lock-conflict 1`] = `
+exports[`Update Formatter Snapshots > Lock Conflict > matches lock conflict format > lock-conflict 1`] = `
 
 ✗ Error: Update already in progress
 
@@ -293,15 +293,15 @@ If the previous update was interrupted, remove the lock file:
 
 `;
 
-exports[`Update Formatter Snapshots Progress Bar matches progress bar at 0%: progress-bar-0 1`] = `[░░░░░░░░░░░░░░░░░░░░] 0% Backing up files...`;
+exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 0% > progress-bar-0 1`] = `[░░░░░░░░░░░░░░░░░░░░] 0% Backing up files...`;
 
-exports[`Update Formatter Snapshots Progress Bar matches progress bar at 50%: progress-bar-50 1`] = `[██████████░░░░░░░░░░] 50% Extracting...`;
+exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 50% > progress-bar-50 1`] = `[██████████░░░░░░░░░░] 50% Extracting...`;
 
-exports[`Update Formatter Snapshots Progress Bar matches progress bar at 100%: progress-bar-100 1`] = `[████████████████████] 100% Complete`;
+exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 100% > progress-bar-100 1`] = `[████████████████████] 100% Complete`;
 
-exports[`Update Formatter Snapshots Quiet Output (requirements lines 365-367) matches quiet mode single-line format: quiet-output 1`] = `my-skill updated (4 -> 5 files, 7.6 KB -> 9.0 KB)`;
+exports[`Update Formatter Snapshots > Quiet Output (requirements lines 365-367) > matches quiet mode single-line format > quiet-output 1`] = `my-skill updated (4 -> 5 files, 7.6 KB -> 9.0 KB)`;
 
-exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback failed (critical error) format: rollback-failed-critical 1`] = `
+exports[`Update Formatter Snapshots > Rollback Output (requirements lines 304-334) > matches rollback failed (critical error) format > rollback-failed-critical 1`] = `
 
 ✗ Error: CRITICAL: Rollback failed - manual intervention required
 
@@ -323,23 +323,7 @@ Recovery instructions:
 
 `;
 
-exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback success format without backup: rollback-success-no-backup 1`] = `
-
-Post-update validation failed:
-   Validation failed
-
-Rolling back...
-   Removing failed installation...
-   Restoring previous version...
-   Verifying restoration...
-
-⚠ Rollback successful: my-skill restored to previous version
-
-✗ Error: Update failed (exit code 6)
-
-`;
-
-exports[`Update Formatter Snapshots Rollback Output (requirements lines 304-334) matches rollback success format: rollback-success 1`] = `
+exports[`Update Formatter Snapshots > Rollback Output (requirements lines 304-334) > matches rollback success format > rollback-success 1`] = `
 
 Post-update validation failed:
    SKILL.md: Invalid format at line 15
@@ -356,7 +340,23 @@ Rolling back...
 
 `;
 
-exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches expected success output format: success-output 1`] = `
+exports[`Update Formatter Snapshots > Rollback Output (requirements lines 304-334) > matches rollback success format without backup > rollback-success-no-backup 1`] = `
+
+Post-update validation failed:
+   Validation failed
+
+Rolling back...
+   Removing failed installation...
+   Restoring previous version...
+   Verifying restoration...
+
+⚠ Rollback successful: my-skill restored to previous version
+
+✗ Error: Update failed (exit code 6)
+
+`;
+
+exports[`Update Formatter Snapshots > Success Output (requirements lines 233-270) > matches expected success output format > success-output 1`] = `
 
 ✓ Successfully updated skill: my-skill
    Previous: 4 files, 7.6 KB
@@ -368,7 +368,7 @@ To restore the previous version, use:
 
 `;
 
-exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output for personal scope: success-output-personal-scope 1`] = `
+exports[`Update Formatter Snapshots > Success Output (requirements lines 233-270) > matches success output for personal scope > success-output-personal-scope 1`] = `
 
 ✓ Successfully updated skill: my-skill
    Previous: 4 files, 7.6 KB
@@ -380,7 +380,7 @@ To restore the previous version, use:
 
 `;
 
-exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output with backup kept: success-output-backup-kept 1`] = `
+exports[`Update Formatter Snapshots > Success Output (requirements lines 233-270) > matches success output with backup kept > success-output-backup-kept 1`] = `
 
 ✓ Successfully updated skill: my-skill
    Previous: 4 files, 7.6 KB
@@ -392,7 +392,7 @@ To restore the previous version, use:
 
 `;
 
-exports[`Update Formatter Snapshots Success Output (requirements lines 233-270) matches success output without backup: success-output-no-backup 1`] = `
+exports[`Update Formatter Snapshots > Success Output (requirements lines 233-270) > matches success output without backup > success-output-no-backup 1`] = `
 
 ✓ Successfully updated skill: my-skill
    Previous: 4 files, 7.6 KB

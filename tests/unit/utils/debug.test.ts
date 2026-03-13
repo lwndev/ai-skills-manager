@@ -16,7 +16,7 @@ describe('debug utility', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('isDebugEnabled', () => {
@@ -57,7 +57,7 @@ describe('debug utility', () => {
 
   describe('debugLog', () => {
     it('does not log when debug is disabled', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       debugLog('test', 'message');
 
@@ -66,7 +66,7 @@ describe('debug utility', () => {
 
     it('logs message when debug is enabled', () => {
       process.env.ASM_DEBUG = '1';
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       debugLog('test-context', 'test message');
 
@@ -79,7 +79,7 @@ describe('debug utility', () => {
 
     it('logs error message and stack when error provided', () => {
       process.env.ASM_DEBUG = '1';
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const testError = new Error('test error');
 
       debugLog('test', 'something failed', testError);
@@ -93,7 +93,7 @@ describe('debug utility', () => {
 
     it('handles non-Error objects', () => {
       process.env.ASM_DEBUG = '1';
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       debugLog('test', 'something failed', 'string error');
 
@@ -106,7 +106,7 @@ describe('debug utility', () => {
   describe('createDebugLogger', () => {
     it('creates a scoped logger function', () => {
       process.env.ASM_DEBUG = '1';
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const log = createDebugLogger('my-module');
       log('test message');
@@ -118,7 +118,7 @@ describe('debug utility', () => {
 
     it('passes errors through', () => {
       process.env.ASM_DEBUG = '1';
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const log = createDebugLogger('my-module');
       const error = new Error('test');

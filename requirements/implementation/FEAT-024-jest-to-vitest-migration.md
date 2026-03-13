@@ -1,0 +1,227 @@
+# Implementation Plan: Migrate from Jest to Vitest
+
+## Overview
+
+Migrate the AI Skills Manager test suite from Jest to Vitest, replacing the test runner, configuration, mocking APIs, and all related dependencies. This migration eliminates the ts-jest compilation bridge, simplifies ESM mock handling for `@inquirer/*` packages, and provides faster test execution through Vite's transform pipeline. The Jest-compatible API minimizes test rewrite effort — only 10 of 115 test files require API-level changes.
+
+## Features Summary
+
+| Feature ID | GitHub Issue | Feature Document | Priority | Complexity | Status |
+|------------|--------------|------------------|----------|------------|--------|
+| FEAT-024 | [#119](https://github.com/lwndev/ai-skills-manager/issues/119) | [FEAT-024-jest-to-vitest-migration.md](../features/FEAT-024-jest-to-vitest-migration.md) | High | Medium | Pending |
+
+## Recommended Build Sequence
+
+### Phase 1: Dependencies and Configuration
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- Establishes the Vitest foundation before touching any test files
+- Swapping dependencies and configuration first means every subsequent phase can validate against the new runner
+- Keeps the blast radius small — if the config is wrong, no test files have been modified yet
+
+#### Implementation Steps
+1. Install `vitest` as a devDependency
+2. Remove `jest`, `ts-jest`, and `@types/jest` from devDependencies
+3. Remove the `overrides` entries for `minimatch` and `test-exclude` if they were only needed by Jest/ts-jest (verify first)
+4. Delete `jest.config.js`
+5. Create `vitest.config.ts` with equivalent settings:
+   - Test root: `tests/`
+   - Test match: `**/*.test.ts`
+   - `globals: true` (avoids adding imports to all 115 test files — `describe`, `it`, `expect`, `vi`, `beforeEach` etc. available globally)
+   - Coverage provider: `v8` (fast, built-in to Node)
+   - Coverage collection from `src/**/*.ts`, excluding `*.d.ts` and `src/index.ts`
+   - Coverage directory: `coverage/`
+   - Coverage reporters: `text`, `lcov`, `html`, `json-summary`
+   - `resolve.alias` mappings for `@inquirer/prompts` and `@inquirer/core` pointing to `tests/__mocks__/` (replaces `moduleNameMapper`)
+6. Update `package.json` scripts:
+   - `test`: `jest` → `vitest run`
+   - `test:watch`: `jest --watch` → `vitest`
+   - `test:coverage`: update to `vitest run --coverage --exclude 'tests/e2e/**'`
+7. Add `vitest/globals` to the `types` array in `tsconfig.json` (or a `tsconfig.test.json`) so TypeScript recognizes global `vi`, `describe`, `expect`, etc.
+8. Verify: run `npm test -- tests/unit/utils/output.test.ts` (a simple test file with no jest.* APIs) to confirm the new runner works
+
+#### Deliverables
+- [x] `vitest` installed, `jest`/`ts-jest`/`@types/jest` removed from `package.json`
+- [x] `jest.config.js` deleted
+- [x] `vitest.config.ts` created with equivalent configuration
+- [x] `package.json` scripts updated for Vitest
+- [x] TypeScript config updated for Vitest global types
+- [x] At least one simple test file passes with `npm test`
+
+---
+
+### Phase 2: Migrate Mock Files and Test API Calls
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- With the runner configured, this phase updates the 10 test files that use Jest-specific APIs and the 2 manual mock files
+- Mock files must be updated first since test files depend on them
+- Grouping all API migrations in one phase ensures consistent patterns
+
+#### Implementation Steps
+1. Update `tests/__mocks__/@inquirer/prompts.js` — replace `jest.fn()` with `vi.fn()` (or convert to `.ts` if Vitest handles it better)
+2. Update `tests/__mocks__/@inquirer/core.js` — no jest API usage, but verify compatibility
+3. Migrate jest API calls across 10 test files (replace `jest.*` → `vi.*`):
+   - `tests/unit/commands/scaffold-interactive.test.ts` — uses `jest.mock()`, `jest.fn()`, `jest.clearAllMocks()`
+   - `tests/unit/generators/scaffold.test.ts` — uses `jest.mock()`, `jest.fn()`
+   - `tests/unit/api/install.test.ts` — uses `jest.fn()`, `jest.doMock()`, `jest.resetModules()`, `jest.restoreAllMocks()`
+   - `tests/unit/api/scaffold.test.ts` — uses `jest.fn()`, `jest.spyOn()`, `jest.doMock()`, `jest.resetModules()`
+   - `tests/unit/api/uninstall.test.ts` — uses `jest.fn()`, `jest.doMock()`, `jest.resetModules()`, `jest.restoreAllMocks()`
+   - `tests/unit/api/update.test.ts` — uses `jest.fn()`, `jest.doMock()`, `jest.resetModules()`, `jest.restoreAllMocks()`
+   - `tests/unit/utils/signal-handler.test.ts` — uses `jest.fn()`
+   - `tests/unit/utils/debug.test.ts` — uses `jest.spyOn()`, `jest.restoreAllMocks()`
+   - `tests/unit/utils/output.test.ts` — uses `jest.spyOn()`
+4. For files using `jest.doMock()` + `jest.resetModules()` + dynamic `await import()`: verify Vitest's `vi.doMock()` + `vi.resetModules()` produces the same behavior (this is the highest-risk pattern)
+5. Verify: run `npm test` to confirm all migrated files pass
+6. **Additional:** Migrated 2 files not in original plan:
+   - `tests/performance/update-benchmark.test.ts` — `jest.useFakeTimers()` → `vi.useFakeTimers()`
+   - `tests/integration/api/scaffold.test.ts` — `require()` → `import()` for Vitest ESM compatibility
+
+#### Deliverables
+- [x] Mock files updated with `vi.fn()` replacing `jest.fn()`
+- [x] All 10 test files migrated from `jest.*` to `vi.*` APIs
+- [x] `vi.doMock()` + dynamic import pattern validated in API test files
+- [x] `npm test` passes for all migrated files
+
+---
+
+### Phase 2.5: Fix Flaky Performance Benchmark Test
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- The `should track timing variance` test in `tests/performance/update-benchmark.test.ts` is a pre-existing flaky test that was masked by Jest's higher per-test overhead
+- Vitest's faster execution exposes the root cause: the test measures 5 iterations of a trivial synchronous operation (`generateContent(10000)`), which on fast machines completes in sub-millisecond time, producing `mean ≈ 0` and a coefficient of variation (`stdDev / mean`) of `NaN` or `Infinity`
+- This must be fixed before Phase 3's final verification, which requires all 115 test files to pass
+
+#### Root Cause
+The test's statistical assertion (`stdDev / mean < 1`) is mathematically unstable when `mean` approaches zero. The `generateContent()` call completes so fast that `Date.now()` granularity (1ms) can't distinguish iterations — timings are either all `0ms` (producing `0/0 = NaN`) or a mix of `0` and `1` (producing extreme variance ratios).
+
+#### Implementation Steps
+1. Replace the trivial `generateContent(10000)` workload with a heavier operation that produces measurable, consistent timings (e.g., increase to `generateContent(500000)` or use an I/O-bound operation like temp file write/read)
+2. Add a guard for the degenerate case: skip the variance assertion if `mean < 1ms` (timings too small to be statistically meaningful)
+3. Verify the test passes reliably across 5 consecutive runs: `for i in {1..5}; do npx vitest run tests/performance/update-benchmark.test.ts; done`
+
+#### Deliverables
+- [x] `tests/performance/update-benchmark.test.ts` `should track timing variance` test no longer flaky
+- [x] Test passes on 5 consecutive runs
+- [x] No performance test files skipped or disabled
+
+---
+
+### Phase 3: Snapshots, CI, and Final Verification
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- Snapshot regeneration must happen after the runner is fully configured and API migration is complete
+- CI workflow update is the final step — ensures the pipeline uses the new runner
+- Full `npm run quality` validates end-to-end parity with the pre-migration state
+
+#### Implementation Steps
+1. Delete existing snapshot files under `tests/unit/formatters/__snapshots__/`
+2. Run `npx vitest run tests/unit/formatters/update-formatter.snapshot.test.ts --update` to regenerate snapshots
+3. Verify snapshot tests pass on a clean run (without `--update`)
+4. Update `.github/workflows/ci.yml`:
+   - Line 45: replace `npx jest tests/e2e/ --verbose` with `npx vitest run tests/e2e/ --reporter=verbose`
+5. Run `npm run build` to ensure build still works (no jest references in src/)
+6. Run `npm test` — all 115 test files must pass
+7. Run `npm run test:coverage` — verify coverage collection works and excludes e2e
+8. Run E2E tests: `npm test -- tests/e2e/` (after `npm run build`)
+9. Run `npm run quality` — full lint + test:coverage + audit must pass
+10. Update `CLAUDE.md` memory note about test framework from Jest to Vitest
+
+#### Deliverables
+- [x] Snapshot files regenerated for Vitest format
+- [x] `.github/workflows/ci.yml` updated to use Vitest
+- [x] All 115 test files pass with `npm test`
+- [x] Coverage collection works with `npm run test:coverage`
+- [x] E2E tests pass after `npm run build`
+- [x] `npm run quality` passes (lint + test:coverage + audit)
+- [x] No test files skipped or disabled
+
+---
+
+### Phase 4: Enforce Coverage Thresholds in Quality Gate
+**Feature:** [FEAT-024](../features/FEAT-024-jest-to-vitest-migration.md) | [#119](https://github.com/lwndev/ai-skills-manager/issues/119)
+**Status:** ✅ Complete
+
+#### Rationale
+- The `npm run quality` script runs lint + test:coverage + audit but does **not** run `scripts/check-coverage.js` — coverage threshold enforcement only happens in CI as a separate step
+- This means `npm run quality` can pass locally while coverage is below thresholds, giving developers false confidence
+- The Vitest migration exposed (but did not cause) a pre-existing coverage gap: statements 77.20% (threshold 80%), branches 67.52% (threshold 75%), lines 77.27% (threshold 80%)
+- The biggest gaps are in `src/commands/` — `install.ts`, `uninstall.ts`, `update.ts`, and `validate.ts` all have 0% coverage
+- This phase integrates the coverage threshold check into `npm run quality` and closes the coverage gap so all thresholds pass
+
+#### Implementation Steps
+1. Update `package.json` `quality` script to include coverage threshold check:
+   - `"quality": "npm run lint && npm run test:coverage && node scripts/check-coverage.js && npm run audit"`
+2. Run `npm run quality` to confirm the coverage threshold failure is now surfaced
+3. Identify files below threshold contributing most to the gap (focus on `src/commands/` at 28.72% statements)
+4. Add or expand unit tests to close the coverage gap — target the highest-impact files first:
+   - `src/commands/install.ts` (0% → coverage)
+   - `src/commands/uninstall.ts` (0% → coverage)
+   - `src/commands/update.ts` (0% → coverage)
+   - `src/commands/validate.ts` (0% → coverage)
+   - `src/commands/list.ts` (2.5% → coverage)
+   - `src/commands/package.ts` (4.05% → coverage)
+5. Run `npm run quality` — must now pass with coverage thresholds enforced
+6. Run `npm test` — all test files must still pass (no regressions)
+
+#### Deliverables
+- [x] `package.json` `quality` script includes `node scripts/check-coverage.js`
+- [x] Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- [x] `npm run quality` passes with coverage threshold enforcement
+- [x] No test files skipped or disabled
+
+---
+
+## Shared Infrastructure
+
+- **`vitest.config.ts`** — Central configuration replacing `jest.config.js`
+- **`tests/__mocks__/`** — Existing mock directory, updated for Vitest compatibility
+- **`globals: true`** — Eliminates need to add explicit imports to all 115 test files; only mock files need `vi` references
+
+## Testing Strategy
+
+- **Incremental validation**: Each phase ends with a test run to catch regressions early
+- **Phase 1**: Single simple test file validates runner configuration
+- **Phase 2**: Full `npm test` validates API migration across all 115 files
+- **Phase 2.5**: Flaky performance benchmark fixed and verified across 5 consecutive runs
+- **Phase 3**: Full `npm run quality` validates end-to-end parity including lint, coverage, and audit
+- **Phase 4**: Integrates coverage threshold check into `npm run quality` and closes pre-existing coverage gaps
+- **No test logic changes**: Only framework API calls change (`jest.*` → `vi.*`). Test assertions, setup, and teardown logic remain identical.
+
+## Dependencies and Prerequisites
+
+- **vitest** (latest stable) — Vite-powered test runner with Jest-compatible API
+- **@vitest/coverage-v8** — Coverage provider using V8's built-in coverage (replaces Istanbul used by Jest)
+- **Removal of**: `jest` (^30.2.0), `ts-jest` (^29.4.6), `@types/jest` (^30.0.0)
+- **Node.js >=20.19.6** — existing requirement, compatible with Vitest
+- **TypeScript 5.5+** — existing requirement, natively supported by Vitest without ts-jest
+
+## Risk Assessment
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| `vi.doMock()` + dynamic import behaves differently than `jest.doMock()` | High | Medium | Test the 4 API files (install, scaffold, uninstall, update) individually in Phase 2; adjust mock setup if needed |
+| `resolve.alias` doesn't replicate `moduleNameMapper` behavior exactly | Medium | Low | Fall back to Vitest's `__mocks__` auto-resolution or inline `vi.mock()` factories |
+| Snapshot format differs, causing false test failures | Low | High | Expected — delete and regenerate snapshots in Phase 3 |
+| `overrides` in package.json were Jest-specific | Low | Low | Verify `minimatch` and `test-exclude` overrides are still needed; remove if not |
+| `globals: true` causes naming conflicts | Low | Low | If conflicts arise, switch to explicit imports in affected files only |
+| Vitest's faster execution exposes pre-existing flaky tests | Low | High | Identified in Phase 2 — `should track timing variance` fails due to sub-millisecond timings; fix in Phase 2.5 |
+| Coverage below thresholds after migration | Medium | High | Pre-existing gap in `src/commands/` (0% coverage on 6 files); `npm run quality` didn't enforce thresholds locally. Fix in Phase 4 |
+
+## Success Criteria
+
+- All 115 test files pass with `vitest run`
+- Coverage collection produces equivalent reports (text, lcov, html, json-summary)
+- Coverage meets all thresholds: statements ≥80%, branches ≥75%, functions ≥75%, lines ≥80%
+- `npm run quality` passes with coverage threshold enforcement (`node scripts/check-coverage.js` included)
+- E2E tests pass after build
+- `jest`, `ts-jest`, and `@types/jest` fully removed from the project
+- CI pipeline runs successfully with Vitest
+- No test files skipped or disabled as part of migration
