@@ -5,6 +5,12 @@ All notable changes to AI Skills Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.4] - 2026-03-14
+
+### Fixed
+
+- **Publish dispatch version prefix** (BUG-003): Publish workflow now strips the `v` prefix from the release tag before sending the version to the site repo via repository dispatch (#131)
+
 ## [1.8.3] - 2026-03-14
 
 ### Added
