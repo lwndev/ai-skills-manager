@@ -79,29 +79,39 @@ Add a branded ASCII art banner to `asm --version` with version, tagline, website
 
 ### Phase 2: Dead Code Cleanup
 **Feature:** [FEAT-025](../features/FEAT-025-ascii-art-version-banner.md) | [#127](https://github.com/lwndev/ai-skills-manager/issues/127)
-**Status:** Pending
+**Status:** ✅ Complete
 
 #### Rationale
 - Isolated cleanup that doesn't affect banner functionality
 - Separate phase keeps the banner PR reviewable on its own
-- Low risk — constants are confirmed unused (never referenced outside their declarations)
+- Low risk — functions and constants are confirmed dead code (not called by any production code)
+
+#### Context
+The constants `SPINNER_FRAMES`, `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` are used by two functions — `formatProgressBar()` and `formatProgressSpinner()` — within `update-formatter.ts`. However, neither function is imported or called by any production code outside the formatter. They are exported dead code with tests covering dead code. All must be removed together.
 
 #### Implementation Steps
 
-1. **Verify no references to the target constants**
-   - Grep for `SPINNER_FRAMES`, `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` across the entire codebase
-   - Confirm they appear only in `src/formatters/update-formatter.ts` declarations
+1. **Verify no production references to the target functions**
+   - Grep for `formatProgressBar` and `formatProgressSpinner` across `src/`
+   - Confirm they appear only in `src/formatters/update-formatter.ts` declarations (not imported elsewhere in `src/`)
 
 2. **Remove from `src/formatters/update-formatter.ts`**
-   - Delete the `SPINNER_FRAMES` constant (line 55)
-   - Delete `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` constants (lines 60-62)
-   - Delete associated JSDoc comments (lines 52-54, 57-59)
+   - Delete `SPINNER_FRAMES` constant and JSDoc comment (lines 52-55)
+   - Delete `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` constants and JSDoc comment (lines 57-62)
+   - Delete `formatProgressBar()` function and JSDoc comment (lines 741-758)
+   - Delete `formatProgressSpinner()` function and JSDoc comment (lines 760-770)
 
-3. **Run `npm run quality`** to confirm no breakage
+3. **Remove associated test cases**
+   - `tests/unit/formatters/update-formatter.test.ts`: remove `formatProgressBar` and `formatProgressSpinner` imports and their `describe` blocks (lines 1056-1112)
+   - `tests/unit/formatters/update-formatter.snapshot.test.ts`: remove `formatProgressBar` import and its snapshot tests (lines 553-563)
+
+4. **Run `npm run quality`** to confirm no breakage
 
 #### Deliverables
-- [ ] `src/formatters/update-formatter.ts` — unused constants removed
-- [ ] All existing tests still pass
+- [x] `src/formatters/update-formatter.ts` — dead functions and constants removed
+- [x] `tests/unit/formatters/update-formatter.test.ts` — associated test cases removed
+- [x] `tests/unit/formatters/update-formatter.snapshot.test.ts` — associated snapshot tests removed
+- [x] All remaining tests still pass
 
 ---
 
@@ -115,7 +125,7 @@ None — this feature is self-contained. The version formatter follows the same 
 | Unit | Formatter functions in isolation | `vitest` — mock `process.stdout.isTTY` and `process.stdout.columns` |
 | Integration | CLI invocation via `execSync` | Existing `scaffold.test.ts` pattern — invoke `node cliPath --version` |
 | E2E | Full build + invoke | `node dist/cli.js --version`, piped output, `-q`, `-j` flags |
-| Cleanup | No regressions from constant removal | `npm run quality` — existing test suite |
+| Cleanup | No regressions from dead code removal | `npm run quality` — remaining test suite after removing dead test cases |
 
 ## Dependencies and Prerequisites
 - `commander` (already installed) — need to confirm the approach for overriding default `--version` behavior works cleanly with the installed version
@@ -127,14 +137,14 @@ None — this feature is self-contained. The version formatter follows the same 
 |------|--------|-------------|------------|
 | Commander `.version()` override breaks `-V` flag registration | Med | Low | Test early; fallback to Commander's `configureOutput` or a hidden subcommand |
 | ASCII art looks broken in some terminal emulators | Low | Low | Use simple ASCII characters only (no Unicode box-drawing); test in multiple terminals |
-| Removing unused constants breaks something unexpected | Low | Very Low | Grep-verify zero references before removal; run full test suite |
+| Removing dead functions/constants breaks something unexpected | Low | Very Low | Grep-verify zero production references before removal; remove associated tests; run full test suite |
 
 ## Success Criteria
 - `asm --version` displays branded ASCII art with version, tagline, website, and license
 - Quiet, JSON, non-TTY, and narrow-terminal modes all produce appropriate fallback output
 - No new runtime dependencies
 - `npm run quality` passes
-- Unused spinner/progress constants removed from `update-formatter.ts`
+- Unused `formatProgressBar`, `formatProgressSpinner` functions and their constants removed from `update-formatter.ts`
 
 ## Code Organization
 ```
@@ -142,13 +152,15 @@ src/
 ├── cli.ts                          # Modified — custom --version handling
 └── formatters/
     ├── version-formatter.ts        # New — banner art + output mode dispatch
-    └── update-formatter.ts         # Modified — dead code removal
+    └── update-formatter.ts         # Modified — dead functions and constants removed
 
 tests/
 ├── unit/formatters/
-│   └── version-formatter.test.ts   # New — unit tests
+│   ├── version-formatter.test.ts   # New — unit tests
+│   ├── update-formatter.test.ts    # Modified — dead test cases removed
+│   └── update-formatter.snapshot.test.ts  # Modified — dead snapshot tests removed
 ├── integration/
 │   └── scaffold.test.ts            # Verify existing --version test still passes
 └── e2e/
-    └── (version tests)             # New or extended — e2e version output tests
+    └── version.e2e.test.ts         # New — e2e version output tests
 ```

@@ -50,18 +50,6 @@ export type UpdateStage =
   | 'complete';
 
 /**
- * Spinner frames for indeterminate progress
- */
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-
-/**
- * Progress bar configuration
- */
-const PROGRESS_BAR_WIDTH = 20;
-const PROGRESS_FILLED_CHAR = '█';
-const PROGRESS_EMPTY_CHAR = '░';
-
-/**
  * Format progress message for an update stage
  *
  * @param stage - Current update stage
@@ -736,37 +724,6 @@ export function formatLockConflict(lockInfo: UpdateLockFile): string {
   lines.push('');
 
   return lines.join('\n');
-}
-
-/**
- * Format progress bar for determinate operations
- *
- * @param current - Current progress value
- * @param total - Total value
- * @param label - Label to show with progress bar
- * @returns Formatted progress bar string
- */
-export function formatProgressBar(current: number, total: number, label: string): string {
-  const percentage = total > 0 ? Math.min(100, Math.floor((current / total) * 100)) : 0;
-  const filledWidth = Math.floor((percentage / 100) * PROGRESS_BAR_WIDTH);
-  const emptyWidth = PROGRESS_BAR_WIDTH - filledWidth;
-
-  const filled = PROGRESS_FILLED_CHAR.repeat(filledWidth);
-  const empty = PROGRESS_EMPTY_CHAR.repeat(emptyWidth);
-
-  return `[${filled}${empty}] ${percentage}% ${label}`;
-}
-
-/**
- * Format progress spinner for indeterminate operations
- *
- * @param stage - Current operation stage description
- * @param frameIndex - Current animation frame index (0-9)
- * @returns Formatted spinner string
- */
-export function formatProgressSpinner(stage: string, frameIndex: number = 0): string {
-  const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length];
-  return `${frame} ${stage}`;
 }
 
 /**

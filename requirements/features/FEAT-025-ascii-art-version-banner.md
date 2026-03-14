@@ -48,10 +48,12 @@ asm -V
 - If terminal width is less than the minimum required for the ASCII art (determine during implementation), fall back to plain version string output
 - Ensure no line wrapping or broken art on narrow terminals
 
-### FR-4: Cleanup Unused Constants
-- Remove `SPINNER_FRAMES` constant from `src/formatters/update-formatter.ts` (line 55)
-- Remove `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` constants from `src/formatters/update-formatter.ts` (lines 60-62)
-- Verify no references exist elsewhere before removal
+### FR-4: Cleanup Dead Code
+- Remove unused `formatProgressBar()` and `formatProgressSpinner()` functions from `src/formatters/update-formatter.ts`
+- Remove their associated constants: `SPINNER_FRAMES`, `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR`
+- Remove associated JSDoc comments
+- Remove corresponding test cases from `tests/unit/formatters/update-formatter.test.ts` and `tests/unit/formatters/update-formatter.snapshot.test.ts`
+- Verify no production code references exist before removal
 
 ## Output Format
 
@@ -129,8 +131,9 @@ asm -V
 - Piped output (`node dist/cli.js --version | cat`) produces plain version string
 
 ### Cleanup Verification
-- Confirm `SPINNER_FRAMES`, `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR` are removed
-- Confirm no remaining references to removed constants
+- Confirm `formatProgressBar`, `formatProgressSpinner`, and their constants (`SPINNER_FRAMES`, `PROGRESS_BAR_WIDTH`, `PROGRESS_FILLED_CHAR`, `PROGRESS_EMPTY_CHAR`) are removed
+- Confirm no remaining references to removed functions or constants
+- Confirm associated test cases removed from unit and snapshot tests
 
 ## Future Enhancements
 - Color support with ANSI escape codes (respecting `NO_COLOR` env var)
@@ -138,11 +141,11 @@ asm -V
 - `asm banner` standalone command for display on demand
 
 ## Acceptance Criteria
-- [ ] ASCII art banner displays on `asm --version` including version, tagline, website, and license
-- [ ] Art suppressed in quiet (`-q`) mode — plain version only
-- [ ] Art suppressed in JSON (`-j`) mode — JSON object only
-- [ ] Art suppressed in non-TTY contexts (piped output)
-- [ ] Graceful fallback on narrow terminals (no broken art)
-- [ ] Unused `SPINNER_FRAMES` and progress bar constants cleaned up from `update-formatter.ts`
-- [ ] No additional runtime dependencies introduced
-- [ ] Unit, integration, and e2e tests cover new behavior
+- [x] ASCII art banner displays on `asm --version` including version, tagline, website, and license
+- [x] Art suppressed in quiet (`-q`) mode — plain version only
+- [x] Art suppressed in JSON (`-j`) mode — JSON object only
+- [x] Art suppressed in non-TTY contexts (piped output)
+- [x] Graceful fallback on narrow terminals (no broken art)
+- [x] Unused `formatProgressBar`, `formatProgressSpinner` functions and their constants cleaned up from `update-formatter.ts`
+- [x] No additional runtime dependencies introduced
+- [x] Unit, integration, and e2e tests cover new behavior
