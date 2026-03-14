@@ -65,3 +65,13 @@ jobs:
       - name: Publish to npm
         if: inputs.dry-run != true
         run: npm publish --access public
+
+      - name: Notify site repo to auto-update
+        if: inputs.dry-run != true && github.event.release.tag_name != ''
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SITE_REPO_PAT }}
+          repository: lwndev/ai-skills-manager-site
+          event-type: cli-release
+          client-payload: '{"version": "${{ github.event.release.tag_name }}"}'
