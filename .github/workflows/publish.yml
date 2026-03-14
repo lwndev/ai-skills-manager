@@ -67,7 +67,8 @@ jobs:
         run: npm publish --access public
 
       - name: Notify site repo to auto-update
-        if: inputs.dry-run != true
+        if: inputs.dry-run != true && github.event.release.tag_name != ''
+        continue-on-error: true
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.SITE_REPO_PAT }}
