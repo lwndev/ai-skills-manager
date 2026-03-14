@@ -66,12 +66,20 @@ jobs:
         if: inputs.dry-run != true
         run: npm publish --access public
 
-      - name: Notify site repo to auto-update
+      - name: Resolve release version
         if: inputs.dry-run != true && github.event.release.tag_name != ''
+        id: version
+        run: |
+          # Strip leading 'v' from tag (e.g., v1.8.3 -> 1.8.3) — site repo expects plain semver
+          TAG="${{ github.event.release.tag_name }}"
+          echo "semver=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Notify site repo to auto-update
+        if: steps.version.outputs.semver != ''
         continue-on-error: true
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.SITE_REPO_PAT }}
           repository: lwndev/ai-skills-manager-site
           event-type: cli-release
-          client-payload: '{"version": "${{ github.event.release.tag_name }}"}'
+          client-payload: '{"version": "${{ steps.version.outputs.semver }}"}'
