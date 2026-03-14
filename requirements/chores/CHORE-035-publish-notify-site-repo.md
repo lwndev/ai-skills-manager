@@ -30,11 +30,11 @@ Add a `repository-dispatch` step to the publish workflow that notifies `lwndev/a
 
 ## Completion
 
-**Status:** `Pending`
+**Status:** `Completed`
 
-**Completed:** YYYY-MM-DD
+**Completed:** 2026-03-14
 
-**Pull Request:** [#N](https://github.com/lwndev/ai-skills-manager/pull/N)
+**Pull Request:** [#126](https://github.com/lwndev/ai-skills-manager/pull/126)
 
 ## Notes
 
