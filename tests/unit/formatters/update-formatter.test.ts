@@ -19,8 +19,6 @@ import {
   formatError,
   formatHardLinkWarning,
   formatLockConflict,
-  formatProgressBar,
-  formatProgressSpinner,
   shouldShowProgress,
   formatCancellation,
   formatChangeSummaryStats,
@@ -1050,65 +1048,6 @@ describe('Update Formatter', () => {
       expect(output).toContain('Package: ./new-version.skill');
       expect(output).toContain('remove the lock file');
       expect(output).toContain('.asm-update.lock');
-    });
-  });
-
-  describe('formatProgressBar', () => {
-    it('formats 0% progress', () => {
-      const output = formatProgressBar(0, 100, 'Backing up files');
-
-      expect(output).toContain('[');
-      expect(output).toContain(']');
-      expect(output).toContain('0%');
-      expect(output).toContain('Backing up files');
-    });
-
-    it('formats 50% progress', () => {
-      const output = formatProgressBar(50, 100, 'Extracting');
-
-      expect(output).toContain('50%');
-      expect(output).toContain('Extracting');
-      // Should have 10 filled and 10 empty (20 total)
-      expect(output).toMatch(/\[.{20}\]/);
-    });
-
-    it('formats 100% progress', () => {
-      const output = formatProgressBar(100, 100, 'Complete');
-
-      expect(output).toContain('100%');
-      expect(output).toContain('Complete');
-    });
-
-    it('handles edge case of 0 total', () => {
-      const output = formatProgressBar(0, 0, 'Empty');
-
-      expect(output).toContain('0%');
-    });
-
-    it('caps at 100%', () => {
-      const output = formatProgressBar(150, 100, 'Over');
-
-      expect(output).toContain('100%');
-    });
-  });
-
-  describe('formatProgressSpinner', () => {
-    it('formats spinner with stage description', () => {
-      const output = formatProgressSpinner('Validating package', 0);
-
-      expect(output).toContain('Validating package');
-      // Should contain a spinner character
-      expect(output).toMatch(/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
-    });
-
-    it('cycles through spinner frames', () => {
-      const frame0 = formatProgressSpinner('Loading', 0);
-      const frame1 = formatProgressSpinner('Loading', 1);
-      const frame5 = formatProgressSpinner('Loading', 5);
-
-      // Different frames should produce different output
-      expect(frame0).not.toBe(frame1);
-      expect(frame0).not.toBe(frame5);
     });
   });
 

@@ -10,6 +10,7 @@ import { registerInstallCommand } from './commands/install';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpdateCommand } from './commands/update';
 import { registerListCommand } from './commands/list';
+import { formatVersionOutput } from './formatters/version-formatter';
 
 const program = new Command();
 
@@ -21,7 +22,15 @@ program
   .description(
     "AI Skills Manager (ASM) - Create, validate, and distribute Claude Code skills.\n\nSkills are markdown files that extend Claude Code's capabilities, appearing as\nslash commands in the Claude Code interface."
   )
-  .version(packageJson.version);
+  .option('-V, --version', 'Display version')
+  .on('option:version', () => {
+    // Read flags directly from argv because Commander's .on('option:*') handler
+    // fires before argument parsing completes, so program.opts() is not populated yet.
+    const quiet = process.argv.includes('-q') || process.argv.includes('--quiet');
+    const json = process.argv.includes('-j') || process.argv.includes('--json');
+    console.log(formatVersionOutput(packageJson.version, packageJson.license, { quiet, json }));
+    process.exit(0);
+  });
 
 registerScaffoldCommand(program);
 registerValidateCommand(program);

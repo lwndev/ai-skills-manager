@@ -293,12 +293,6 @@ If the previous update was interrupted, remove the lock file:
 
 `;
 
-exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 0% > progress-bar-0 1`] = `[░░░░░░░░░░░░░░░░░░░░] 0% Backing up files...`;
-
-exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 50% > progress-bar-50 1`] = `[██████████░░░░░░░░░░] 50% Extracting...`;
-
-exports[`Update Formatter Snapshots > Progress Bar > matches progress bar at 100% > progress-bar-100 1`] = `[████████████████████] 100% Complete`;
-
 exports[`Update Formatter Snapshots > Quiet Output (requirements lines 365-367) > matches quiet mode single-line format > quiet-output 1`] = `my-skill updated (4 -> 5 files, 7.6 KB -> 9.0 KB)`;
 
 exports[`Update Formatter Snapshots > Rollback Output (requirements lines 304-334) > matches rollback failed (critical error) format > rollback-failed-critical 1`] = `

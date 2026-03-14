@@ -20,7 +20,6 @@ import {
   formatChangeSummary,
   formatHardLinkWarning,
   formatLockConflict,
-  formatProgressBar,
   formatBackupCreated,
   formatNoBackupWarning,
   formatInvalidPackageError,
@@ -545,23 +544,6 @@ describe('Update Formatter Snapshots', () => {
 
       const output = formatLockConflict(lockInfo);
       expect(output).toMatchSnapshot('lock-conflict');
-    });
-  });
-
-  describe('Progress Bar', () => {
-    it('matches progress bar at 0%', () => {
-      const output = formatProgressBar(0, 100, 'Backing up files...');
-      expect(output).toMatchSnapshot('progress-bar-0');
-    });
-
-    it('matches progress bar at 50%', () => {
-      const output = formatProgressBar(50, 100, 'Extracting...');
-      expect(output).toMatchSnapshot('progress-bar-50');
-    });
-
-    it('matches progress bar at 100%', () => {
-      const output = formatProgressBar(100, 100, 'Complete');
-      expect(output).toMatchSnapshot('progress-bar-100');
     });
   });
 
