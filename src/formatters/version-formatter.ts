@@ -8,7 +8,7 @@
  * - Fallback: Plain version string for non-TTY or narrow terminals
  */
 
-const ASM_ASCII_ART = `
+const ASM_ASCII_ART = `\
     _    ____  __  __
    / \\  / ___||  \\/  |
   / _ \\ \\___ \\| |\\/| |
@@ -18,7 +18,8 @@ const ASM_ASCII_ART = `
 const ASM_TAGLINE = 'Create. Validate. Distribute.';
 const ASM_WEBSITE = 'ai-skills-manager.app';
 
-/** Minimum terminal width required to render the banner without wrapping. */
+/** Minimum terminal width required to render the banner without wrapping.
+ *  Widest content line is "  Create. Validate. Distribute." (31 chars) + 3 char margin. */
 export const MIN_BANNER_WIDTH = 34;
 
 /**
@@ -72,7 +73,7 @@ export function formatVersionOutput(
     return formatVersionQuiet(version);
   }
 
-  if (process.stdout.columns && process.stdout.columns < MIN_BANNER_WIDTH) {
+  if (process.stdout.columns !== undefined && process.stdout.columns < MIN_BANNER_WIDTH) {
     return formatVersionQuiet(version);
   }
 

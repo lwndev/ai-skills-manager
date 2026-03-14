@@ -24,6 +24,8 @@ program
   )
   .option('-V, --version', 'Display version')
   .on('option:version', () => {
+    // Read flags directly from argv because Commander's .on('option:*') handler
+    // fires before argument parsing completes, so program.opts() is not populated yet.
     const quiet = process.argv.includes('-q') || process.argv.includes('--quiet');
     const json = process.argv.includes('-j') || process.argv.includes('--json');
     console.log(formatVersionOutput(packageJson.version, packageJson.license, { quiet, json }));
