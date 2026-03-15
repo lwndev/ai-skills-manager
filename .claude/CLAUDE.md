@@ -69,20 +69,20 @@ Code is considered complete and functional only when `npm run quality` passes.
 
 ## Skills Reference Material
 
-Skills documentation is split between two sources:
+Shared reference documentation lives in the `docs/shared/` submodule ([lwndev/ai-skills-docs](https://github.com/lwndev/ai-skills-docs)). Repo-specific docs (ASM usage, changelog, scripts) remain under `docs/asm/`, `docs/anthropic/claude-code/`, and `docs/anthropic/skills/scripts/`.
 
-### Anthropic's Official Documentation (`docs/anthropic/skills/`)
+### Anthropic's Official Documentation (`docs/shared/docs/anthropic/skills/`)
 
 Anthropic's documentation covers Claude Code's implementation of skills:
 
-- **Agent Skills Overview** - `agent-skills-overview-20251229.md`
+- **Agent Skills Overview** - `agent-skills-overview.md`
   - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
-- **Agent Skills Quickstart** - `agent-skills-quickstart-20251229.md`
+- **Agent Skills Quickstart** - `agent-skills-quickstart.md`
   - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart)
-- **Agent Skills Best Practices** - `agent-skills-best-practices-20251229.md`
+- **Agent Skills Best Practices** - `agent-skills-best-practices.md`
   - [Source](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 
-### Open Source Agent Skills Specification (`docs/agent-skills-io/`)
+### Open Source Agent Skills Specification (`docs/shared/docs/agent-skills/`)
 
 The open source specification from [agentskills.io](https://agentskills.io) defines a vendor-neutral format:
 
